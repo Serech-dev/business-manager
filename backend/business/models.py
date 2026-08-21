@@ -2,6 +2,30 @@ from django.conf import settings
 from django.db import models
 
 
+class Register(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="registers",
+    )
+
+    opened_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    closed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    @property
+    def is_open(self):
+        return self.closed_at is None
+
+    def __str__(self):
+        return f"Caja #{self.id}"
+
+
 class Transaction(models.Model):
     class Type(models.TextChoices):
         SALE = "sale", "Venta"
@@ -18,6 +42,12 @@ class Transaction(models.Model):
         related_name="business_transactions",
     )
 
+    register = models.ForeignKey(
+        Register,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+    )
+
     type = models.CharField(
         max_length=30,
         choices=Type.choices,
@@ -29,6 +59,20 @@ class Transaction(models.Model):
 
     description = models.CharField(
         max_length=255,
+        blank=True,
+    )
+
+    exchange_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        null=True,
+        blank=True,
+    )
+
+    exchange_fee = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        null=True,
         blank=True,
     )
 
@@ -56,7 +100,7 @@ class TransactionAmount(models.Model):
 
     amount = models.DecimalField(
         max_digits=12,
-        decimal_places=2,
+        decimal_places=0,
     )
 
     def __str__(self):
