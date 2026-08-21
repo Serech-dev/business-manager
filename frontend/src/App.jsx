@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import NewTransaction from "./pages/NewTransaction";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 
@@ -28,6 +29,10 @@ function App() {
                 />
                 <Route element={<ProtectedRoute />}>
                     <Route path="/" element={<Dashboard />} />
+                    <Route
+                        path="/transactions/new"
+                        element={<NewTransaction />}
+                    />
                 </Route>
             </Routes>
         </BrowserRouter>

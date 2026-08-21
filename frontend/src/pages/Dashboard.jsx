@@ -24,6 +24,20 @@ function Dashboard() {
                 </p>
 
                 <button
+                    onClick={() => navigate("/transactions/new")}
+                    className="
+                        rounded-xl
+                        bg-[var(--primary)]
+                        px-4
+                        py-3
+                        font-semibold
+                        text-white
+                    "
+                >
+                    Nueva operación
+                </button>
+
+                <button
                     onClick={handleLogout}
                     className="
                         mt-6
