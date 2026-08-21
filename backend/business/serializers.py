@@ -1,163 +1,66 @@
-from django.db import transaction
 from rest_framework import serializers
 
-from .models import Product, Transaction, TransactionItem
+from .models import Transaction, TransactionAmount
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class TransactionAmountSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
-        model = Product
+        model = TransactionAmount
         fields = [
             "id",
-            "name",
-            "price",
-            "active",
+            "method",
+            "amount",
         ]
         read_only_fields = [
             "id",
         ]
 
-    def validate_name(self, value):
-        value = " ".join(value.strip().lower().split())
 
-        if not value:
-            raise serializers.ValidationError(
-                "El nombre no puede estar vacío."
-            )
-
-        return value
-
-    def validate(self, attrs):
-        user = self.context["request"].user
-        name = attrs.get("name")
-
-        if Product.objects.filter(
-            user=user,
-            name=name,
-        ).exists():
-            raise serializers.ValidationError({
-                "name": "El producto ya existe."
-            })
-
-        return attrs
-
-    def create(self, validated_data):
-        return Product.objects.create(
-            user=self.context["request"].user,
-            **validated_data,
-        )
-
-
-class TransactionItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(
-        source="product.name",
-        read_only=True,
-    )
-    total = serializers.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        read_only=True,
-    )
-
-    class Meta:
-        model = TransactionItem
-        fields = [
-            "id",
-            "product",
-            "product_name",
-            "quantity",
-            "unit_price",
-            "total",
-        ]
-        read_only_fields = [
-            "id",
-            "total",
-        ]
-
-
-class TransactionSerializer(serializers.ModelSerializer):
-    items = TransactionItemSerializer(
+class TransactionSerializer(
+    serializers.ModelSerializer
+):
+    amounts = TransactionAmountSerializer(
         many=True,
-    )
-    total = serializers.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        read_only=True,
     )
 
     class Meta:
         model = Transaction
         fields = [
             "id",
+            "type",
             "created_at",
-            "items",
-            "total",
+            "description",
+            "amounts",
         ]
         read_only_fields = [
             "id",
             "created_at",
-            "total",
         ]
 
     def validate(self, attrs):
-        user = self.context["request"].user
-
-        for item in attrs["items"]:
-            product = item["product"]
-
-            if product.user != user:
-                raise serializers.ValidationError({
-                    "items": (
-                        f"El producto '{product.name}' "
-                        "no pertenece a tu cuenta."
-                    )
-                })
-
-            if not product.active:
-                raise serializers.ValidationError({
-                    "items": (
-                        f"El producto '{product.name}' "
-                        "no está activo."
-                    )
-                })
+        if not attrs.get("amounts"):
+            raise serializers.ValidationError({
+                "amounts": "La operación debe tener al menos un monto."
+            })
 
         return attrs
 
-    @transaction.atomic
     def create(self, validated_data):
-        items = validated_data.pop("items")
+        amounts = validated_data.pop("amounts")
 
-        for item in items:
-            product = item["product"]
-
-            if (
-                item.get("unit_price") is None
-                and product.price is None
-            ):
-                raise serializers.ValidationError({
-                    "items": (
-                        f"El producto '{product.name}' "
-                        "no tiene un precio."
-                    )
-                })
-
-        transaction_obj = Transaction.objects.create(
+        transaction = Transaction.objects.create(
             user=self.context["request"].user,
             **validated_data,
         )
 
-        TransactionItem.objects.bulk_create([
-            TransactionItem(
-                transaction=transaction_obj,
-                product=item["product"],
-                quantity=item["quantity"],
-                unit_price=(
-                    item.get("unit_price")
-                    if item.get("unit_price") is not None
-                    else item["product"].price
-                ),
+        TransactionAmount.objects.bulk_create([
+            TransactionAmount(
+                transaction=transaction,
+                **amount,
             )
-            for item in items
+            for amount in amounts
         ])
 
-        return transaction_obj
+        return transaction
