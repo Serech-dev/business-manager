@@ -1,45 +1,57 @@
 import { useState } from "react";
-import { themes } from "../themes/themes";
 import { getSavedTheme, setTheme } from "../utils/theme";
 
 function ThemeSelector() {
-    const [theme, setCurrentTheme] = useState(getSavedTheme());
+    const [theme, setCurrentTheme] = useState(
+        getSavedTheme()
+    );
 
-    function handleChange(event) {
-        const newTheme = event.target.value;
+    function toggleTheme() {
+        const newTheme =
+            theme === "dark"
+                ? "light"
+                : "dark";
 
         setTheme(newTheme);
         setCurrentTheme(newTheme);
     }
 
+    const isDark = theme === "dark";
+
     return (
-        <div>
-            <select
-                id="theme"
-                value={theme}
-                onChange={handleChange}
+        <button
+            type="button"
+            onClick={toggleTheme}
+            className="
+                flex
+                w-full
+                items-center
+                justify-between
+                rounded-lg
+                border
+                border-[var(--border)]
+                bg-[var(--background)]
+                px-3
+                py-2
+                text-sm
+                text-[var(--text-primary)]
+                transition
+                hover:bg-[var(--surface-accent)]
+            "
+        >
+            <span>
+                {isDark ? "Oscuro" : "Claro"}
+            </span>
+
+            <span
                 className="
-                    rounded-lg
-                    border
-                    border-[var(--border)]
-                    bg-[var(--background)]
-                    px-2
-                    py-1.5
-                    text-sm
-                    text-[var(--text-primary)]
-                    outline-none
-                    focus:border-[var(--primary)]
-                    focus:ring-2
-                    focus:ring-[var(--primary)]/20
+                    text-[var(--control-icon)]
+                    transition
                 "
             >
-                {themes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                        {item.name}
-                    </option>
-                ))}
-            </select>
-        </div>
+                {isDark ? "☾" : "☀"}
+            </span>
+        </button>
     );
 }
 
