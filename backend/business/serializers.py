@@ -68,6 +68,15 @@ class TransactionSerializer(
         )
 
     def validate(self, attrs):
+        if (
+            self.instance
+            and not self.instance.register.is_open
+        ):
+            raise serializers.ValidationError({
+                "register":
+                    "No se puede modificar una operación de una caja cerrada."
+            })
+
         transaction_type = attrs.get(
             "type",
             getattr(

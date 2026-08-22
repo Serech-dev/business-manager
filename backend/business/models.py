@@ -18,6 +18,17 @@ class Register(models.Model):
         blank=True,
     )
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(
+                    closed_at__isnull=True
+                ),
+                name="one_open_register_per_user",
+            ),
+        ]
+
     @property
     def is_open(self):
         return self.closed_at is None

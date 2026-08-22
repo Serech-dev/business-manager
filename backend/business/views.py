@@ -20,14 +20,78 @@ class TransactionListCreateView(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return (
+        queryset = (
             Transaction.objects
-            .filter(user=self.request.user)
+            .filter(
+                user=self.request.user
+            )
             .prefetch_related("amounts")
             .select_related("register")
             .order_by("-created_at")
         )
 
+        if self.request.query_params.get(
+            "current"
+        ) == "1":
+            queryset = queryset.filter(
+                register__user=self.request.user,
+                register__closed_at__isnull=True,
+            )
+
+        return queryset
+
+
+class TransactionDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = TransactionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Transaction.objects
+            .filter(
+                user=self.request.user
+            )
+            .prefetch_related("amounts")
+            .select_related("register")
+        )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if not instance.register.is_open:
+            return Response(
+                {
+                    "detail":
+                        "No se puede modificar una operación de una caja cerrada."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().update(
+            request,
+            *args,
+            **kwargs,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if not instance.register.is_open:
+            return Response(
+                {
+                    "detail":
+                        "No se puede eliminar una operación de una caja cerrada."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().destroy(
+            request,
+            *args,
+            **kwargs,
+        )
 
 class TransactionDetailView(
     generics.RetrieveUpdateDestroyAPIView
@@ -43,6 +107,23 @@ class TransactionDetailView(
             .select_related("register")
         )
 
+class CurrentTransactionListView(
+    generics.ListAPIView
+):
+    serializer_class = TransactionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Transaction.objects
+            .filter(
+                user=self.request.user,
+                register__closed_at__isnull=True,
+            )
+            .prefetch_related("amounts")
+            .select_related("register")
+            .order_by("-created_at")
+        )
 
 class CurrentRegisterView(APIView):
     permission_classes = [IsAuthenticated]
