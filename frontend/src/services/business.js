@@ -10,7 +10,6 @@ export async function createTransaction(data) {
     return response.data;
 }
 
-
 export async function getTransactions() {
     const response = await api.get(
         "business/transactions/"
@@ -19,7 +18,6 @@ export async function getTransactions() {
     return response.data;
 }
 
-
 export async function getTransaction(id) {
     const response = await api.get(
         `business/transactions/${id}/`
@@ -27,7 +25,6 @@ export async function getTransaction(id) {
 
     return response.data;
 }
-
 
 export async function updateTransaction(id, data) {
     const response = await api.patch(
@@ -38,13 +35,11 @@ export async function updateTransaction(id, data) {
     return response.data;
 }
 
-
 export async function deleteTransaction(id) {
     await api.delete(
         `business/transactions/${id}/`
     );
 }
-
 
 export async function getCurrentRegister() {
     const response = await api.get(
@@ -54,7 +49,6 @@ export async function getCurrentRegister() {
     return response.data;
 }
 
-
 export async function openRegister() {
     const response = await api.post(
         "business/register/open/"
@@ -63,10 +57,26 @@ export async function openRegister() {
     return response.data;
 }
 
-
 export async function closeRegister() {
     const response = await api.post(
         "business/register/close/"
+    );
+
+    return response.data;
+}
+
+export async function getClosedRegisters() {
+    const response = await api.get(
+        "business/registers/"
+    );
+
+    return response.data;
+}
+
+
+export async function getClosedRegister(id) {
+    const response = await api.get(
+        `business/registers/${id}/`
     );
 
     return response.data;

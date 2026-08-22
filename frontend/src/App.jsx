@@ -4,7 +4,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import RegisterReport from "./pages/RegisterReport";
 import NewTransaction from "./pages/NewTransaction";
+import RegisterHistory from "./pages/RegisterHistory";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 
@@ -32,6 +34,15 @@ function App() {
                     <Route
                         path="/transactions/new"
                         element={<NewTransaction />}
+                    />
+                    <Route
+                        path="/registers"
+                        element={<RegisterHistory />}
+                    />
+
+                    <Route
+                        path="/registers/:id"
+                        element={<RegisterReport />}
                     />
                 </Route>
             </Routes>

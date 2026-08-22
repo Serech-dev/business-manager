@@ -436,6 +436,25 @@ function Dashboard() {
                             + Nueva operación
                         </button>
 
+                        <button
+                            onClick={() =>
+                                navigate("/registers")
+                            }
+                            className="
+                                mt-3
+                                w-full
+                                rounded-xl
+                                border
+                                border-[var(--border)]
+                                bg-[var(--surface)]
+                                px-4
+                                py-3
+                                font-semibold
+                                text-[var(--text-primary)]
+                            "
+                        >
+                            Historial de cierres
+                        </button>
 
                         <div className="mt-8">
 
