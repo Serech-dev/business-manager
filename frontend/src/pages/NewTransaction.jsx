@@ -5,12 +5,18 @@ import toast from "react-hot-toast";
 import { createTransaction } from "../services/business";
 
 
+function formatCurrency(value) {
+    return new Intl.NumberFormat("es-AR", {
+        maximumFractionDigits: 0,
+    }).format(Number(value) || 0);
+}
+
+
 function NewTransaction() {
     const navigate = useNavigate();
 
     const [type, setType] = useState("sale");
     const [description, setDescription] = useState("");
-
     const [exchangeAmount, setExchangeAmount] = useState("");
 
     const [amounts, setAmounts] = useState([
@@ -21,7 +27,6 @@ function NewTransaction() {
     ]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-
 
     const isExchange =
         type === "exchange" ||
@@ -41,6 +46,7 @@ function NewTransaction() {
         );
     }
 
+
     function addAmount() {
         setAmounts((current) => [
             ...current,
@@ -51,6 +57,7 @@ function NewTransaction() {
         ]);
     }
 
+
     function removeAmount(index) {
         setAmounts((current) =>
             current.filter(
@@ -58,6 +65,7 @@ function NewTransaction() {
             )
         );
     }
+
 
     function getTotal() {
         return amounts.reduce(
@@ -67,6 +75,7 @@ function NewTransaction() {
         );
     }
 
+
     function getExchangeFee() {
         if (!isExchange || !exchangeAmount) {
             return 0;
@@ -75,7 +84,20 @@ function NewTransaction() {
         return Number(exchangeAmount) * 0.10;
     }
 
-    
+
+    function handleTypeChange(event) {
+        setType(event.target.value);
+        setExchangeAmount("");
+
+        setAmounts([
+            {
+                method: "cash",
+                amount: "",
+            },
+        ]);
+    }
+
+
     async function handleSubmit(event) {
         event.preventDefault();
 
@@ -138,246 +160,405 @@ function NewTransaction() {
         <div className="
             min-h-screen
             bg-[var(--background)]
-            px-4
+            px-6
             py-8
+            lg:px-10
         ">
             <div className="
                 mx-auto
-                max-w-2xl
+                max-w-5xl
             ">
 
-                <h1 className="
-                    text-3xl
-                    font-bold
-                    text-[var(--text-primary)]
-                ">
-                    Nueva operación
-                </h1>
+                {/* HEADER */}
+
+                <div className="mb-8">
+
+                    <button
+                        type="button"
+                        onClick={() => navigate("/")}
+                        className="
+                            mb-5
+                            inline-flex
+                            items-center
+                            gap-2
+                            text-sm
+                            font-medium
+                            text-[var(--text-secondary)]
+                            transition
+                            hover:text-[var(--text-primary)]
+                        "
+                    >
+                        <span className="text-base">
+                            ←
+                        </span>
+
+                        Volver al inicio
+                    </button>
+
+
+                    <div>
+                        <h1 className="
+                            text-3xl
+                            font-bold
+                            tracking-tight
+                            text-[var(--text-primary)]
+                        ">
+                            Nueva operación
+                        </h1>
+
+                        <p className="
+                            mt-2
+                            text-[var(--text-secondary)]
+                        ">
+                            Registrá un movimiento de la caja actual.
+                        </p>
+                    </div>
+
+                </div>
 
 
                 <form
                     onSubmit={handleSubmit}
                     className="
-                        mt-6
-                        space-y-6
-                        rounded-2xl
-                        bg-[var(--surface)]
-                        p-6
+                        space-y-5
                     "
                 >
 
-                    {/* TYPE */}
+                    {/* BASIC INFORMATION */}
 
-                    <div>
-                        <label
-                            htmlFor="type"
-                            className="
-                                text-sm
-                                font-medium
+                    <section className="
+                        rounded-2xl
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-6
+                    ">
+
+                        <div className="mb-6">
+                            <h2 className="
+                                text-lg
+                                font-semibold
                                 text-[var(--text-primary)]
-                            "
-                        >
-                            Tipo de operación
-                        </label>
+                            ">
+                                Información de la operación
+                            </h2>
 
-                        <select
-                            id="type"
-                            value={type}
-                            onChange={(event) => {
-                                setType(
-                                    event.target.value
-                                );
-
-                                setExchangeAmount("");
-
-                                setAmounts([
-                                    {
-                                        method: "cash",
-                                        amount: "",
-                                    },
-                                ]);
-                            }}
-                            className="
+                            <p className="
                                 mt-1
-                                w-full
-                                rounded-xl
-                                border
-                                border-[var(--border)]
-                                bg-[var(--surface)]
-                                px-4
-                                py-3
-                                text-[var(--text-primary)]
-                            "
-                        >
-                            <option value="sale">
-                                Venta
-                            </option>
-
-                            <option value="service">
-                                Servicio
-                            </option>
-
-                            <option value="exchange">
-                                Cambio
-                            </option>
-
-                            <option value="sale_exchange">
-                                Venta + Cambio
-                            </option>
-
-                            <option value="provider">
-                                Proveedor
-                            </option>
-
-                            <option value="expense">
-                                Gasto
-                            </option>
-
-                            <option value="loss">
-                                Pérdida
-                            </option>
-                        </select>
-                    </div>
-
-
-                    {/* DESCRIPTION */}
-
-                    <div>
-                        <label
-                            htmlFor="description"
-                            className="
                                 text-sm
-                                font-medium
-                                text-[var(--text-primary)]
-                            "
-                        >
-                            Descripción
-                        </label>
+                                text-[var(--text-secondary)]
+                            ">
+                                Indicá qué tipo de movimiento estás registrando.
+                            </p>
+                        </div>
 
-                        <input
-                            id="description"
-                            value={description}
-                            onChange={(event) =>
-                                setDescription(
-                                    event.target.value
-                                )
-                            }
-                            className="
-                                mt-1
-                                w-full
-                                rounded-xl
-                                border
-                                border-[var(--border)]
-                                bg-[var(--surface)]
-                                px-4
-                                py-3
-                                text-[var(--text-primary)]
-                            "
-                            placeholder="Opcional"
-                        />
-                    </div>
+
+                        <div className="
+                            grid
+                            gap-5
+                            md:grid-cols-2
+                        ">
+
+                            {/* TYPE */}
+
+                            <div>
+                                <label
+                                    htmlFor="type"
+                                    className="
+                                        text-sm
+                                        font-medium
+                                        text-[var(--text-primary)]
+                                    "
+                                >
+                                    Tipo de operación
+                                </label>
+
+                                <select
+                                    id="type"
+                                    value={type}
+                                    onChange={handleTypeChange}
+                                    className="
+                                        mt-2
+                                        w-full
+                                        rounded-xl
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--background)]
+                                        px-4
+                                        py-3
+                                        text-[var(--text-primary)]
+                                        outline-none
+                                        transition
+                                        focus:border-[var(--primary)]
+                                        focus:ring-2
+                                        focus:ring-[var(--primary)]/20
+                                    "
+                                >
+                                    <option value="sale">
+                                        Venta
+                                    </option>
+
+                                    <option value="service">
+                                        Servicio
+                                    </option>
+
+                                    <option value="exchange">
+                                        Cambio
+                                    </option>
+
+                                    <option value="sale_exchange">
+                                        Venta + Cambio
+                                    </option>
+
+                                    <option value="provider">
+                                        Proveedor
+                                    </option>
+
+                                    <option value="expense">
+                                        Gasto
+                                    </option>
+
+                                    <option value="loss">
+                                        Pérdida
+                                    </option>
+                                </select>
+                            </div>
+
+
+                            {/* DESCRIPTION */}
+
+                            <div>
+                                <label
+                                    htmlFor="description"
+                                    className="
+                                        text-sm
+                                        font-medium
+                                        text-[var(--text-primary)]
+                                    "
+                                >
+                                    Descripción
+                                </label>
+
+                                <input
+                                    id="description"
+                                    value={description}
+                                    onChange={(event) =>
+                                        setDescription(
+                                            event.target.value
+                                        )
+                                    }
+                                    className="
+                                        mt-2
+                                        w-full
+                                        rounded-xl
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--background)]
+                                        px-4
+                                        py-3
+                                        text-[var(--text-primary)]
+                                        outline-none
+                                        transition
+                                        placeholder:text-[var(--text-secondary)]
+                                        focus:border-[var(--primary)]
+                                        focus:ring-2
+                                        focus:ring-[var(--primary)]/20
+                                    "
+                                    placeholder="Opcional"
+                                />
+                            </div>
+
+                        </div>
+
+                    </section>
 
 
                     {/* EXCHANGE */}
 
                     {isExchange && (
-                        <div className="
-                            rounded-xl
+                        <section className="
+                            rounded-2xl
                             border
                             border-[var(--border)]
-                            bg-[var(--surface-muted)]
-                            p-4
+                            bg-[var(--surface)]
+                            p-6
                         ">
 
-                            <label
-                                htmlFor="exchangeAmount"
-                                className="
-                                    text-sm
-                                    font-medium
+                            <div className="mb-6">
+                                <h2 className="
+                                    text-lg
+                                    font-semibold
                                     text-[var(--text-primary)]
-                                "
-                            >
-                                Monto de cambio
-                            </label>
-
-                            <input
-                                id="exchangeAmount"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={exchangeAmount}
-                                onChange={(event) =>
-                                    setExchangeAmount(
-                                        event.target.value
-                                    )
-                                }
-                                className="
-                                    mt-1
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--surface)]
-                                    px-4
-                                    py-3
-                                    text-[var(--text-primary)]
-                                "
-                                placeholder="$ 0.00"
-                            />
-
-                            {exchangeAmount && (
-                                <div className="
-                                    mt-3
-                                    flex
-                                    justify-between
-                                    text-sm
                                 ">
-                                    <span>
-                                        Comisión de cambio
+                                    Datos del cambio
+                                </h2>
+
+                                <p className="
+                                    mt-1
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Indicá el monto sobre el cual se calcula la comisión.
+                                </p>
+                            </div>
+
+
+                            <div className="
+                                max-w-md
+                            ">
+
+                                <label
+                                    htmlFor="exchangeAmount"
+                                    className="
+                                        text-sm
+                                        font-medium
+                                        text-[var(--text-primary)]
+                                    "
+                                >
+                                    Monto de cambio
+                                </label>
+
+                                <div className="relative mt-2">
+
+                                    <span className="
+                                        pointer-events-none
+                                        absolute
+                                        left-4
+                                        top-1/2
+                                        -translate-y-1/2
+                                        text-sm
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        $
                                     </span>
 
-                                    <strong>
-                                        $
-                                        {getExchangeFee()}
-                                    </strong>
+                                    <input
+                                        id="exchangeAmount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={exchangeAmount}
+                                        onChange={(event) =>
+                                            setExchangeAmount(
+                                                event.target.value
+                                            )
+                                        }
+                                        className="
+                                            w-full
+                                            rounded-xl
+                                            border
+                                            border-[var(--border)]
+                                            bg-[var(--background)]
+                                            py-3
+                                            pl-8
+                                            pr-4
+                                            text-[var(--text-primary)]
+                                            outline-none
+                                            transition
+                                            focus:border-[var(--primary)]
+                                            focus:ring-2
+                                            focus:ring-[var(--primary)]/20
+                                        "
+                                        placeholder="0"
+                                    />
+
                                 </div>
-                            )}
-                        </div>
+
+
+                                {exchangeAmount && (
+                                    <div className="
+                                        mt-4
+                                        flex
+                                        items-center
+                                        justify-between
+                                        rounded-xl
+                                        bg-[var(--surface-muted)]
+                                        px-4
+                                        py-3
+                                        text-sm
+                                    ">
+                                        <span className="
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            Comisión de cambio
+                                        </span>
+
+                                        <strong className="
+                                            text-[var(--text-primary)]
+                                        ">
+                                            $
+                                            {formatCurrency(
+                                                getExchangeFee()
+                                            )}
+                                        </strong>
+                                    </div>
+                                )}
+
+                            </div>
+
+                        </section>
                     )}
 
 
                     {/* AMOUNTS */}
 
-                    <div>
+                    <section className="
+                        rounded-2xl
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-6
+                    ">
 
                         <div className="
                             flex
-                            items-center
+                            items-start
                             justify-between
+                            gap-4
                         ">
-                            <h2 className="
-                                font-semibold
-                                text-[var(--text-primary)]
-                            ">
-                                Montos
-                            </h2>
+
+                            <div>
+                                <h2 className="
+                                    text-lg
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                ">
+                                    Montos
+                                </h2>
+
+                                <p className="
+                                    mt-1
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Podés dividir una operación entre distintos medios de pago.
+                                </p>
+                            </div>
+
 
                             <button
                                 type="button"
                                 onClick={addAmount}
                                 className="
+                                    shrink-0
+                                    rounded-lg
+                                    px-3
+                                    py-2
                                     text-sm
                                     font-medium
                                     text-[var(--primary)]
+                                    transition
+                                    hover:bg-[var(--surface-accent)]
                                 "
                             >
-                                + Agregar
+                                + Agregar monto
                             </button>
+
                         </div>
 
 
                         <div className="
-                            mt-3
+                            mt-6
                             space-y-3
                         ">
 
@@ -387,7 +568,7 @@ function NewTransaction() {
                                         key={index}
                                         className="
                                             flex
-                                            gap-2
+                                            gap-3
                                         "
                                     >
 
@@ -401,19 +582,21 @@ function NewTransaction() {
                                                 updateAmount(
                                                     index,
                                                     "method",
-                                                    event
-                                                        .target
-                                                        .value
+                                                    event.target.value
                                                 )
                                             }
                                             className="
+                                                w-44
+                                                shrink-0
                                                 rounded-xl
                                                 border
                                                 border-[var(--border)]
-                                                bg-[var(--surface)]
+                                                bg-[var(--background)]
                                                 px-3
                                                 py-3
                                                 text-[var(--text-primary)]
+                                                outline-none
+                                                focus:border-[var(--primary)]
                                             "
                                         >
                                             <option value="cash">
@@ -434,37 +617,55 @@ function NewTransaction() {
                                         </select>
 
 
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={
-                                                item.amount
-                                            }
-                                            onChange={(
-                                                event
-                                            ) =>
-                                                updateAmount(
-                                                    index,
-                                                    "amount",
+                                        <div className="relative min-w-0 flex-1">
+
+                                            <span className="
+                                                pointer-events-none
+                                                absolute
+                                                left-4
+                                                top-1/2
+                                                -translate-y-1/2
+                                                text-sm
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                $
+                                            </span>
+
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={
+                                                    item.amount
+                                                }
+                                                onChange={(
                                                     event
-                                                        .target
-                                                        .value
-                                                )
-                                            }
-                                            className="
-                                                min-w-0
-                                                flex-1
-                                                rounded-xl
-                                                border
-                                                border-[var(--border)]
-                                                bg-[var(--surface)]
-                                                px-4
-                                                py-3
-                                                text-[var(--text-primary)]
-                                            "
-                                            placeholder="$ 0.00"
-                                        />
+                                                ) =>
+                                                    updateAmount(
+                                                        index,
+                                                        "amount",
+                                                        event.target.value
+                                                    )
+                                                }
+                                                className="
+                                                    w-full
+                                                    rounded-xl
+                                                    border
+                                                    border-[var(--border)]
+                                                    bg-[var(--background)]
+                                                    py-3
+                                                    pl-8
+                                                    pr-4
+                                                    text-[var(--text-primary)]
+                                                    outline-none
+                                                    focus:border-[var(--primary)]
+                                                    focus:ring-2
+                                                    focus:ring-[var(--primary)]/20
+                                                "
+                                                placeholder="0"
+                                            />
+
+                                        </div>
 
 
                                         {amounts.length > 1 && (
@@ -476,9 +677,14 @@ function NewTransaction() {
                                                     )
                                                 }
                                                 className="
+                                                    rounded-xl
                                                     px-3
+                                                    text-lg
                                                     text-[var(--danger)]
+                                                    transition
+                                                    hover:bg-[var(--danger-bg)]
                                                 "
+                                                aria-label="Eliminar monto"
                                             >
                                                 ×
                                             </button>
@@ -490,72 +696,127 @@ function NewTransaction() {
 
                         </div>
 
-                    </div>
+                    </section>
 
-                    {/* TOTAL */}
 
-                    <div className="
-                        rounded-xl
-                        bg-[var(--surface-muted)]
-                        p-4
+                    {/* SUMMARY */}
+
+                    <section className="
+                        rounded-2xl
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-6
                     ">
 
                         <div className="
                             flex
+                            items-center
                             justify-between
                         ">
-                            <span>
-                                Total
-                            </span>
+                            <div>
+                                <p className="
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Total de la operación
+                                </p>
 
-                            <strong>
-                                $
-                                {getTotal()}
-                            </strong>
+                                <p className="
+                                    mt-1
+                                    text-3xl
+                                    font-bold
+                                    text-[var(--text-primary)]
+                                ">
+                                    $
+                                    {formatCurrency(
+                                        getTotal()
+                                    )}
+                                </p>
+                            </div>
+
+
+                            {isExchange && (
+                                <div className="
+                                    text-right
+                                ">
+                                    <p className="
+                                        text-sm
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        Comisión
+                                    </p>
+
+                                    <p className="
+                                        mt-1
+                                        font-semibold
+                                        text-[var(--text-primary)]
+                                    ">
+                                        $
+                                        {formatCurrency(
+                                            getExchangeFee()
+                                        )}
+                                    </p>
+                                </div>
+                            )}
+
                         </div>
 
+                    </section>
 
-                        {isExchange && (
-                            <div className="
-                                mt-2
-                                flex
-                                justify-between
-                                text-sm
-                            ">
-                                <span>
-                                    Comisión de cambio
-                                </span>
 
-                                <strong>
-                                    $
-                                    {getExchangeFee()}
-                                </strong>
-                            </div>
-                        )}
+                    {/* ACTIONS */}
+
+                    <div className="
+                        flex
+                        flex-col-reverse
+                        gap-3
+                        sm:flex-row
+                        sm:justify-end
+                    ">
+
+                        <button
+                            type="button"
+                            onClick={() => navigate("/")}
+                            className="
+                                rounded-xl
+                                border
+                                border-[var(--border)]
+                                bg-[var(--surface)]
+                                px-6
+                                py-3
+                                font-semibold
+                                text-[var(--text-primary)]
+                                transition
+                                hover:bg-[var(--surface-accent)]
+                            "
+                        >
+                            Cancelar
+                        </button>
+
+
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="
+                                rounded-xl
+                                bg-[var(--primary)]
+                                px-7
+                                py-3
+                                font-semibold
+                                text-white
+                                transition
+                                hover:bg-[var(--primary-hover)]
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                            "
+                        >
+                            {isSubmitting
+                                ? "Guardando..."
+                                : "Registrar operación"}
+                        </button>
 
                     </div>
-
-
-                    {/* SUBMIT */}
-
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="
-                            w-full
-                            rounded-xl
-                            bg-[var(--primary)]
-                            px-4
-                            py-3
-                            font-semibold
-                            text-white
-                            disabled:opacity-50
-                        "
-                    >
-                        {isSubmitting
-                            ? "Guardando..."
-                            : "Registrar operación"}
-                    </button>
 
                 </form>
 
