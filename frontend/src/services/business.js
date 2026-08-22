@@ -44,3 +44,30 @@ export async function deleteTransaction(id) {
         `business/transactions/${id}/`
     );
 }
+
+
+export async function getCurrentRegister() {
+    const response = await api.get(
+        "business/register/"
+    );
+
+    return response.data;
+}
+
+
+export async function openRegister() {
+    const response = await api.post(
+        "business/register/open/"
+    );
+
+    return response.data;
+}
+
+
+export async function closeRegister() {
+    const response = await api.post(
+        "business/register/close/"
+    );
+
+    return response.data;
+}

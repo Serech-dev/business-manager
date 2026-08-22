@@ -136,3 +136,41 @@ class CloseRegisterView(APIView):
             RegisterSerializer(register).data,
             status=status.HTTP_200_OK,
         )
+
+class RegisterListView(
+    generics.ListAPIView
+):
+    serializer_class = RegisterSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Register.objects
+            .filter(
+                user=self.request.user,
+                closed_at__isnull=False,
+            )
+            .prefetch_related(
+                "transactions__amounts"
+            )
+            .order_by("-closed_at")
+        )
+
+
+class RegisterDetailView(
+    generics.RetrieveAPIView
+):
+    serializer_class = RegisterSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Register.objects
+            .filter(
+                user=self.request.user,
+                closed_at__isnull=False,
+            )
+            .prefetch_related(
+                "transactions__amounts"
+            )
+        )

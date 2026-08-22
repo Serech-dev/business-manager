@@ -210,11 +210,8 @@ class RegisterSerializer(
     )
 
     transaction_count = serializers.SerializerMethodField()
-
     total = serializers.SerializerMethodField()
-
     totals_by_method = serializers.SerializerMethodField()
-
     totals_by_type = serializers.SerializerMethodField()
 
     class Meta:
@@ -233,40 +230,45 @@ class RegisterSerializer(
 
         read_only_fields = fields
 
+    def _get_transactions(self, obj):
+        return obj.transactions.prefetch_related(
+            "amounts"
+        ).all()
+
     def get_transaction_count(self, obj):
         return obj.transactions.count()
 
     def get_total(self, obj):
         return sum(
             amount.amount
-            for transaction in obj.transactions.all()
+            for transaction in self._get_transactions(obj)
             for amount in transaction.amounts.all()
         )
 
     def get_totals_by_method(self, obj):
         totals = {}
 
-        for amount in TransactionAmount.objects.filter(
-            transaction__register=obj
-        ):
-            totals[amount.method] = (
-                totals.get(amount.method, 0)
-                + amount.amount
-            )
+        for transaction in self._get_transactions(obj):
+            for amount in transaction.amounts.all():
+                totals[amount.method] = (
+                    totals.get(amount.method, 0)
+                    + amount.amount
+                )
 
         return totals
 
     def get_totals_by_type(self, obj):
         totals = {}
 
-        for transaction in obj.transactions.all():
+        for transaction in self._get_transactions(obj):
+            transaction_total = sum(
+                amount.amount
+                for amount in transaction.amounts.all()
+            )
+
             totals[transaction.type] = (
                 totals.get(transaction.type, 0)
-                + sum(
-                    amount.amount
-                    for amount
-                    in transaction.amounts.all()
-                )
+                + transaction_total
             )
 
         return totals
