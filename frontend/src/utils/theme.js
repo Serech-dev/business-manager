@@ -22,5 +22,5 @@ export function setTheme(theme) {
 }
 
 export function getSavedTheme() {
-    return localStorage.getItem(THEME_KEY) || "blue";
+    return localStorage.getItem(THEME_KEY) || "dark";
 }

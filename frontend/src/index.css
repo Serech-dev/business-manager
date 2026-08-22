@@ -7,64 +7,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-[data-theme="cherry"] {
-  --background: #f7e8ed;
-  --surface: #fdf5f7;
-  --surface-accent: #f2dfe5;
-  --surface-muted: #faeef2;
-
-  --text-primary: #4a3038;
-  --text-secondary: #8b6f75;
-
-  --border: #e8cbd3;
-
-  --primary: #ad5570;
-  --primary-hover: #96445f;
-
-  --success: #709275;
-  --success-text: #4f6f55;
-  --success-bg: #dce9dc;
-  --success-border: #c9ddcc;
-
-  --warning: #bd8b52;
-
-  --danger: #bd5d68;
-  --danger-bg: #f3dfe3;
-  --danger-border: #e3c1c7;
-
-  --control-icon: #8b6f75;
-  --control-icon-hover: #ad5570;
-}
-
-[data-theme="blue"] {
-  --background: #e9e9e5;
-  --surface: #f7fafc;
-  --surface-accent: #d5e2ec;
-  --surface-muted: #edf4f8;
-
-  --text-primary: #2d3d4b;
-  --text-secondary: #687b8a;
-
-  --border: #c2d3df;
-
-  --primary: #477da6;
-  --primary-hover: #396b90;
-
-  --success: #638d73;
-  --success-text: #45664f;
-  --success-bg: #d8eadb;
-  --success-border: #bdd8c2;
-
-  --warning: #b48648;
-  --danger: #b65d63;
-  --danger-bg: #f1dddd;
-  --danger-border: #dfc0c3;
-
-  --control-icon: #687b8a;
-  --control-icon-hover: #477da6;
-}
-
-[data-theme="forest"] {
+[data-theme="dark"] {
   --background: #171b22;
   --surface: #202630;
   --surface-accent: #29323e;
@@ -92,140 +35,40 @@
   --control-icon-hover: #6d9fc7;
 }
 
-[data-theme="sunset"] {
-  --background: #f3e4d8;
-  --surface: #fff9f4;
-  --surface-accent: #f1d4bf;
-  --surface-muted: #faf0e8;
+[data-theme="light"] {
+  --background: #f3f5f7;
+  --surface: #ffffff;
+  --surface-accent: #e9edf1;
+  --surface-muted: #eef1f4;
 
-  --text-primary: #49352c;
-  --text-secondary: #856f64;
+  --text-primary: #28313b;
+  --text-secondary: #687583;
 
-  --border: #e0c5b3;
-
-  --primary: #c46d4d;
-  --primary-hover: #a9573b;
-
-  --success: #668b68;
-  --success-text: #46654b;
-  --success-bg: #dcebdc;
-  --success-border: #c5dcc7;
-
-  --warning: #b57c3f;
-  --danger: #ba5d59;
-  --danger-bg: #f2dcd9;
-  --danger-border: #e0bfbc;
-
-  --control-icon: #856f64;
-  --control-icon-hover: #c46d4d;
-}
-
-[data-theme="midnight"] {
-  --background: #171b22;
-  --surface: #202630;
-  --surface-accent: #29323e;
-  --surface-muted: #1c222b;
-
-  --text-primary: #e9edf2;
-  --text-secondary: #9da8b5;
-
-  --border: #394451;
+  --border: #d4dbe2;
 
   --primary: #4b7699;
   --primary-hover: #426f91;
 
-  --success: #82b58c;
-  --success-text: #68a077;
-  --success-bg: #34483a;
-  --success-border: #496250;
+  --success: #6f9f79;
+  --success-text: #5d8e68;
+  --success-bg: #e5f0e7;
+  --success-border: #bfd5c3;
 
-  --warning: #d0a365;
+  --warning: #b8874d;
   --danger: #b35d5d;
-  --danger-bg: #493235;
-  --danger-border: #634247;
+  --danger-bg: #f2e3e4;
+  --danger-border: #d9b7ba;
 
-  --control-icon: #9da8b5;
-  --control-icon-hover: #6d9fc7;
-}
-
-[data-theme="forest-dark"] {
-  --background: #151c19;
-  --surface: #1e2823;
-  --surface-accent: #28352e;
-  --surface-muted: #1a231f;
-
-  --text-primary: #e7eee9;
-  --text-secondary: #9eafa5;
-
-  --border: #3a4941;
-
-  --primary: #5f9276;
-  --primary-hover: #54866b;
-
-  --success: #82b58c;
-  --success-text: #68a077;
-  --success-bg: #34483a;
-  --success-border: #496250;
-
-  --warning: #d0a365;
-  --danger: #b35d5d;
-  --danger-bg: #493235;
-  --danger-border: #634247;
-
-  --control-icon: #9eafa5;
-  --control-icon-hover: #76ae8d;
-}
-
-[data-theme="cherry-dark"] {
-  --background: #1d171b;
-  --surface: #292025;
-  --surface-accent: #35292f;
-  --surface-muted: #231b20;
-
-  --text-primary: #f0e8eb;
-  --text-secondary: #b09da5;
-
-  --border: #4b3a42;
-
-  --primary: #a35d72;
-  --primary-hover: #965269;
-
-  --success: #82b58c;
-  --success-text: #68a077;
-  --success-bg: #34483a;
-  --success-border: #496250;
-
-  --warning: #d0a365;
-  --danger: #b35d5d;
-  --danger-bg: #493235;
-  --danger-border: #634247;
-
-  --control-icon: #b09da5;
-  --control-icon-hover: #c27891;
-}
-
-[data-theme="lavender"] {
-    --control-icon-filter: invert(45%) sepia(10%) saturate(500%);
-}
-
-[data-theme="cherry"] {
-    --control-icon-filter: invert(35%) sepia(20%) saturate(800%);
-}
-
-[data-theme="blue"] {
-    --control-icon-filter: invert(45%) sepia(15%) saturate(500%);
-}
-
-[data-theme="forest"] {
-    --control-icon-filter: invert(40%) sepia(15%) saturate(500%);
-}
-
-[data-theme="sunset"] {
-    --control-icon-filter: invert(45%) sepia(20%) saturate(700%);
+  --control-icon: #687583;
+  --control-icon-hover: #4b7699;
 }
 
 [data-theme="dark"] {
     --control-icon-filter: invert(85%);
+}
+
+[data-theme="light"] {
+    --control-icon-filter: invert(45%) sepia(10%) saturate(500%);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,
