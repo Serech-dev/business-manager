@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    TransactionAmountReceivedView,
     TransactionListCreateView,
     CurrentTransactionListView,
     TransactionDetailView,
@@ -59,5 +60,9 @@ urlpatterns = [
         "registers/<int:pk>/",
         RegisterDetailView.as_view(),
         name="register-detail",
+    ),
+    path(
+        "transaction-amounts/<int:pk>/received/",
+        TransactionAmountReceivedView.as_view(),
     ),
 ]

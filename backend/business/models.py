@@ -114,5 +114,9 @@ class TransactionAmount(models.Model):
         decimal_places=0,
     )
 
+    received = models.BooleanField(
+        default=False,
+    )
+
     def __str__(self):
         return f"{self.method}: {self.amount}"

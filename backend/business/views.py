@@ -6,9 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Register, Transaction
+from .models import Register, Transaction, TransactionAmount
 from .serializers import (
     RegisterSerializer,
+    TransactionAmountReceivedSerializer,
     TransactionSerializer,
 )
 
@@ -40,6 +41,37 @@ class TransactionListCreateView(
 
         return queryset
 
+
+class TransactionAmountReceivedView(
+    generics.UpdateAPIView
+):
+    serializer_class = TransactionAmountReceivedSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return TransactionAmount.objects.filter(
+            transaction__user=self.request.user,
+            transaction__register__closed_at__isnull=True,
+        )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if not instance.transaction.register.is_open:
+            return Response(
+                {
+                    "detail":
+                        "No se puede modificar una operación de una caja cerrada."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().update(
+            request,
+            *args,
+            **kwargs,
+        )
+    
 
 class TransactionDetailView(
     generics.RetrieveUpdateDestroyAPIView
@@ -91,20 +123,6 @@ class TransactionDetailView(
             request,
             *args,
             **kwargs,
-        )
-
-class TransactionDetailView(
-    generics.RetrieveUpdateDestroyAPIView
-):
-    serializer_class = TransactionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return (
-            Transaction.objects
-            .filter(user=self.request.user)
-            .prefetch_related("amounts")
-            .select_related("register")
         )
 
 class CurrentTransactionListView(

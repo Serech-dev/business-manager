@@ -81,3 +81,4 @@ export async function getClosedRegister(id) {
 
     return response.data;
 }
+
