@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    ClientDetailView,
+    ClientListCreateView,
     TransactionAmountReceivedView,
     TransactionListCreateView,
     CurrentTransactionListView,
@@ -64,5 +66,16 @@ urlpatterns = [
     path(
         "transaction-amounts/<int:pk>/received/",
         TransactionAmountReceivedView.as_view(),
+    ),
+    path(
+        "clients/",
+        ClientListCreateView.as_view(),
+        name="client-list",
+    ),
+
+    path(
+        "clients/<int:pk>/",
+        ClientDetailView.as_view(),
+        name="client-detail",
     ),
 ]

@@ -8,7 +8,27 @@ from .models import (
     Transaction,
     TransactionAmount,
 )
+from .models import Client
 
+
+class ClientSerializer(
+    serializers.ModelSerializer
+):
+    class Meta:
+        model = Client
+
+        fields = [
+            "id",
+            "name",
+            "phone",
+            "notes",
+            "created_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
+        ]
 
 class TransactionAmountSerializer(
     serializers.ModelSerializer

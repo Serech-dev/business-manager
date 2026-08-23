@@ -13,7 +13,49 @@ from .serializers import (
     TransactionSerializer,
 )
 
+from .models import Client
+from .serializers import ClientSerializer
 
+
+class ClientListCreateView(generics.ListCreateAPIView):
+    serializer_class = ClientSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = (
+            Client.objects
+            .filter(user=self.request.user)
+            .order_by("name")
+        )
+
+        search = self.request.query_params.get(
+            "search"
+        )
+
+        if search:
+            queryset = queryset.filter(
+                name__icontains=search
+            )
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user
+        )
+
+
+class ClientDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = ClientSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Client.objects.filter(
+            user=self.request.user
+        )
+    
 class TransactionListCreateView(
     generics.ListCreateAPIView
 ):
@@ -279,3 +321,4 @@ class RegisterDetailView(
                 "transactions__amounts"
             )
         )
+
