@@ -46,7 +46,7 @@ function Dashboard() {
                 transactionData,
             ] = await Promise.all([
                 getCurrentRegister(),
-                getTransactions(),
+                getTransactions(true),
             ]);
 
             setRegister(currentRegister);

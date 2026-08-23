@@ -10,9 +10,9 @@ export async function createTransaction(data) {
     return response.data;
 }
 
-export async function getTransactions() {
+export async function getTransactions(current = false) {
     const response = await api.get(
-        "business/transactions/"
+        `business/transactions/${current ? "?current=1" : ""}`
     );
 
     return response.data;
