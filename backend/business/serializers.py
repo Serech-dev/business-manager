@@ -46,6 +46,7 @@ class TransactionSerializer(
             "id",
             "register",
             "type",
+            "client",
             "created_at",
             "description",
             "exchange_amount",
@@ -80,8 +81,28 @@ class TransactionSerializer(
 
         transaction_type = attrs.get(
             "type",
-            getattr(self.instance, "type", None),
+            getattr(
+                self.instance,
+                "type",
+                None,
+            ),
         )
+
+        client = attrs.get(
+            "client",
+            getattr(
+                self.instance,
+                "client",
+                None,
+            ),
+        )
+
+        if transaction_type == Transaction.Type.PAYMENT:
+            if client is None:
+                raise serializers.ValidationError({
+                    "client":
+                        "El pago de fiado requiere un cliente."
+                })
 
         if transaction_type in [
             Transaction.Type.EXCHANGE,
