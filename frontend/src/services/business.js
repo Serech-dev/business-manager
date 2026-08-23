@@ -95,3 +95,29 @@ export async function updateTransactionAmountReceived(
 
     return response.data;
 }
+
+export function getTransactionLabel(type) {
+    const labels = {
+        sale: "Venta",
+        service: "Servicio",
+        exchange: "Cambio",
+        sale_exchange: "Venta + Cambio",
+        provider: "Proveedor",
+        expense: "Gasto",
+        loss: "Pérdida",
+    };
+
+    return labels[type] || type;
+}
+
+
+export function getMethodLabel(method) {
+    const labels = {
+        cash: "Efectivo",
+        transfer: "Transferencia",
+        card: "Tarjeta",
+        debt: "Fiado",
+    };
+
+    return labels[method] || method;
+}

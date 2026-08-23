@@ -283,11 +283,20 @@ class RegisterSerializer(
 
         return totals
 
+
 class TransactionAmountReceivedSerializer(
     serializers.ModelSerializer
 ):
     class Meta:
         model = TransactionAmount
         fields = [
+            "id",
+            "method",
+            "amount",
             "received",
+        ]
+        read_only_fields = [
+            "id",
+            "method",
+            "amount",
         ]

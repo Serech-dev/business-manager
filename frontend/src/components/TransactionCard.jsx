@@ -3,38 +3,13 @@ import toast from "react-hot-toast";
 
 import {
     updateTransactionAmountReceived,
+    getMethodLabel,
+    getTransactionLabel,
 } from "../services/business";
 
 import {
     formatCurrency,
 } from "../utils/formatCurrency";
-
-
-function getTransactionLabel(type) {
-    const labels = {
-        sale: "Venta",
-        service: "Servicio",
-        exchange: "Cambio",
-        sale_exchange: "Venta + Cambio",
-        provider: "Proveedor",
-        expense: "Gasto",
-        loss: "Pérdida",
-    };
-
-    return labels[type] || type;
-}
-
-
-function getMethodLabel(method) {
-    const labels = {
-        cash: "Efectivo",
-        transfer: "Transferencia",
-        card: "Tarjeta",
-        debt: "Fiado",
-    };
-
-    return labels[method] || method;
-}
 
 
 function TransactionCard({
@@ -59,14 +34,17 @@ function TransactionCard({
                 );
 
             onTransactionUpdate({
-                ...transaction,
-                amounts: transaction.amounts.map(
-                    (currentAmount) =>
-                        currentAmount.id === amount.id
-                            ? updatedAmount
-                            : currentAmount
-                ),
-            });
+            ...transaction,
+            amounts: transaction.amounts.map(
+                (currentAmount) =>
+                    currentAmount.id === amount.id
+                        ? {
+                            ...currentAmount,
+                            ...updatedAmount,
+                        }
+                        : currentAmount
+            ),
+        });
         } catch (error) {
             console.error(error);
 

@@ -49,9 +49,15 @@ class TransactionAmountReceivedView(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return TransactionAmount.objects.filter(
-            transaction__user=self.request.user,
-            transaction__register__closed_at__isnull=True,
+        return (
+            TransactionAmount.objects
+            .filter(
+                transaction__user=self.request.user
+            )
+            .select_related(
+                "transaction",
+                "transaction__register",
+            )
         )
 
     def update(self, request, *args, **kwargs):
