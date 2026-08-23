@@ -8,12 +8,10 @@ import {
     getCurrentRegister,
     getTransactions,
     openRegister,
-    getMethodLabel,
 } from "../services/business";
 
 import AccountMenu from "../components/AccountMenu";
 import TransactionCard from "../components/TransactionCard";
-import { formatCurrency } from "../utils/formatCurrency";
 import RegisterStatus from "../components/RegisterStatus";
 
 
