@@ -7,9 +7,7 @@ import {
     getTransactionLabel,
 } from "../services/business";
 
-import {
-    formatCurrency,
-} from "../utils/formatCurrency";
+import { formatCurrency } from "../utils/formatCurrency";
 
 
 function TransactionCard({

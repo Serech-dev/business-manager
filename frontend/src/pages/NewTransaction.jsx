@@ -3,13 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { createTransaction } from "../services/business";
-
-
-function formatCurrency(value) {
-    return new Intl.NumberFormat("es-AR", {
-        maximumFractionDigits: 0,
-    }).format(Number(value) || 0);
-}
+import { formatCurrency } from "../utils/formatCurrency";
 
 
 function NewTransaction() {
@@ -329,8 +323,12 @@ function NewTransaction() {
                                                 Venta
                                             </option>
 
-                                            <option value="service">
-                                                Servicio
+                                            <option value="sube">
+                                                Carga SUBE
+                                            </option>
+
+                                            <option value="phone">
+                                                Carga de celular
                                             </option>
 
                                             <option value="exchange">
@@ -516,7 +514,6 @@ function NewTransaction() {
                                                 <strong className="
                                                     text-[var(--text-primary)]
                                                 ">
-                                                    $
                                                     {formatCurrency(
                                                         getExchangeFee()
                                                     )}
@@ -773,7 +770,6 @@ function NewTransaction() {
                                         tracking-tight
                                         text-[var(--text-primary)]
                                     ">
-                                        $
                                         {formatCurrency(
                                             getTotal()
                                         )}
@@ -831,7 +827,6 @@ function NewTransaction() {
                                                 font-medium
                                                 text-[var(--text-primary)]
                                             ">
-                                                $
                                                 {formatCurrency(
                                                     getExchangeFee()
                                                 )}

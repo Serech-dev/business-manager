@@ -40,7 +40,8 @@ class Register(models.Model):
 class Transaction(models.Model):
     class Type(models.TextChoices):
         SALE = "sale", "Venta"
-        SERVICE = "service", "Servicio"
+        SUBE = "sube", "Carga SUBE"
+        PHONE = "phone", "Carga de celular"
         EXCHANGE = "exchange", "Cambio"
         SALE_EXCHANGE = "sale_exchange", "Venta + Cambio"
         PROVIDER = "provider", "Proveedor"

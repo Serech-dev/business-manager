@@ -99,7 +99,8 @@ export async function updateTransactionAmountReceived(
 export function getTransactionLabel(type) {
     const labels = {
         sale: "Venta",
-        service: "Servicio",
+        sube: "Carga SUBE",
+        phone: "Carga de celular",
         exchange: "Cambio",
         sale_exchange: "Venta + Cambio",
         provider: "Proveedor",
