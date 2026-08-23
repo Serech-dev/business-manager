@@ -1,4 +1,13 @@
-import { formatCurrency } from "../utils/formatCurrency";
+import { useState } from "react";
+import toast from "react-hot-toast";
+
+import {
+    updateTransactionAmountReceived,
+} from "../services/business";
+
+import {
+    formatCurrency,
+} from "../utils/formatCurrency";
 
 
 function getTransactionLabel(type) {
@@ -31,9 +40,50 @@ function getMethodLabel(method) {
 function TransactionCard({
     transaction,
     onDelete,
+    onTransactionUpdate,
 }) {
+    const [updatingAmountId, setUpdatingAmountId] =
+        useState(null);
+
+
+    async function handleReceivedChange(
+        amount
+    ) {
+        setUpdatingAmountId(amount.id);
+
+        try {
+            const updatedAmount =
+                await updateTransactionAmountReceived(
+                    amount.id,
+                    !amount.received
+                );
+
+            onTransactionUpdate({
+                ...transaction,
+                amounts: transaction.amounts.map(
+                    (currentAmount) =>
+                        currentAmount.id === amount.id
+                            ? updatedAmount
+                            : currentAmount
+                ),
+            });
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                "No se pudo actualizar el estado."
+            );
+        } finally {
+            setUpdatingAmountId(null);
+        }
+    }
+
+
     return (
         <article className="
+            border
+            border-[var(--border)]
+            bg-[var(--surface)]
             p-5
             transition
             hover:bg-[var(--surface-accent)]
@@ -102,51 +152,139 @@ function TransactionCard({
             </div>
 
 
-            {/* DETAILS */}
+            {/* PAYMENTS */}
 
             <div className="
-                mt-4
-                flex
-                items-center
-                justify-between
-                gap-4
+                mt-5
+                space-y-2
             ">
 
-                <div className="
-                    flex
-                    flex-wrap
-                    gap-2
-                ">
+                {transaction.amounts.map(
+                    (amount) => {
 
-                    {transaction.amounts.map(
-                        (amount) => (
-                            <span
+                        const isTransfer =
+                            amount.method === "transfer";
+
+                        const isUpdating =
+                            updatingAmountId ===
+                            amount.id;
+
+
+                        return (
+                            <div
                                 key={amount.id}
                                 className="
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--surface-muted)]
-                                    px-2.5
-                                    py-1
-                                    text-xs
-                                    text-[var(--text-secondary)]
+                                    flex
+                                    flex-wrap
+                                    items-center
+                                    gap-x-3
+                                    gap-y-2
+                                    text-sm
                                 "
                             >
-                                {getMethodLabel(
-                                    amount.method
+
+                                <span className="
+                                    font-medium
+                                    text-[var(--text-primary)]
+                                ">
+                                    {getMethodLabel(
+                                        amount.method
+                                    )}
+                                </span>
+
+
+                                <span className="
+                                    text-[var(--text-secondary)]
+                                ">
+                                    {formatCurrency(
+                                        amount.amount
+                                    )}
+                                </span>
+
+
+                                {isTransfer && (
+                                    <>
+                                        <span className="
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            ·
+                                        </span>
+
+                                        {amount.received ? (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleReceivedChange(
+                                                        amount
+                                                    )
+                                                }
+                                                disabled={
+                                                    isUpdating
+                                                }
+                                                className="
+                                                    text-xs
+                                                    font-semibold
+                                                    text-[var(--success-text)]
+                                                    transition
+                                                    hover:underline
+                                                    disabled:cursor-not-allowed
+                                                    disabled:opacity-50
+                                                "
+                                            >
+                                                ✓ Recibida
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleReceivedChange(
+                                                        amount
+                                                    )
+                                                }
+                                                disabled={
+                                                    isUpdating
+                                                }
+                                                className="
+                                                    border
+                                                    border-[var(--warning)]
+                                                    px-2.5
+                                                    py-1
+                                                    text-xs
+                                                    font-semibold
+                                                    text-[var(--warning)]
+                                                    transition
+                                                    hover:bg-[var(--surface-accent)]
+                                                    disabled:cursor-not-allowed
+                                                    disabled:opacity-50
+                                                "
+                                            >
+                                                {isUpdating
+                                                    ? "Actualizando..."
+                                                    : "⚠ Pendiente · Marcar recibida"}
+                                            </button>
+                                        )}
+
+                                    </>
                                 )}
 
-                                {" "}
+                            </div>
+                        );
+                    }
+                )}
 
-                                {formatCurrency(
-                                    amount.amount
-                                )}
-                            </span>
-                        )
-                    )}
+            </div>
 
-                </div>
 
+            {/* FOOTER */}
+
+            <div className="
+                mt-5
+                flex
+                justify-end
+                border-t
+                border-[var(--border)]
+                pt-4
+            ">
 
                 <button
                     type="button"
@@ -154,7 +292,6 @@ function TransactionCard({
                         onDelete(transaction.id)
                     }
                     className="
-                        shrink-0
                         text-sm
                         font-medium
                         text-[var(--danger)]

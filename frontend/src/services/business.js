@@ -82,3 +82,16 @@ export async function getClosedRegister(id) {
     return response.data;
 }
 
+export async function updateTransactionAmountReceived(
+    id,
+    received
+) {
+    const response = await api.patch(
+        `business/transaction-amounts/${id}/received/`,
+        {
+            received,
+        }
+    );
+
+    return response.data;
+}

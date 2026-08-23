@@ -25,6 +25,17 @@ function Dashboard() {
     const [isOpening, setIsOpening] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
 
+    function handleTransactionUpdate(
+        updatedTransaction
+    ) {
+        setTransactions((current) =>
+            current.map((transaction) =>
+                transaction.id === updatedTransaction.id
+                    ? updatedTransaction
+                    : transaction
+            )
+        );
+    }
 
     async function loadDashboard() {
         try {
@@ -829,20 +840,18 @@ function Dashboard() {
                                             divide-y
                                             divide-[var(--border)]
                                         ">
-
-                                        <div className="
-                                            divide-y
-                                            divide-[var(--border)]
-                                        ">
-                                            {transactions.map((transaction) => (
-                                                <TransactionCard
-                                                    key={transaction.id}
-                                                    transaction={transaction}
-                                                    onDelete={handleDelete}
-                                                />
-                                            ))}
-                                        </div>
-
+                                            {transactions.map(
+                                                (transaction) => (
+                                                    <TransactionCard
+                                                        key={transaction.id}
+                                                        transaction={transaction}
+                                                        onDelete={handleDelete}
+                                                        onTransactionUpdate={
+                                                            handleTransactionUpdate
+                                                        }
+                                                    />
+                                                )
+                                            )}
                                         </div>
 
                                     </div>
