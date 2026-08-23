@@ -14,6 +14,7 @@ import {
 import AccountMenu from "../components/AccountMenu";
 import TransactionCard from "../components/TransactionCard";
 import { formatCurrency } from "../utils/formatCurrency";
+import RegisterStatus from "../components/RegisterStatus";
 
 
 function Dashboard() {
@@ -61,11 +62,9 @@ function Dashboard() {
         }
     }
 
-
     useEffect(() => {
         loadDashboard();
     }, []);
-
 
     async function handleOpenRegister() {
         setIsOpening(true);
@@ -89,7 +88,6 @@ function Dashboard() {
             setIsOpening(false);
         }
     }
-
 
     async function handleCloseRegister() {
         const confirmed = window.confirm(
@@ -315,68 +313,11 @@ function Dashboard() {
 
                 {/* REGISTER STATUS */}
 
-                <div className="
-                    border-t
-                    border-[var(--border)]
-                    p-4
-                ">
-
-                    <div className="
-                        border
-                        border-[var(--border)]
-                        bg-[var(--surface-muted)]
-                        p-4
-                    ">
-                        <div className="
-                            flex
-                            items-center
-                            justify-between
-                            gap-3
-                        ">
-                            <span className="
-                                text-xs
-                                font-medium
-                                uppercase
-                                tracking-wide
-                                text-[var(--text-secondary)]
-                            ">
-                                Caja
-                            </span>
-
-                            <span className={`
-                                h-2
-                                w-2
-                                rounded-full
-                                ${register
-                                    ? "bg-[var(--success)]"
-                                    : "bg-[var(--danger)]"
-                                }
-                            `} />
-                        </div>
-
-                        <p className="
-                            mt-2
-                            text-sm
-                            font-semibold
-                            text-[var(--text-primary)]
-                        ">
-                            {register
-                                ? "Abierta"
-                                : "Cerrada"}
-                        </p>
-
-                        {register && (
-                            <p className="
-                                mt-1
-                                text-sm
-                                font-medium
-                                text-[var(--text-secondary)]
-                            ">
-                            </p>
-                        )}
-                    </div>
-
-                </div>
+                <RegisterStatus
+                    register={register}
+                    isClosing={isClosing}
+                    onClose={handleCloseRegister}
+                />
 
 
                 {/* ACCOUNT */}
@@ -467,7 +408,6 @@ function Dashboard() {
 
                     </header>
 
-
                     {!register ? (
 
                         /* CLOSED REGISTER */
@@ -530,9 +470,7 @@ function Dashboard() {
 
 
                                 <button
-                                    onClick={
-                                        handleOpenRegister
-                                    }
+                                    onClick={handleOpenRegister}
                                     disabled={isOpening}
                                     className="
                                         mt-7
@@ -562,306 +500,146 @@ function Dashboard() {
 
                         /* OPEN REGISTER */
 
-                        <>
+                        <section className="mt-10">
 
-                            {/* REGISTER SUMMARY */}
-
-                            <section className="
-                                mt-8
-                                grid
-                                gap-px
-                                overflow-hidden
-                                border
-                                border-[var(--border)]
-                                bg-[var(--border)]
-                                lg:grid-cols-4
+                            <div className="
+                                flex
+                                items-end
+                                justify-between
+                                gap-4
                             ">
 
-                                {/* TOTAL */}
+                                <div>
+                                    <p className="
+                                        text-xs
+                                        font-semibold
+                                        uppercase
+                                        tracking-wider
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        Actividad
+                                    </p>
+
+                                    <h3 className="
+                                        mt-1
+                                        text-xl
+                                        font-bold
+                                        tracking-tight
+                                        text-[var(--text-primary)]
+                                    ">
+                                        Operaciones
+                                    </h3>
+
+                                    <p className="
+                                        mt-1
+                                        text-sm
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        Movimientos registrados
+                                        en la caja actual.
+                                    </p>
+                                </div>
+
+
+                                <span className="
+                                    border
+                                    border-[var(--border)]
+                                    bg-[var(--surface)]
+                                    px-3
+                                    py-1.5
+                                    text-xs
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                ">
+                                    {transactions.length} registros
+                                </span>
+
+                            </div>
+
+
+                            {transactions.length === 0 ? (
 
                                 <div className="
+                                    mt-5
+                                    border
+                                    border-dashed
+                                    border-[var(--border)]
                                     bg-[var(--surface)]
-                                    p-6
-                                    lg:col-span-2
+                                    p-12
+                                    text-center
                                 ">
 
-                                    <div className="
-                                        flex
-                                        items-start
-                                        justify-between
-                                        gap-4
+                                    <p className="
+                                        font-semibold
+                                        text-[var(--text-primary)]
                                     ">
+                                        No hay operaciones
+                                    </p>
 
-                                        <div>
-                                            <p className="
-                                                text-xs
-                                                font-semibold
-                                                uppercase
-                                                tracking-wider
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                Caja actual
-                                            </p>
-
-                                            <p className="
-                                                mt-2
-                                                text-sm
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                {
-                                                    register.transaction_count
-                                                }{" "}
-                                                operaciones registradas
-                                            </p>
-                                        </div>
-
-
-                                        <span className="
-                                            mt-1
-                                            flex
-                                            items-center
-                                            gap-2
-                                            text-xs
-                                            font-medium
-                                            text-[var(--success-text)]
-                                        ">
-                                            <span className="
-                                                h-2
-                                                w-2
-                                                rounded-full
-                                                bg-[var(--success)]
-                                            " />
-
-                                            Abierta
-                                        </span>
-
-                                    </div>
-
+                                    <p className="
+                                        mt-1
+                                        text-sm
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        Las operaciones que registres
+                                        aparecerán aquí.
+                                    </p>
 
                                     <button
                                         type="button"
-                                        onClick={
-                                            handleCloseRegister
+                                        onClick={() =>
+                                            navigate("/transactions/new")
                                         }
-                                        disabled={isClosing}
                                         className="
-                                            mt-7
-                                            rounded-lg
-                                            border
-                                            border-[var(--danger-border)]
-                                            px-4
-                                            py-2
+                                            mt-5
                                             text-sm
                                             font-semibold
-                                            text-[var(--danger)]
+                                            text-[var(--primary)]
                                             transition
-                                            hover:bg-[var(--danger-bg)]
-                                            disabled:cursor-not-allowed
-                                            disabled:opacity-50
+                                            hover:text-[var(--control-icon-hover)]
                                         "
                                     >
-                                        {isClosing
-                                            ? "Cerrando..."
-                                            : "Cerrar caja"}
+                                        Registrar primera operación →
                                     </button>
 
                                 </div>
 
-
-                                {/* PAYMENT METHODS */}
-
-                                {Object.entries(
-                                    register.totals_by_method
-                                ).map(
-                                    ([
-                                        method,
-                                        amount,
-                                    ]) => (
-                                        <div
-                                            key={method}
-                                            className="
-                                                bg-[var(--surface)]
-                                                p-6
-                                            "
-                                        >
-
-                                            <p className="
-                                                text-xs
-                                                font-semibold
-                                                uppercase
-                                                tracking-wider
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                {
-                                                    getMethodLabel(
-                                                        method
-                                                    )
-                                                }
-                                            </p>
-
-                                            <p className="
-                                                mt-3
-                                                text-2xl
-                                                font-bold
-                                                tracking-tight
-                                                text-[var(--text-primary)]
-                                            ">
-                                                $
-                                                {formatCurrency(
-                                                    amount
-                                                )}
-                                            </p>
-
-                                        </div>
-                                    )
-                                )}
-
-                            </section>
-
-
-                            {/* TRANSACTIONS */}
-
-                            <section className="mt-10">
+                            ) : (
 
                                 <div className="
-                                    flex
-                                    items-end
-                                    justify-between
-                                    gap-4
+                                    mt-5
+                                    overflow-hidden
+                                    border
+                                    border-[var(--border)]
+                                    bg-[var(--surface)]
                                 ">
 
-                                    <div>
-                                        <p className="
-                                            text-xs
-                                            font-semibold
-                                            uppercase
-                                            tracking-wider
-                                            text-[var(--text-secondary)]
-                                        ">
-                                            Actividad
-                                        </p>
-
-                                        <h3 className="
-                                            mt-1
-                                            text-xl
-                                            font-bold
-                                            tracking-tight
-                                            text-[var(--text-primary)]
-                                        ">
-                                            Operaciones
-                                        </h3>
-
-                                        <p className="
-                                            mt-1
-                                            text-sm
-                                            text-[var(--text-secondary)]
-                                        ">
-                                            Movimientos registrados
-                                            en la caja actual.
-                                        </p>
-                                    </div>
-
-
-                                    <span className="
-                                        border
-                                        border-[var(--border)]
-                                        bg-[var(--surface)]
-                                        px-3
-                                        py-1.5
-                                        text-xs
-                                        font-medium
-                                        text-[var(--text-secondary)]
+                                    <div className="
+                                        divide-y
+                                        divide-[var(--border)]
                                     ">
-                                        {transactions.length} registros
-                                    </span>
+
+                                        {transactions.map(
+                                            (transaction) => (
+                                                <TransactionCard
+                                                    key={transaction.id}
+                                                    transaction={transaction}
+                                                    onDelete={handleDelete}
+                                                    onTransactionUpdate={
+                                                        handleTransactionUpdate
+                                                    }
+                                                />
+                                            )
+                                        )}
+
+                                    </div>
 
                                 </div>
 
+                            )}
 
-                                {transactions.length === 0 ? (
+                        </section>
 
-                                    <div className="
-                                        mt-5
-                                        border
-                                        border-dashed
-                                        border-[var(--border)]
-                                        bg-[var(--surface)]
-                                        p-12
-                                        text-center
-                                    ">
-
-                                        <p className="
-                                            font-semibold
-                                            text-[var(--text-primary)]
-                                        ">
-                                            No hay operaciones
-                                        </p>
-
-                                        <p className="
-                                            mt-1
-                                            text-sm
-                                            text-[var(--text-secondary)]
-                                        ">
-                                            Las operaciones que
-                                            registres aparecerán aquí.
-                                        </p>
-
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                navigate(
-                                                    "/transactions/new"
-                                                )
-                                            }
-                                            className="
-                                                mt-5
-                                                text-sm
-                                                font-semibold
-                                                text-[var(--primary)]
-                                                transition
-                                                hover:text-[var(--control-icon-hover)]
-                                            "
-                                        >
-                                            Registrar primera operación →
-                                        </button>
-
-                                    </div>
-
-                                ) : (
-
-                                    <div className="
-                                        mt-5
-                                        overflow-hidden
-                                        border
-                                        border-[var(--border)]
-                                        bg-[var(--surface)]
-                                    ">
-
-                                        <div className="
-                                            divide-y
-                                            divide-[var(--border)]
-                                        ">
-                                            {transactions.map(
-                                                (transaction) => (
-                                                    <TransactionCard
-                                                        key={transaction.id}
-                                                        transaction={transaction}
-                                                        onDelete={handleDelete}
-                                                        onTransactionUpdate={
-                                                            handleTransactionUpdate
-                                                        }
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-
-                                    </div>
-
-                                )}
-
-                            </section>
-
-                        </>
                     )}
 
                 </div>
