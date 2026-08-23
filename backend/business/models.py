@@ -47,6 +47,11 @@ class Transaction(models.Model):
         EXPENSE = "expense", "Gasto"
         LOSS = "loss", "Pérdida"
 
+    class ServiceType(models.TextChoices):
+        SUBE = "sube", "SUBE"
+        PHONE = "phone", "Carga de celular"
+        VIRTUAL_CASH = "virtual_cash", "Cambio virtual/cash"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -62,6 +67,13 @@ class Transaction(models.Model):
     type = models.CharField(
         max_length=30,
         choices=Type.choices,
+    )
+
+    service_type = models.CharField(
+        max_length=30,
+        choices=ServiceType.choices,
+        null=True,
+        blank=True,
     )
 
     created_at = models.DateTimeField(
