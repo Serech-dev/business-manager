@@ -1,0 +1,56 @@
+import { useEffect, useState } from "react";
+import { Outlet } from "react-router-dom";
+
+import Sidebar from "./Sidebar";
+import { getCurrentRegister } from "../services/business";
+
+
+function AppLayout() {
+    const [register, setRegister] = useState(null);
+
+    async function loadRegister() {
+        try {
+            const currentRegister =
+                await getCurrentRegister();
+
+            setRegister(currentRegister);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+
+    useEffect(() => {
+        loadRegister();
+    }, []);
+
+
+    return (
+        <div className="
+            min-h-screen
+            bg-[var(--background)]
+            text-[var(--text-primary)]
+        ">
+            <Sidebar
+                register={register}
+                setRegister={setRegister}
+            />
+
+            <main className="
+                ml-64
+                min-h-screen
+            ">
+                <Outlet
+                    context={{
+                        register,
+                        setRegister,
+                        loadRegister,
+                    }}
+                />
+            </main>
+        </div>
+    );
+}
+
+
+export default AppLayout;

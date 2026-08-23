@@ -7,6 +7,8 @@ import Dashboard from "./pages/Dashboard";
 import RegisterReport from "./pages/RegisterReport";
 import NewTransaction from "./pages/NewTransaction";
 import RegisterHistory from "./pages/RegisterHistory";
+
+import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 
@@ -22,33 +24,57 @@ function App() {
                 }}
             />
 
-        <BrowserRouter>
-            <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route
-                    path="/register"
-                    element={<Register />}
-                />
-                <Route element={<ProtectedRoute />}>
-                    <Route path="/" element={<Dashboard />} />
+            <BrowserRouter>
+                <Routes>
+
+                    {/* PUBLIC */}
+
                     <Route
-                        path="/transactions/new"
-                        element={<NewTransaction />}
-                    />
-                    <Route
-                        path="/registers"
-                        element={<RegisterHistory />}
+                        path="/login"
+                        element={<Login />}
                     />
 
                     <Route
-                        path="/registers/:id"
-                        element={<RegisterReport />}
+                        path="/register"
+                        element={<Register />}
                     />
-                </Route>
-            </Routes>
-        </BrowserRouter>
+
+
+                    {/* PROTECTED */}
+
+                    <Route element={<ProtectedRoute />}>
+
+                        <Route element={<AppLayout />}>
+
+                            <Route
+                                path="/"
+                                element={<Dashboard />}
+                            />
+
+                            <Route
+                                path="/transactions/new"
+                                element={<NewTransaction />}
+                            />
+
+                            <Route
+                                path="/registers"
+                                element={<RegisterHistory />}
+                            />
+
+                            <Route
+                                path="/registers/:id"
+                                element={<RegisterReport />}
+                            />
+
+                        </Route>
+
+                    </Route>
+
+                </Routes>
+            </BrowserRouter>
         </>
     );
 }
+
 
 export default App;

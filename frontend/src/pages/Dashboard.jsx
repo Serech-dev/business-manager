@@ -1,6 +1,7 @@
 import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 
 import {
     closeRegister,
@@ -10,20 +11,23 @@ import {
     openRegister,
 } from "../services/business";
 
-import AccountMenu from "../components/AccountMenu";
 import TransactionCard from "../components/TransactionCard";
-import RegisterStatus from "../components/RegisterStatus";
 
 
 function Dashboard() {
     const navigate = useNavigate();
 
-    const [register, setRegister] = useState(null);
     const [transactions, setTransactions] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isOpening, setIsOpening] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
+
+    const {
+        register,
+        setRegister,
+        loadRegister,
+    } = useOutletContext();
 
     function handleTransactionUpdate(
         updatedTransaction
@@ -177,173 +181,12 @@ function Dashboard() {
             bg-[var(--background)]
             text-[var(--text-primary)]
         ">
-
-            {/* SIDEBAR */}
-
-            <aside className="
-                fixed
-                inset-y-0
-                left-0
-                z-30
-                flex
-                w-64
-                flex-col
-                overflow-y-auto
-                border-r
-                border-[var(--border)]
-                bg-[var(--surface)]
+            <div className="
+                mx-auto
+                max-w-7xl
+                px-8
+                py-8
             ">
-
-                {/* BRAND */}
-
-                <div className="
-                    border-b
-                    border-[var(--border)]
-                    px-6
-                    py-5
-                ">
-                    <h1 className="
-                        text-xl
-                        font-bold
-                        tracking-tight
-                        text-[var(--text-primary)]
-                    ">
-                        Business Manager
-                    </h1>
-
-                    <p className="
-                        mt-1
-                        text-xs
-                        text-[var(--text-secondary)]
-                    ">
-                        Gestión del negocio
-                    </p>
-                </div>
-
-
-                {/* NAVIGATION */}
-
-                <nav className="
-                    flex-1
-                    space-y-1
-                    px-3
-                    py-5
-                ">
-
-                    <button
-                        type="button"
-                        onClick={() => navigate("/")}
-                        className="
-                            flex
-                            w-full
-                            items-center
-                            rounded-lg
-                            border-l-2
-                            border-[var(--primary)]
-                            bg-[var(--surface-accent)]
-                            px-4
-                            py-3
-                            text-left
-                            text-sm
-                            font-semibold
-                            text-[var(--text-primary)]
-                        "
-                    >
-                        Dashboard
-                    </button>
-
-
-                    <button
-                        type="button"
-                        onClick={() =>
-                            register
-                                ? navigate("/transactions/new")
-                                : toast.error(
-                                    "Abrí la caja primero."
-                                )
-                        }
-                        className="
-                            flex
-                            w-full
-                            items-center
-                            rounded-lg
-                            px-4
-                            py-3
-                            text-left
-                            text-sm
-                            font-medium
-                            text-[var(--text-secondary)]
-                            transition
-                            hover:bg-[var(--surface-accent)]
-                            hover:text-[var(--text-primary)]
-                        "
-                    >
-                        Nueva operación
-                    </button>
-
-
-                    <button
-                        type="button"
-                        onClick={() =>
-                            navigate("/registers")
-                        }
-                        className="
-                            flex
-                            w-full
-                            items-center
-                            rounded-lg
-                            px-4
-                            py-3
-                            text-left
-                            text-sm
-                            font-medium
-                            text-[var(--text-secondary)]
-                            transition
-                            hover:bg-[var(--surface-accent)]
-                            hover:text-[var(--text-primary)]
-                        "
-                    >
-                        Historial de cierres
-                    </button>
-
-                </nav>
-
-
-                {/* REGISTER STATUS */}
-
-                <RegisterStatus
-                    register={register}
-                    isClosing={isClosing}
-                    onClose={handleCloseRegister}
-                />
-
-
-                {/* ACCOUNT */}
-
-                <div className="
-                    border-t
-                    border-[var(--border)]
-                    p-4
-                ">
-                    <AccountMenu />
-                </div>
-
-            </aside>
-
-
-            {/* MAIN CONTENT */}
-
-            <main className="
-                ml-64
-                min-h-screen
-            ">
-
-                <div className="
-                    mx-auto
-                    max-w-7xl
-                    px-8
-                    py-8
-                ">
 
                     {/* PAGE HEADER */}
 
@@ -640,10 +483,7 @@ function Dashboard() {
 
                     )}
 
-                </div>
-
-            </main>
-
+                 </div>
         </div>
     );
 }
