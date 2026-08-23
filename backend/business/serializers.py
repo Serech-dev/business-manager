@@ -46,7 +46,6 @@ class TransactionSerializer(
             "id",
             "register",
             "type",
-            "service_type",
             "created_at",
             "description",
             "exchange_amount",
@@ -83,24 +82,6 @@ class TransactionSerializer(
             "type",
             getattr(self.instance, "type", None),
         )
-
-        service_type = attrs.get(
-            "service_type",
-            getattr(self.instance, "service_type", None),
-        )
-
-        if transaction_type == Transaction.Type.SERVICE:
-            if not service_type:
-                raise serializers.ValidationError({
-                    "service_type":
-                        "El tipo de servicio es obligatorio."
-                })
-
-        elif service_type:
-            raise serializers.ValidationError({
-                "service_type":
-                    "El tipo de servicio solo puede utilizarse en operaciones de servicio."
-            })
 
         if transaction_type in [
             Transaction.Type.EXCHANGE,
