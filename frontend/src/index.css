@@ -8,67 +8,69 @@
 }
 
 [data-theme="dark"] {
-  --background: #171b22;
-  --surface: #202630;
-  --surface-accent: #29323e;
-  --surface-muted: #1c222b;
+  --background: #141716;
+  --surface: #1d211f;
+  --surface-accent: #272d29;
+  --surface-muted: #191d1b;
 
-  --text-primary: #e9edf2;
-  --text-secondary: #9da8b5;
+  --text-primary: #edf1ee;
+  --text-secondary: #9ca7a0;
 
-  --border: #394451;
+  --border: #343c37;
 
-  --primary: #4b7699;
-  --primary-hover: #426f91;
+  --primary: #6fa879;
+  --primary-hover: #80b88a;
 
   --success: #82b58c;
-  --success-text: #68a077;
-  --success-bg: #34483a;
-  --success-border: #496250;
+  --success-text: #6eaa79;
+  --success-bg: #2f4134;
+  --success-border: #455b4a;
 
   --warning: #d0a365;
-  --danger: #b35d5d;
-  --danger-bg: #493235;
-  --danger-border: #634247;
 
-  --control-icon: #9da8b5;
-  --control-icon-hover: #6d9fc7;
+  --danger: #c26767;
+  --danger-bg: #452f32;
+  --danger-border: #624044;
+
+  --control-icon: #9ca7a0;
+  --control-icon-hover: #79ad84;
 }
 
 [data-theme="light"] {
-  --background: #f3f5f7;
+  --background: #f3f5f3;
   --surface: #ffffff;
-  --surface-accent: #e9edf1;
-  --surface-muted: #eef1f4;
+  --surface-accent: #edf1ee;
+  --surface-muted: #f7f8f7;
 
-  --text-primary: #28313b;
-  --text-secondary: #687583;
+  --text-primary: #202522;
+  --text-secondary: #68736c;
 
-  --border: #d4dbe2;
+  --border: #d7ddd9;
 
-  --primary: #4b7699;
-  --primary-hover: #426f91;
+  --primary: #477653;
+  --primary-hover: #3d6848;
 
-  --success: #6f9f79;
-  --success-text: #5d8e68;
-  --success-bg: #e5f0e7;
-  --success-border: #bfd5c3;
+  --success: #4f8a5c;
+  --success-text: #467c52;
+  --success-bg: #e8f1e9;
+  --success-border: #c7dccb;
 
-  --warning: #b8874d;
-  --danger: #b35d5d;
-  --danger-bg: #f2e3e4;
-  --danger-border: #d9b7ba;
+  --warning: #a87532;
 
-  --control-icon: #687583;
-  --control-icon-hover: #4b7699;
+  --danger: #b05252;
+  --danger-bg: #f5e7e7;
+  --danger-border: #e4c8c8;
+
+  --control-icon: #68736c;
+  --control-icon-hover: #477653;
+}
+
+[data-theme="light"] {
+  --control-icon-filter: invert(45%) sepia(10%) saturate(500%);
 }
 
 [data-theme="dark"] {
-    --control-icon-filter: invert(85%);
-}
-
-[data-theme="light"] {
-    --control-icon-filter: invert(45%) sepia(10%) saturate(500%);
+  --control-icon-filter: invert(85%);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,

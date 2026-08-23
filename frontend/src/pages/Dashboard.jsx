@@ -229,6 +229,7 @@ function Dashboard() {
                     <h1 className="
                         text-xl
                         font-bold
+                        tracking-tight
                         text-[var(--text-primary)]
                     ">
                         Business Manager
@@ -260,13 +261,15 @@ function Dashboard() {
                             flex
                             w-full
                             items-center
-                            rounded-xl
+                            rounded-lg
+                            border-l-2
+                            border-[var(--primary)]
                             bg-[var(--surface-accent)]
                             px-4
                             py-3
                             text-left
                             text-sm
-                            font-medium
+                            font-semibold
                             text-[var(--text-primary)]
                         "
                     >
@@ -287,7 +290,7 @@ function Dashboard() {
                             flex
                             w-full
                             items-center
-                            rounded-xl
+                            rounded-lg
                             px-4
                             py-3
                             text-left
@@ -312,7 +315,7 @@ function Dashboard() {
                             flex
                             w-full
                             items-center
-                            rounded-xl
+                            rounded-lg
                             px-4
                             py-3
                             text-left
@@ -339,7 +342,8 @@ function Dashboard() {
                 ">
 
                     <div className="
-                        rounded-xl
+                        border
+                        border-[var(--border)]
                         bg-[var(--surface-muted)]
                         p-4
                     ">
@@ -352,6 +356,8 @@ function Dashboard() {
                             <span className="
                                 text-xs
                                 font-medium
+                                uppercase
+                                tracking-wide
                                 text-[var(--text-secondary)]
                             ">
                                 Caja
@@ -369,7 +375,7 @@ function Dashboard() {
                         </div>
 
                         <p className="
-                            mt-1
+                            mt-2
                             text-sm
                             font-semibold
                             text-[var(--text-primary)]
@@ -382,13 +388,10 @@ function Dashboard() {
                         {register && (
                             <p className="
                                 mt-1
-                                text-xs
+                                text-sm
+                                font-medium
                                 text-[var(--text-secondary)]
                             ">
-                                $
-                                {formatCurrency(
-                                    register.total
-                                )}
                             </p>
                         )}
                     </div>
@@ -425,17 +428,23 @@ function Dashboard() {
 
                     {/* PAGE HEADER */}
 
-                    <div className="
+                    <header className="
                         flex
-                        items-center
+                        items-end
                         justify-between
                         gap-6
+                        border-b
+                        border-[var(--border)]
+                        pb-6
                     ">
+
                         <div>
                             <p className="
-                                text-sm
-                                font-medium
-                                text-[var(--text-secondary)]
+                                text-xs
+                                font-semibold
+                                uppercase
+                                tracking-wider
+                                text-[var(--primary)]
                             ">
                                 Panel principal
                             </p>
@@ -444,6 +453,7 @@ function Dashboard() {
                                 mt-1
                                 text-3xl
                                 font-bold
+                                tracking-tight
                                 text-[var(--text-primary)]
                             ">
                                 Dashboard
@@ -460,7 +470,7 @@ function Dashboard() {
                                     )
                                 }
                                 className="
-                                    rounded-xl
+                                    rounded-lg
                                     bg-[var(--primary)]
                                     px-5
                                     py-3
@@ -474,44 +484,63 @@ function Dashboard() {
                                 + Nueva operación
                             </button>
                         )}
-                    </div>
+
+                    </header>
 
 
                     {!register ? (
 
                         /* CLOSED REGISTER */
 
-                        <div className="
+                        <section className="
                             mt-8
-                            rounded-2xl
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             p-10
                         ">
 
-                            <div className="
-                                max-w-xl
-                            ">
-                                <p className="
-                                    text-sm
-                                    font-medium
-                                    text-[var(--warning)]
+                            <div className="max-w-xl">
+
+                                <div className="
+                                    flex
+                                    items-center
+                                    gap-3
                                 ">
-                                    Caja cerrada
-                                </p>
+                                    <span className="
+                                        h-2
+                                        w-2
+                                        rounded-full
+                                        bg-[var(--danger)]
+                                    " />
+
+                                    <p className="
+                                        text-xs
+                                        font-semibold
+                                        uppercase
+                                        tracking-wider
+                                        text-[var(--danger)]
+                                    ">
+                                        Caja cerrada
+                                    </p>
+                                </div>
+
 
                                 <h3 className="
-                                    mt-2
+                                    mt-4
                                     text-2xl
                                     font-bold
+                                    tracking-tight
                                     text-[var(--text-primary)]
                                 ">
                                     Abrí la caja para comenzar
                                 </h3>
 
+
                                 <p className="
                                     mt-2
+                                    max-w-lg
+                                    leading-6
                                     text-[var(--text-secondary)]
                                 ">
                                     Las operaciones se registrarán
@@ -519,21 +548,24 @@ function Dashboard() {
                                     formarán parte de su cierre.
                                 </p>
 
+
                                 <button
                                     onClick={
                                         handleOpenRegister
                                     }
                                     disabled={isOpening}
                                     className="
-                                        mt-6
-                                        rounded-xl
+                                        mt-7
+                                        rounded-lg
                                         bg-[var(--primary)]
                                         px-6
                                         py-3
+                                        text-sm
                                         font-semibold
                                         text-white
                                         transition
                                         hover:bg-[var(--primary-hover)]
+                                        disabled:cursor-not-allowed
                                         disabled:opacity-50
                                     "
                                 >
@@ -541,9 +573,10 @@ function Dashboard() {
                                         ? "Abriendo..."
                                         : "Abrir caja"}
                                 </button>
+
                             </div>
 
-                        </div>
+                        </section>
 
                     ) : (
 
@@ -556,82 +589,106 @@ function Dashboard() {
                             <section className="
                                 mt-8
                                 grid
-                                gap-4
+                                gap-px
+                                overflow-hidden
+                                border
+                                border-[var(--border)]
+                                bg-[var(--border)]
                                 lg:grid-cols-4
                             ">
 
+                                {/* TOTAL */}
+
                                 <div className="
-                                    rounded-2xl
-                                    border
-                                    border-[var(--border)]
                                     bg-[var(--surface)]
-                                    p-5
+                                    p-6
                                     lg:col-span-2
                                 ">
-                                    <p className="
-                                        text-sm
-                                        text-[var(--text-secondary)]
-                                    ">
-                                        Caja actual
-                                    </p>
 
                                     <div className="
-                                        mt-2
                                         flex
-                                        items-end
+                                        items-start
                                         justify-between
                                         gap-4
                                     ">
+
                                         <div>
                                             <p className="
-                                                text-3xl
-                                                font-bold
-                                                text-[var(--text-primary)]
+                                                text-xs
+                                                font-semibold
+                                                uppercase
+                                                tracking-wider
+                                                text-[var(--text-secondary)]
                                             ">
-                                                $
-                                                {formatCurrency(
-                                                    register.total
-                                                )}
+                                                Caja actual
                                             </p>
 
                                             <p className="
-                                                mt-1
+                                                mt-2
                                                 text-sm
                                                 text-[var(--text-secondary)]
                                             ">
                                                 {
                                                     register.transaction_count
                                                 }{" "}
-                                                operaciones
+                                                operaciones registradas
                                             </p>
                                         </div>
 
-                                        <button
-                                            onClick={
-                                                handleCloseRegister
-                                            }
-                                            disabled={isClosing}
-                                            className="
-                                                rounded-xl
-                                                border
-                                                border-[var(--danger)]
-                                                px-4
-                                                py-2
-                                                text-sm
-                                                font-semibold
-                                                text-[var(--danger)]
-                                                transition
-                                                hover:bg-[var(--danger-bg)]
-                                                disabled:opacity-50
-                                            "
-                                        >
-                                            {isClosing
-                                                ? "Cerrando..."
-                                                : "Cerrar caja"}
-                                        </button>
+
+                                        <span className="
+                                            mt-1
+                                            flex
+                                            items-center
+                                            gap-2
+                                            text-xs
+                                            font-medium
+                                            text-[var(--success-text)]
+                                        ">
+                                            <span className="
+                                                h-2
+                                                w-2
+                                                rounded-full
+                                                bg-[var(--success)]
+                                            " />
+
+                                            Abierta
+                                        </span>
+
                                     </div>
+
+
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            handleCloseRegister
+                                        }
+                                        disabled={isClosing}
+                                        className="
+                                            mt-7
+                                            rounded-lg
+                                            border
+                                            border-[var(--danger-border)]
+                                            px-4
+                                            py-2
+                                            text-sm
+                                            font-semibold
+                                            text-[var(--danger)]
+                                            transition
+                                            hover:bg-[var(--danger-bg)]
+                                            disabled:cursor-not-allowed
+                                            disabled:opacity-50
+                                        "
+                                    >
+                                        {isClosing
+                                            ? "Cerrando..."
+                                            : "Cerrar caja"}
+                                    </button>
+
                                 </div>
 
+
+                                {/* PAYMENT METHODS */}
 
                                 {Object.entries(
                                     register.totals_by_method
@@ -643,15 +700,16 @@ function Dashboard() {
                                         <div
                                             key={method}
                                             className="
-                                                rounded-2xl
-                                                border
-                                                border-[var(--border)]
                                                 bg-[var(--surface)]
-                                                p-5
+                                                p-6
                                             "
                                         >
+
                                             <p className="
-                                                text-sm
+                                                text-xs
+                                                font-semibold
+                                                uppercase
+                                                tracking-wider
                                                 text-[var(--text-secondary)]
                                             ">
                                                 {
@@ -662,9 +720,10 @@ function Dashboard() {
                                             </p>
 
                                             <p className="
-                                                mt-2
-                                                text-xl
+                                                mt-3
+                                                text-2xl
                                                 font-bold
+                                                tracking-tight
                                                 text-[var(--text-primary)]
                                             ">
                                                 $
@@ -672,6 +731,7 @@ function Dashboard() {
                                                     amount
                                                 )}
                                             </p>
+
                                         </div>
                                     )
                                 )}
@@ -685,13 +745,27 @@ function Dashboard() {
 
                                 <div className="
                                     flex
-                                    items-center
+                                    items-end
                                     justify-between
+                                    gap-4
                                 ">
+
                                     <div>
+                                        <p className="
+                                            text-xs
+                                            font-semibold
+                                            uppercase
+                                            tracking-wider
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            Actividad
+                                        </p>
+
                                         <h3 className="
+                                            mt-1
                                             text-xl
                                             font-bold
+                                            tracking-tight
                                             text-[var(--text-primary)]
                                         ">
                                             Operaciones
@@ -703,37 +777,41 @@ function Dashboard() {
                                             text-[var(--text-secondary)]
                                         ">
                                             Movimientos registrados
-                                            en el sistema.
+                                            en la caja actual.
                                         </p>
                                     </div>
 
+
                                     <span className="
-                                        rounded-lg
-                                        bg-[var(--surface-muted)]
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--surface)]
                                         px-3
                                         py-1.5
-                                        text-sm
+                                        text-xs
+                                        font-medium
                                         text-[var(--text-secondary)]
                                     ">
-                                        {transactions.length}
+                                        {transactions.length} registros
                                     </span>
+
                                 </div>
 
 
                                 {transactions.length === 0 ? (
 
                                     <div className="
-                                        mt-4
-                                        rounded-2xl
+                                        mt-5
                                         border
                                         border-dashed
                                         border-[var(--border)]
                                         bg-[var(--surface)]
-                                        p-10
+                                        p-12
                                         text-center
                                     ">
+
                                         <p className="
-                                            font-medium
+                                            font-semibold
                                             text-[var(--text-primary)]
                                         ">
                                             No hay operaciones
@@ -760,18 +838,20 @@ function Dashboard() {
                                                 text-sm
                                                 font-semibold
                                                 text-[var(--primary)]
+                                                transition
+                                                hover:text-[var(--control-icon-hover)]
                                             "
                                         >
-                                            Registrar primera operación
+                                            Registrar primera operación →
                                         </button>
+
                                     </div>
 
                                 ) : (
 
                                     <div className="
-                                        mt-4
+                                        mt-5
                                         overflow-hidden
-                                        rounded-2xl
                                         border
                                         border-[var(--border)]
                                         bg-[var(--surface)]
@@ -805,11 +885,13 @@ function Dashboard() {
                                                             <div className="
                                                                 min-w-0
                                                             ">
+
                                                                 <div className="
                                                                     flex
                                                                     items-center
                                                                     gap-3
                                                                 ">
+
                                                                     <h4 className="
                                                                         font-semibold
                                                                         text-[var(--text-primary)]
@@ -830,7 +912,9 @@ function Dashboard() {
                                                                             transaction.id
                                                                         }
                                                                     </span>
+
                                                                 </div>
+
 
                                                                 {transaction.description && (
                                                                     <p className="
@@ -843,12 +927,14 @@ function Dashboard() {
                                                                         }
                                                                     </p>
                                                                 )}
+
                                                             </div>
 
 
                                                             <strong className="
                                                                 shrink-0
                                                                 text-lg
+                                                                font-semibold
                                                                 text-[var(--text-primary)]
                                                             ">
                                                                 $
@@ -873,6 +959,7 @@ function Dashboard() {
                                                                 flex-wrap
                                                                 gap-2
                                                             ">
+
                                                                 {transaction.amounts.map(
                                                                     (
                                                                         amount
@@ -882,10 +969,11 @@ function Dashboard() {
                                                                                 amount.id
                                                                             }
                                                                             className="
-                                                                                rounded-lg
+                                                                                border
+                                                                                border-[var(--border)]
                                                                                 bg-[var(--surface-muted)]
-                                                                                px-3
-                                                                                py-1.5
+                                                                                px-2.5
+                                                                                py-1
                                                                                 text-xs
                                                                                 text-[var(--text-secondary)]
                                                                             "
@@ -906,6 +994,7 @@ function Dashboard() {
                                                                         </span>
                                                                     )
                                                                 )}
+
                                                             </div>
 
 
