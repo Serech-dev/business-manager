@@ -7,7 +7,7 @@ import {
     getCurrentRegister,
 } from "../services/business";
 
-import AccountMenu from "../components/AccountMenu";
+import ConfirmDialog from "./ConfirmDialog";
 
 
 function Sidebar({
@@ -17,17 +17,13 @@ function Sidebar({
     const navigate = useNavigate();
     const location = useLocation();
 
-    const [isClosing, setIsClosing] = useState(false);
+    const [showCloseDialog, setShowCloseDialog] =
+    useState(false);
+
+    const [isClosing, setIsClosing] =
+    useState(false);
 
     async function handleCloseRegister() {
-        const confirmed = window.confirm(
-            "¿Querés cerrar la caja?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
         setIsClosing(true);
 
         try {
@@ -35,7 +31,9 @@ function Sidebar({
 
             setRegister(null);
 
-            toast.success("Caja cerrada.");
+            toast.success(
+                "Caja cerrada."
+            );
         } catch (error) {
             console.error(error);
 
@@ -44,6 +42,7 @@ function Sidebar({
             );
         } finally {
             setIsClosing(false);
+            setShowCloseDialog(false);
         }
     }
 
@@ -302,7 +301,7 @@ function Sidebar({
                     {register && (
                         <button
                             type="button"
-                            onClick={handleCloseRegister}
+                            onClick={() => setShowCloseDialog(true)}
                             disabled={isClosing}
                             className="
                                 mt-4
@@ -332,13 +331,39 @@ function Sidebar({
             {/* ACCOUNT */}
 
             <div className="
-                border-t
-                border-[var(--border)]
-                p-4
+                mt-2
+                text-sm
+                leading-6
+                text-[var(--text-secondary)]
             ">
-                <AccountMenu />
-            </div>
 
+            {showCloseDialog && (
+                <ConfirmDialog
+                    title="Cerrar caja"
+                    message={
+                        <>
+                            <p>
+                                ¿Querés cerrar la caja actual?
+                            </p>
+
+                            <p className="
+                                mt-2
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Una vez cerrada, sus operaciones no podrán
+                                modificarse ni eliminarse.
+                            </p>
+                        </>
+                    }
+                    confirmLabel="Cerrar caja"
+                    cancelLabel="Cancelar"
+                    onConfirm={handleCloseRegister}
+                    onCancel={() => setShowCloseDialog(false)}
+                    isLoading={isClosing}
+                />
+            )}
+            </div>
         </aside>
     );
 }
