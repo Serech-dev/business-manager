@@ -3,10 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
-    getClient,
+    getProvider,
     getTransactions,
-    updateClient,
-    createClient,
+    updateProvider,
+    createProvider,
     getTransactionLabel,
     getMethodLabel,
 } from "../services/business";
@@ -14,12 +14,14 @@ import {
 import { formatCurrency } from "../utils/formatCurrency";
 
 
-function ClientDetail({ isNewClient = false }) {
+function ProviderDetail({ isNewProvider = false }) {
     const { id } = useParams();
+    const navigate = useNavigate();
 
-    const [client, setClient] = useState(
-        isNewClient ? {} : null
+    const [provider, setProvider] = useState(
+        isNewProvider ? {} : null
     );
+
     const [transactions, setTransactions] = useState([]);
 
     const [name, setName] = useState("");
@@ -29,49 +31,48 @@ function ClientDetail({ isNewClient = false }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    const navigate = useNavigate();
 
     useEffect(() => {
-        async function loadClient() {
-            if (isNewClient) {
+        async function loadProvider() {
+            if (isNewProvider) {
                 setIsLoading(false);
                 return;
             }
 
             try {
                 const [
-                    clientData,
+                    providerData,
                     transactionData,
                 ] = await Promise.all([
-                    getClient(id),
+                    getProvider(id),
                     getTransactions(),
                 ]);
 
-                setClient(clientData);
+                setProvider(providerData);
 
                 setTransactions(
                     transactionData.filter(
                         (transaction) =>
-                            transaction.client === Number(id)
+                            transaction.provider === Number(id)
                     )
                 );
 
-                setName(clientData.name);
-                setPhone(clientData.phone || "");
-                setNotes(clientData.notes || "");
+                setName(providerData.name);
+                setPhone(providerData.phone || "");
+                setNotes(providerData.notes || "");
             } catch (error) {
                 console.error(error);
 
                 toast.error(
-                    "No se pudo cargar el cliente."
+                    "No se pudo cargar el proveedor."
                 );
             } finally {
                 setIsLoading(false);
             }
         }
 
-        loadClient();
-    }, [id, isNewClient]);
+        loadProvider();
+    }, [id, isNewProvider]);
 
 
     async function handleSave(event) {
@@ -94,33 +95,36 @@ function ClientDetail({ isNewClient = false }) {
                 notes: notes.trim(),
             };
 
-            const savedClient = isNewClient
-                ? await createClient(data)
-                : await updateClient(id, data);
+            const savedProvider = isNewProvider
+                ? await createProvider(data)
+                : await updateProvider(id, data);
 
-            setClient(savedClient);
+            setProvider(savedProvider);
 
             toast.success(
-                isNewClient
-                    ? "Cliente creado."
-                    : "Cliente actualizado."
+                isNewProvider
+                    ? "Proveedor creado."
+                    : "Proveedor actualizado."
             );
 
-            if (isNewClient) {
-                navigate(`/clients/`);
+            if (isNewProvider) {
+                navigate(
+                    `/providers/`
+                );
             }
         } catch (error) {
             console.error(error);
 
             toast.error(
-                isNewClient
-                    ? "No se pudo crear el cliente."
-                    : "No se pudo actualizar el cliente."
+                isNewProvider
+                    ? "No se pudo crear el proveedor."
+                    : "No se pudo actualizar el proveedor."
             );
         } finally {
             setIsSaving(false);
         }
     }
+
 
     if (isLoading) {
         return (
@@ -131,41 +135,15 @@ function ClientDetail({ isNewClient = false }) {
                 justify-center
                 text-[var(--text-secondary)]
             ">
-                Cargando cliente...
+                Cargando proveedor...
             </div>
         );
     }
 
-    if (!client) {
+
+    if (!provider) {
         return null;
     }
-
-    const debtTransactions =
-        transactions.filter(
-            (transaction) =>
-                transaction.amounts?.some(
-                    (amount) =>
-                        amount.method === "debt"
-                )
-        );
-
-
-    const debtTotal =
-        debtTransactions.reduce(
-            (total, transaction) =>
-                total +
-                transaction.amounts.reduce(
-                    (amountTotal, amount) =>
-                        amountTotal +
-                        (
-                            amount.method === "debt"
-                                ? Number(amount.amount) || 0
-                                : 0
-                        ),
-                    0
-                ),
-            0
-        );
 
 
     return (
@@ -191,7 +169,7 @@ function ClientDetail({ isNewClient = false }) {
                     tracking-wider
                     text-[var(--primary)]
                 ">
-                    Cliente
+                    Proveedor
                 </p>
 
                 <h1 className="
@@ -201,9 +179,9 @@ function ClientDetail({ isNewClient = false }) {
                     tracking-tight
                     text-[var(--text-primary)]
                 ">
-                    {isNewClient
-                        ? "Nuevo cliente"
-                        : client.name}
+                    {isNewProvider
+                        ? "Nuevo proveedor"
+                        : provider.name}
                 </h1>
 
             </header>
@@ -217,7 +195,7 @@ function ClientDetail({ isNewClient = false }) {
                 lg:items-start
             ">
 
-                {/* CLIENT INFORMATION */}
+                {/* PROVIDER INFORMATION */}
 
                 <section className="
                     border
@@ -243,7 +221,7 @@ function ClientDetail({ isNewClient = false }) {
                             text-sm
                             text-[var(--text-secondary)]
                         ">
-                            Datos guardados del cliente.
+                            Datos guardados del proveedor.
                         </p>
                     </div>
 
@@ -272,7 +250,9 @@ function ClientDetail({ isNewClient = false }) {
                                 id="name"
                                 value={name}
                                 onChange={(event) =>
-                                    setName(event.target.value)
+                                    setName(
+                                        event.target.value
+                                    )
                                 }
                                 className="
                                     mt-2
@@ -309,7 +289,9 @@ function ClientDetail({ isNewClient = false }) {
                                 id="phone"
                                 value={phone}
                                 onChange={(event) =>
-                                    setPhone(event.target.value)
+                                    setPhone(
+                                        event.target.value
+                                    )
                                 }
                                 className="
                                     mt-2
@@ -346,7 +328,9 @@ function ClientDetail({ isNewClient = false }) {
                                 id="notes"
                                 value={notes}
                                 onChange={(event) =>
-                                    setNotes(event.target.value)
+                                    setNotes(
+                                        event.target.value
+                                    )
                                 }
                                 rows={4}
                                 className="
@@ -388,7 +372,9 @@ function ClientDetail({ isNewClient = false }) {
                         >
                             {isSaving
                                 ? "Guardando..."
-                                : "Guardar cambios"}
+                                : isNewProvider
+                                    ? "Crear proveedor"
+                                    : "Guardar cambios"}
                         </button>
 
                     </form>
@@ -439,40 +425,6 @@ function ClientDetail({ isNewClient = false }) {
                         ">
                             {transactions.length}
                         </p>
-
-
-                        {debtTotal > 0 && (
-                            <div className="
-                                mt-6
-                                border-t
-                                border-[var(--border)]
-                                pt-5
-                            ">
-                                <p className="
-                                    text-sm
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Fiado registrado
-                                </p>
-
-                                <p className="
-                                    mt-1
-                                    text-xl
-                                    font-semibold
-                                    text-[var(--text-primary)]
-                                ">
-                                    ${formatCurrency(debtTotal)}
-                                </p>
-
-                                <p className="
-                                    mt-1
-                                    text-xs
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Pendiente de implementar el pago.
-                                </p>
-                            </div>
-                        )}
 
                     </div>
 
@@ -539,7 +491,7 @@ function ClientDetail({ isNewClient = false }) {
                             text-sm
                             text-[var(--text-secondary)]
                         ">
-                            Este cliente todavía no tiene operaciones asociadas.
+                            Este proveedor todavía no tiene operaciones asociadas.
                         </p>
                     </div>
 
@@ -641,4 +593,4 @@ function ClientDetail({ isNewClient = false }) {
 }
 
 
-export default ClientDetail;
+export default ProviderDetail;

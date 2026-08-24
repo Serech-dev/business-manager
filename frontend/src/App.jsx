@@ -6,6 +6,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ClientList from "./pages/ClientList";
 import ClientDetail from "./pages/ClientDetail";
+import ProviderList from "./pages/ProviderList";
+import ProviderDetail from "./pages/ProviderDetail";
 import RegisterReport from "./pages/RegisterReport";
 import NewTransaction from "./pages/NewTransaction";
 import RegisterHistory from "./pages/RegisterHistory";
@@ -75,10 +77,21 @@ function App() {
                                 path="/clients/new"
                                 element={<ClientDetail isNewClient />}
                             />
-
                             <Route
                                 path="/clients/:id"
                                 element={<ClientDetail />}
+                            />
+                            <Route
+                                path="/providers"
+                                element={<ProviderList />}
+                            />
+                            <Route
+                                path="/providers/new"
+                                element={<ProviderDetail isNewProvider />}
+                            />
+                            <Route
+                                path="/providers/:id"
+                                element={<ProviderDetail />}
                             />
                         </Route>
 

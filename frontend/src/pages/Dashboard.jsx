@@ -21,12 +21,10 @@ function Dashboard() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [isOpening, setIsOpening] = useState(false);
-    const [isClosing, setIsClosing] = useState(false);
 
     const {
         register,
         setRegister,
-        loadRegister,
     } = useOutletContext();
 
     function handleTransactionUpdate(

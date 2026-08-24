@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Lower
 
 
 class Client(models.Model):
@@ -29,8 +30,9 @@ class Client(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "name"],
-                name="unique_client_per_user",
+                Lower("name"),
+                "user",
+                name="unique_client_name_per_user_ci",
             )
         ]
 
@@ -98,8 +100,9 @@ class Provider(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "name"],
-                name="unique_provider_per_user",
+                Lower("name"),
+                "user",
+                name="unique_provider_name_per_user_ci",
             )
         ]
 

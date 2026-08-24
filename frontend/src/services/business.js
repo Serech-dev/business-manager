@@ -158,3 +158,38 @@ export async function createClient(data) {
 
     return response.data;
 }
+
+
+export async function getProviders() { 
+    const response = await api.get( "business/providers/" ); 
+    return response.data; 
+}
+
+
+export async function getProvider(id) {
+    const response = await api.get(
+        `business/providers/${id}/`
+    );
+
+    return response.data;
+}
+
+
+export async function updateProvider(id, data) {
+    const response = await api.patch(
+        `business/providers/${id}/`,
+        data
+    );
+
+    return response.data;
+}
+
+
+export async function createProvider(data) {
+    const response = await api.post(
+        "business/providers/",
+        data
+    );
+
+    return response.data;
+}
