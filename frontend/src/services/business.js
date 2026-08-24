@@ -122,3 +122,38 @@ export function getMethodLabel(method) {
 
     return labels[method] || method;
 }
+
+
+export async function getClients() { 
+    const response = await api.get( "business/clients/" ); 
+    return response.data; 
+}
+
+
+export async function getClient(id) {
+    const response = await api.get(
+        `business/clients/${id}/`
+    );
+
+    return response.data;
+}
+
+
+export async function updateClient(id, data) {
+    const response = await api.patch(
+        `business/clients/${id}/`,
+        data
+    );
+
+    return response.data;
+}
+
+
+export async function createClient(data) {
+    const response = await api.post(
+        "business/clients/",
+        data
+    );
+
+    return response.data;
+}

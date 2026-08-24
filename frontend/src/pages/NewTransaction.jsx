@@ -1,13 +1,25 @@
-import { useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import { createTransaction } from "../services/business";
+import {
+    createTransaction,
+    createClient,
+    getClients,
+} from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
 
 
 function NewTransaction() {
     const navigate = useNavigate();
+
+    const [clientSearch, setClientSearch] = useState("");
+    const [clientResults, setClientResults] = useState([]);
+    const [selectedClient, setSelectedClient] = useState(null);
+    const [isSearchingClients, setIsSearchingClients] = useState(false);
 
     const [type, setType] = useState("sale");
     const [description, setDescription] = useState("");
@@ -26,6 +38,34 @@ function NewTransaction() {
         type === "exchange" ||
         type === "sale_exchange";
 
+    useEffect(() => {
+    if (!clientSearch.trim()) {
+        setClientResults([]);
+        return;
+    }
+
+    const timeout = setTimeout(
+        async () => {
+            setIsSearchingClients(true);
+
+            try {
+                const results = await getClients(
+                    clientSearch.trim()
+                );
+
+                setClientResults(results);
+            } catch (error) {
+                console.error(error);
+                setClientResults([]);
+            } finally {
+                setIsSearchingClients(false);
+            }
+        },
+        250
+    );
+
+    return () => clearTimeout(timeout);
+}, [clientSearch]);
 
     function updateAmount(index, field, value) {
         setAmounts((current) =>
@@ -120,11 +160,30 @@ function NewTransaction() {
             return;
         }
 
+        let client = selectedClient;
+
+        if (!client && clientSearch.trim()) {
+            try {
+                client = await createClient({
+                    name: clientSearch.trim(),
+                });
+            } catch (error) {
+                console.error(error);
+
+                toast.error(
+                    "No se pudo guardar el cliente."
+                );
+
+                return;
+            }
+        }
+
         setIsSubmitting(true);
 
         try {
             await createTransaction({
                 type,
+                client: client?.id || null,
                 description,
                 exchange_amount:
                     isExchange
@@ -170,30 +229,6 @@ function NewTransaction() {
                     border-[var(--border)]
                     pb-6
                 ">
-
-                    <button
-                        type="button"
-                        onClick={() => navigate("/")}
-                        className="
-                            mb-5
-                            inline-flex
-                            items-center
-                            gap-2
-                            text-sm
-                            font-medium
-                            text-[var(--text-secondary)]
-                            transition
-                            hover:text-[var(--text-primary)]
-                        "
-                    >
-                        <span aria-hidden="true">
-                            ←
-                        </span>
-
-                        Volver al inicio
-                    </button>
-
-
                     <div>
                         <p className="
                             text-sm
@@ -396,9 +431,6 @@ function NewTransaction() {
                                     </div>
 
                                 </div>
-
-                            </section>
-
 
                             {/* EXCHANGE */}
 
@@ -722,6 +754,222 @@ function NewTransaction() {
                                 </div>
 
                             </section>
+                            
+                            </section>
+
+                            <section className="
+                                border
+                                border-[var(--border)]
+                                bg-[var(--surface)]
+                            ">
+
+                                <div className="
+                                    border-b
+                                    border-[var(--border)]
+                                    px-6
+                                    py-5
+                                ">
+                                    <h2 className="
+                                        font-semibold
+                                        text-[var(--text-primary)]
+                                    ">
+                                        Cliente
+                                    </h2>
+
+                                    <p className="
+                                        mt-1
+                                        text-sm
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        Asociá esta operación a un cliente.
+                                    </p>
+                                </div>
+
+
+                                <div className="relative p-6">
+
+                                    {selectedClient ? (
+
+                                        <div className="
+                                            flex
+                                            items-center
+                                            justify-between
+                                            border
+                                            border-[var(--border)]
+                                            bg-[var(--surface-muted)]
+                                            px-4
+                                            py-3
+                                        ">
+
+                                            <div>
+                                                <p className="
+                                                    text-sm
+                                                    font-semibold
+                                                    text-[var(--text-primary)]
+                                                ">
+                                                    {selectedClient.name}
+                                                </p>
+
+                                                {selectedClient.phone && (
+                                                    <p className="
+                                                        mt-1
+                                                        text-xs
+                                                        text-[var(--text-secondary)]
+                                                    ">
+                                                        {selectedClient.phone}
+                                                    </p>
+                                                )}
+                                            </div>
+
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedClient(null);
+                                                    setClientSearch("");
+                                                }}
+                                                className="
+                                                    text-sm
+                                                    font-medium
+                                                    text-[var(--danger)]
+                                                    hover:underline
+                                                "
+                                            >
+                                                Cambiar
+                                            </button>
+
+                                        </div>
+
+                                    ) : (
+
+                                        <>
+                                            <label
+                                                htmlFor="client"
+                                                className="
+                                                    text-sm
+                                                    font-medium
+                                                    text-[var(--text-primary)]
+                                                "
+                                            >
+                                                Buscar cliente
+                                            </label>
+
+                                            <input
+                                                id="client"
+                                                value={clientSearch}
+                                                onChange={(event) => {
+                                                    setClientSearch(
+                                                        event.target.value
+                                                    );
+                                                }}
+                                                className="
+                                                    mt-2
+                                                    w-full
+                                                    rounded-md
+                                                    border
+                                                    border-[var(--border)]
+                                                    bg-[var(--background)]
+                                                    px-3
+                                                    py-2.5
+                                                    text-[var(--text-primary)]
+                                                    outline-none
+                                                    transition
+                                                    focus:border-[var(--primary)]
+                                                    focus:ring-2
+                                                    focus:ring-[var(--primary)]/20
+                                                "
+                                                placeholder="Nombre del cliente"
+                                                autoComplete="off"
+                                            />
+
+
+                                            {clientSearch.trim() && (
+                                            <>
+                                                {isSearchingClients ? (
+                                                    <p className="
+                                                        mt-2
+                                                        text-xs
+                                                        text-[var(--text-secondary)]
+                                                    ">
+                                                        Buscando clientes...
+                                                    </p>
+                                                ) : clientResults.length > 0 ? (
+                                                    <div className="
+                                                        absolute
+                                                        left-6
+                                                        right-6
+                                                        top-[100%]
+                                                        z-20
+                                                        border
+                                                        border-[var(--border)]
+                                                        bg-[var(--surface)]
+                                                        shadow-lg
+                                                    ">
+                                                        {clientResults.map((client) => (
+                                                            <button
+                                                                key={client.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedClient(client);
+                                                                    setClientSearch(client.name);
+                                                                    setClientResults([]);
+                                                                }}
+                                                                className="
+                                                                    flex
+                                                                    w-full
+                                                                    items-center
+                                                                    justify-between
+                                                                    border-b
+                                                                    border-[var(--border)]
+                                                                    px-4
+                                                                    py-3
+                                                                    text-left
+                                                                    transition
+                                                                    hover:bg-[var(--surface-accent)]
+                                                                "
+                                                            >
+                                                                <span>
+                                                                    <span className="
+                                                                        block
+                                                                        text-sm
+                                                                        font-medium
+                                                                        text-[var(--text-primary)]
+                                                                    ">
+                                                                        {client.name}
+                                                                    </span>
+
+                                                                    {client.phone && (
+                                                                        <span className="
+                                                                            mt-1
+                                                                            block
+                                                                            text-xs
+                                                                            text-[var(--text-secondary)]
+                                                                        ">
+                                                                            {client.phone}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="
+                                                        mt-2
+                                                        text-xs
+                                                        text-[var(--warning)]
+                                                    ">
+                                                        No existe un cliente con ese nombre. Se creará al registrar la operación.
+                                                    </p>
+                                                )}
+                                            </>
+                                        )}
+                                        </>
+                                    )}
+
+                                </div>
+
+                            </section>
+
 
                         </div>
 

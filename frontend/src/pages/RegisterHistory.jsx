@@ -66,19 +66,6 @@ function RegisterHistory() {
                 mx-auto
                 max-w-4xl
             ">
-
-                <button
-                    onClick={() => navigate("/")}
-                    className="
-                        text-sm
-                        font-medium
-                        text-[var(--primary)]
-                    "
-                >
-                    ← Volver
-                </button>
-
-
                 <h1 className="
                     mt-4
                     text-3xl
@@ -88,14 +75,12 @@ function RegisterHistory() {
                     Historial de cierres
                 </h1>
 
-
                 <p className="
                     mt-2
                     text-[var(--text-secondary)]
                 ">
                     Registro de cajas cerradas.
                 </p>
-
 
                 {isLoading ? (
                     <div className="

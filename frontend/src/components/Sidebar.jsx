@@ -241,6 +241,41 @@ function Sidebar({
                     Historial de cierres
                 </button>
 
+                <button
+                    type="button"
+                    onClick={() => navigate("/clients")}
+                    className={`
+                        flex
+                        w-full
+                        items-center
+                        rounded-lg
+                        border-l-2
+                        px-4
+                        py-3
+                        text-left
+                        text-sm
+                        transition
+                        ${
+                            isActive("/clients")
+                                ? `
+                                    border-[var(--primary)]
+                                    bg-[var(--surface-accent)]
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                `
+                                : `
+                                    border-transparent
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                    hover:bg-[var(--surface-accent)]
+                                    hover:text-[var(--text-primary)]
+                                `
+                        }
+                    `}
+                >
+                    Clientes
+                </button>
+
             </nav>
 
 

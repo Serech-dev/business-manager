@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import ClientList from "./pages/ClientList";
+import ClientDetail from "./pages/ClientDetail";
 import RegisterReport from "./pages/RegisterReport";
 import NewTransaction from "./pages/NewTransaction";
 import RegisterHistory from "./pages/RegisterHistory";
@@ -65,7 +67,14 @@ function App() {
                                 path="/registers/:id"
                                 element={<RegisterReport />}
                             />
-
+                            <Route
+                                path="/clients"
+                                element={<ClientList />}
+                            />
+                            <Route
+                                path="/clients/:id"
+                                element={<ClientDetail />}
+                            />
                         </Route>
 
                     </Route>
