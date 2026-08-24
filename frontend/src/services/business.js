@@ -106,6 +106,7 @@ export function getTransactionLabel(type) {
         provider: "Proveedor",
         expense: "Gasto",
         loss: "Pérdida",
+        payment: "Pagos de fiado",
     };
 
     return labels[type] || type;

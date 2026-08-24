@@ -11,9 +11,9 @@ from .models import (
 from .models import Client
 
 
-class ClientSerializer(
-    serializers.ModelSerializer
-):
+class ClientSerializer(serializers.ModelSerializer):
+    debt = serializers.SerializerMethodField()
+
     class Meta:
         model = Client
 
@@ -23,12 +23,36 @@ class ClientSerializer(
             "phone",
             "notes",
             "created_at",
+            "debt",
         ]
 
         read_only_fields = [
             "id",
             "created_at",
+            "debt",
         ]
+
+    def get_debt(self, obj):
+        debt = Decimal("0")
+
+        for transaction in obj.transactions.prefetch_related(
+            "amounts"
+        ):
+            if transaction.type == Transaction.Type.PAYMENT:
+                debt -= sum(
+                    amount.amount
+                    for amount in transaction.amounts.all()
+                )
+
+            else:
+                debt += sum(
+                    amount.amount
+                    for amount in transaction.amounts.all()
+                    if amount.method
+                    == TransactionAmount.Method.DEBT
+                )
+
+        return max(debt, Decimal("0"))
 
 class TransactionAmountSerializer(
     serializers.ModelSerializer
@@ -146,6 +170,31 @@ class TransactionSerializer(
                         "El monto de cambio es obligatorio."
                 })
 
+        if transaction_type == Transaction.Type.PAYMENT:
+            client = attrs.get(
+                "client",
+                getattr(self.instance, "client", None),
+            )
+
+            if client is None:
+                raise serializers.ValidationError({
+                    "client":
+                        "El pago de fiado requiere un cliente."
+                })
+
+        if transaction_type == Transaction.Type.PAYMENT:
+            amounts = attrs.get("amounts")
+
+            if amounts and any(
+                amount["method"]
+                == TransactionAmount.Method.DEBT
+                for amount in amounts
+            ):
+                raise serializers.ValidationError({
+                    "amounts":
+                        "Un pago de fiado no puede registrarse como fiado."
+                })
+
         return attrs
 
     def _calculate_exchange_fee(
@@ -260,6 +309,7 @@ class RegisterSerializer(
     total = serializers.SerializerMethodField()
     totals_by_method = serializers.SerializerMethodField()
     totals_by_type = serializers.SerializerMethodField()
+    fiado = serializers.SerializerMethodField()
 
     class Meta:
         model = Register
@@ -273,14 +323,18 @@ class RegisterSerializer(
             "total",
             "totals_by_method",
             "totals_by_type",
+            "fiado",
         ]
 
         read_only_fields = fields
 
     def _get_transactions(self, obj):
-        return obj.transactions.prefetch_related(
-            "amounts"
-        ).all()
+        return (
+            obj.transactions
+            .select_related("client")
+            .prefetch_related("amounts")
+            .all()
+        )
 
     def get_transaction_count(self, obj):
         return obj.transactions.count()
@@ -319,6 +373,73 @@ class RegisterSerializer(
             )
 
         return totals
+
+    def get_fiado(self, obj):
+        new_debt = 0
+        payments = 0
+        clients = {}
+
+        for transaction in self._get_transactions(obj):
+
+            # PAYMENT = money received against existing debt
+            if transaction.type == Transaction.Type.PAYMENT:
+                amount = sum(
+                    item.amount
+                    for item in transaction.amounts.all()
+                )
+
+                payments += amount
+
+                if transaction.client:
+                    client_id = transaction.client.id
+
+                    if client_id not in clients:
+                        clients[client_id] = {
+                            "client_id": client_id,
+                            "client_name": transaction.client.name,
+                            "debt": 0,
+                            "payments": 0,
+                            "net": 0,
+                        }
+
+                    clients[client_id]["payments"] += amount
+                    clients[client_id]["net"] -= amount
+
+                continue
+
+            # DEBT amounts = new fiado
+            debt_amount = sum(
+                item.amount
+                for item in transaction.amounts.all()
+                if item.method == TransactionAmount.Method.DEBT
+            )
+
+            if debt_amount <= 0:
+                continue
+
+            new_debt += debt_amount
+
+            if transaction.client:
+                client_id = transaction.client.id
+
+                if client_id not in clients:
+                    clients[client_id] = {
+                        "client_id": client_id,
+                        "client_name": transaction.client.name,
+                        "debt": 0,
+                        "payments": 0,
+                        "net": 0,
+                    }
+
+                clients[client_id]["debt"] += debt_amount
+                clients[client_id]["net"] += debt_amount
+
+        return {
+            "new_debt": new_debt,
+            "payments": payments,
+            "net": new_debt - payments,
+            "clients": list(clients.values()),
+        }
 
 
 class TransactionAmountReceivedSerializer(

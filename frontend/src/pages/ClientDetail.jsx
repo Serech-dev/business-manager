@@ -583,7 +583,6 @@ function ClientDetail() {
                                                 font-semibold
                                                 text-[var(--text-primary)]
                                             ">
-                                                $
                                                 {formatCurrency(
                                                     transaction.total
                                                 )}

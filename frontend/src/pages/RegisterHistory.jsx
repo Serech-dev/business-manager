@@ -152,7 +152,6 @@ function RegisterHistory() {
                                         text-lg
                                         text-[var(--text-primary)]
                                     ">
-                                        $
                                         {formatCurrency(
                                             register.total
                                         )}

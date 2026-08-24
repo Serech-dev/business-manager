@@ -385,6 +385,10 @@ function NewTransaction() {
                                             <option value="loss">
                                                 Pérdida
                                             </option>
+
+                                            <option value="payment">
+                                                Pago de fiado
+                                            </option>
                                         </select>
                                     </div>
 
