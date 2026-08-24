@@ -4,6 +4,7 @@ from django.db import transaction as db_transaction
 from rest_framework import serializers
 
 from .models import (
+    Provider,
     Register,
     Transaction,
     TransactionAmount,
@@ -91,6 +92,7 @@ class TransactionSerializer(
             "register",
             "type",
             "client",
+            "provider",
             "created_at",
             "description",
             "exchange_amount",
@@ -457,4 +459,23 @@ class TransactionAmountReceivedSerializer(
             "id",
             "method",
             "amount",
+        ]
+
+class ProviderSerializer(
+    serializers.ModelSerializer
+):
+    class Meta:
+        model = Provider
+
+        fields = [
+            "id",
+            "name",
+            "phone",
+            "notes",
+            "created_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
         ]

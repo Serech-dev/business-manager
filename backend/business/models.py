@@ -71,6 +71,40 @@ class Register(models.Model):
     def __str__(self):
         return f"Caja #{self.id}"
 
+class Provider(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="business_providers",
+    )
+
+    name = models.CharField(
+        max_length=150,
+    )
+
+    phone = models.CharField(
+        max_length=30,
+        blank=True,
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"],
+                name="unique_provider_per_user",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
 
 class Transaction(models.Model):
     class Type(models.TextChoices):
@@ -144,6 +178,14 @@ class Transaction(models.Model):
         related_name="transactions",
     )
 
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
+
     def __str__(self):
         return f"{self.get_type_display()} #{self.id}"
 
@@ -177,4 +219,6 @@ class TransactionAmount(models.Model):
 
     def __str__(self):
         return f"{self.method}: {self.amount}"
+
+
 

@@ -6,8 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Register, Transaction, TransactionAmount
+from .models import Provider, Register, Transaction, TransactionAmount
 from .serializers import (
+    ProviderSerializer,
     RegisterSerializer,
     TransactionAmountReceivedSerializer,
     TransactionSerializer,
@@ -322,3 +323,30 @@ class RegisterDetailView(
             )
         )
 
+class ProviderListCreateView(
+    generics.ListCreateAPIView
+):
+    serializer_class = ProviderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Provider.objects.filter(
+            user=self.request.user
+        ).order_by("name")
+
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user
+        )
+
+
+class ProviderDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = ProviderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Provider.objects.filter(
+            user=self.request.user
+        )
