@@ -70,39 +70,62 @@ function ClientList() {
             {/* HEADER */}
 
             <header className="
+                flex
+                items-end
+                justify-between
+                gap-6
                 border-b
                 border-[var(--border)]
                 pb-6
             ">
+                <div>
+                    <p className="
+                        text-xs
+                        font-semibold
+                        uppercase
+                        tracking-wider
+                        text-[var(--primary)]
+                    ">
+                        Clientes
+                    </p>
 
-                <p className="
-                    text-xs
-                    font-semibold
-                    uppercase
-                    tracking-wider
-                    text-[var(--primary)]
-                ">
-                    Gestión
-                </p>
+                    <h1 className="
+                        mt-1
+                        text-3xl
+                        font-bold
+                        tracking-tight
+                        text-[var(--text-primary)]
+                    ">
+                        Clientes
+                    </h1>
 
-                <h1 className="
-                    mt-1
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                    text-[var(--text-primary)]
-                ">
-                    Clientes
-                </h1>
+                    <p className="
+                        mt-2
+                        text-sm
+                        text-[var(--text-secondary)]
+                    ">
+                        Clientes registrados y seguimiento de fiados.
+                    </p>
+                </div>
 
-                <p className="
-                    mt-2
-                    text-sm
-                    text-[var(--text-secondary)]
-                ">
-                    Clientes registrados para operaciones y seguimiento.
-                </p>
-
+                <button
+                    type="button"
+                    onClick={() => navigate("/clients/new")}
+                    className="
+                        shrink-0
+                        rounded-lg
+                        bg-[var(--primary)]
+                        px-5
+                        py-3
+                        text-sm
+                        font-semibold
+                        text-white
+                        transition
+                        hover:bg-[var(--primary-hover)]
+                    "
+                >
+                    + Nuevo cliente
+                </button>
             </header>
 
 

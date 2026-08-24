@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
     getClient,
     getTransactions,
     updateClient,
+    createClient,
     getTransactionLabel,
     getMethodLabel,
 } from "../services/business";
@@ -13,11 +14,12 @@ import {
 import { formatCurrency } from "../utils/formatCurrency";
 
 
-function ClientDetail() {
+function ClientDetail({ isNewClient = false }) {
     const { id } = useParams();
-    const navigate = useNavigate();
 
-    const [client, setClient] = useState(null);
+    const [client, setClient] = useState(
+        isNewClient ? {} : null
+    );
     const [transactions, setTransactions] = useState([]);
 
     const [name, setName] = useState("");
@@ -27,8 +29,15 @@ function ClientDetail() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
+    const navigate = useNavigate();
+
     useEffect(() => {
         async function loadClient() {
+            if (isNewClient) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 const [
                     clientData,
@@ -39,6 +48,7 @@ function ClientDetail() {
                 ]);
 
                 setClient(clientData);
+
                 setTransactions(
                     transactionData.filter(
                         (transaction) =>
@@ -61,7 +71,7 @@ function ClientDetail() {
         }
 
         loadClient();
-    }, [id]);
+    }, [id, isNewClient]);
 
 
     async function handleSave(event) {
@@ -78,29 +88,39 @@ function ClientDetail() {
         setIsSaving(true);
 
         try {
-            const updatedClient =
-                await updateClient(id, {
-                    name: name.trim(),
-                    phone: phone.trim(),
-                    notes: notes.trim(),
-                });
+            const data = {
+                name: name.trim(),
+                phone: phone.trim(),
+                notes: notes.trim(),
+            };
 
-            setClient(updatedClient);
+            const savedClient = isNewClient
+                ? await createClient(data)
+                : await updateClient(id, data);
+
+            setClient(savedClient);
 
             toast.success(
-                "Cliente actualizado."
+                isNewClient
+                    ? "Cliente creado."
+                    : "Cliente actualizado."
             );
+
+            if (isNewClient) {
+                navigate(`/clients/${savedClient.id}`);
+            }
         } catch (error) {
             console.error(error);
 
             toast.error(
-                "No se pudo actualizar el cliente."
+                isNewClient
+                    ? "No se pudo crear el cliente."
+                    : "No se pudo actualizar el cliente."
             );
         } finally {
             setIsSaving(false);
         }
     }
-
 
     if (isLoading) {
         return (
@@ -116,11 +136,9 @@ function ClientDetail() {
         );
     }
 
-
     if (!client) {
         return null;
     }
-
 
     const debtTransactions =
         transactions.filter(
@@ -183,7 +201,9 @@ function ClientDetail() {
                     tracking-tight
                     text-[var(--text-primary)]
                 ">
-                    {client.name}
+                    {isNewClient
+                        ? "Nuevo cliente"
+                        : client.name}
                 </h1>
 
             </header>

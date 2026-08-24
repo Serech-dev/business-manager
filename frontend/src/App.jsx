@@ -72,6 +72,11 @@ function App() {
                                 element={<ClientList />}
                             />
                             <Route
+                                path="/clients/new"
+                                element={<ClientDetail isNewClient />}
+                            />
+
+                            <Route
                                 path="/clients/:id"
                                 element={<ClientDetail />}
                             />
