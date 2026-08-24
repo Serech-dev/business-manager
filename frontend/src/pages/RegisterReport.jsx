@@ -28,19 +28,14 @@ function RegisterReport() {
     const navigate = useNavigate();
     const { id } = useParams();
 
-    const [register, setRegister] =
-        useState(null);
-
-    const [isLoading, setIsLoading] =
-        useState(true);
+    const [register, setRegister] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
 
     useEffect(() => {
         async function loadRegister() {
             try {
-                const data =
-                    await getClosedRegister(id);
-
+                const data = await getClosedRegister(id);
                 setRegister(data);
             } catch (error) {
                 console.error(error);
@@ -85,6 +80,37 @@ function RegisterReport() {
     }
 
 
+    const totalsByMethod =
+        register.totals_by_method || {};
+
+    const totalsByType =
+        register.totals_by_type || {};
+
+    const fiado = register.fiado || {
+        new_debt: 0,
+        payments: 0,
+        net: 0,
+        clients: [],
+    };
+
+    const transactions =
+        register.transactions || [];
+
+
+    const moneyIn =
+        Number(register.money_in ?? register.total_in ?? register.income ?? 0);
+
+    const moneyOut =
+        Number(register.money_out ?? register.total_out ?? register.expenses ?? 0);
+
+    const netMovement =
+        Number(
+            register.net ??
+            register.net_movement ??
+            moneyIn - moneyOut
+        );
+
+
     return (
         <div className="
             min-h-screen
@@ -94,104 +120,328 @@ function RegisterReport() {
         ">
             <div className="
                 mx-auto
-                max-w-4xl
+                max-w-5xl
             ">
 
-                <div>
+                {/* HEADER */}
 
-                    <h1 className="
-                        text-3xl
-                        font-bold
-                        text-[var(--text-primary)]
+                <header>
+                    <p className="
+                        text-sm
+                        font-medium
+                        uppercase
+                        tracking-wider
+                        text-[var(--primary)]
                     ">
-                        Cierre de caja #{register.id}
-                    </h1>
+                        Historial de cajas
+                    </p>
 
                     <div className="
-                        mt-3
-                        space-y-1
-                        text-sm
-                        text-[var(--text-secondary)]
+                        mt-1
+                        flex
+                        flex-col
+                        gap-3
+                        sm:flex-row
+                        sm:items-end
+                        sm:justify-between
                     ">
-                        <p>
-                            Apertura:{" "}
-                            {formatDate(
-                                register.opened_at
-                            )}
+                        <div>
+                            <h1 className="
+                                text-3xl
+                                font-bold
+                                tracking-tight
+                                text-[var(--text-primary)]
+                            ">
+                                Cierre de caja #{register.id}
+                            </h1>
+
+                            <p className="
+                                mt-2
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                {register.transaction_count}{" "}
+                                {register.transaction_count === 1
+                                    ? "operación"
+                                    : "operaciones"}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                navigate("/registers")
+                            }
+                            className="
+                                self-start
+                                rounded-md
+                                border
+                                border-[var(--border)]
+                                bg-[var(--surface)]
+                                px-4
+                                py-2
+                                text-sm
+                                font-medium
+                                text-[var(--text-primary)]
+                                transition
+                                hover:bg-[var(--surface-accent)]
+                                sm:self-auto
+                            "
+                        >
+                            Volver al historial
+                        </button>
+                    </div>
+
+
+                    <div className="
+                        mt-5
+                        grid
+                        gap-3
+                        text-sm
+                        sm:grid-cols-2
+                    ">
+                        <div className="
+                            rounded-xl
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            px-4
+                            py-3
+                        ">
+                            <p className="
+                                text-xs
+                                uppercase
+                                tracking-wide
+                                text-[var(--text-secondary)]
+                            ">
+                                Apertura
+                            </p>
+
+                            <p className="
+                                mt-1
+                                font-medium
+                                text-[var(--text-primary)]
+                            ">
+                                {formatDate(
+                                    register.opened_at
+                                )}
+                            </p>
+                        </div>
+
+                        <div className="
+                            rounded-xl
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            px-4
+                            py-3
+                        ">
+                            <p className="
+                                text-xs
+                                uppercase
+                                tracking-wide
+                                text-[var(--text-secondary)]
+                            ">
+                                Cierre
+                            </p>
+
+                            <p className="
+                                mt-1
+                                font-medium
+                                text-[var(--text-primary)]
+                            ">
+                                {formatDate(
+                                    register.closed_at
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                </header>
+
+
+                {/* MONEY SUMMARY */}
+
+                <section className="
+                    mt-8
+                    grid
+                    gap-4
+                    sm:grid-cols-3
+                ">
+
+                    <div className="
+                        rounded-2xl
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-6
+                    ">
+                        <p className="
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Dinero ingresado
                         </p>
 
-                        <p>
-                            Cierre:{" "}
-                            {formatDate(
-                                register.closed_at
-                            )}
+                        <p className="
+                            mt-2
+                            text-3xl
+                            font-bold
+                            text-[var(--success)]
+                        ">
+                            +{formatCurrency(moneyIn)}
                         </p>
                     </div>
 
-                </div>
+
+                    <div className="
+                        rounded-2xl
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-6
+                    ">
+                        <p className="
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Dinero salido
+                        </p>
+
+                        <p className="
+                            mt-2
+                            text-3xl
+                            font-bold
+                            text-[var(--danger)]
+                        ">
+                            -{formatCurrency(moneyOut)}
+                        </p>
+                    </div>
 
 
-                <div className="
-                    mt-8
+                    <div className="
+                        rounded-2xl
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-6
+                    ">
+                        <p className="
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Movimiento neto
+                        </p>
+
+                        <p className={`
+                            mt-2
+                            text-3xl
+                            font-bold
+                            ${
+                                netMovement >= 0
+                                    ? "text-[var(--success)]"
+                                    : "text-[var(--danger)]"
+                            }
+                        `}>
+                            {netMovement >= 0 ? "+" : ""}
+                            {formatCurrency(netMovement)}
+                        </p>
+
+                        <p className="
+                            mt-2
+                            text-xs
+                            text-[var(--text-secondary)]
+                        ">
+                            Ingresos − salidas
+                        </p>
+                    </div>
+
+                </section>
+
+
+                {/* TOTAL */}
+
+                <section className="
+                    mt-4
                     rounded-2xl
+                    border
+                    border-[var(--border)]
                     bg-[var(--surface)]
                     p-6
                 ">
-                    <p className="
-                        text-sm
-                        text-[var(--text-secondary)]
+                    <div className="
+                        flex
+                        items-center
+                        justify-between
+                        gap-4
                     ">
-                        Total registrado
-                    </p>
+                        <div>
+                            <p className="
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Total registrado
+                            </p>
 
-                    <p className="
-                        mt-1
-                        text-3xl
-                        font-bold
-                        text-[var(--text-primary)]
-                    ">
-                        {formatCurrency(
-                            register.total
-                        )}
-                    </p>
+                            <p className="
+                                mt-1
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Suma de todos los movimientos
+                            </p>
+                        </div>
 
-                    <p className="
-                        mt-2
-                        text-sm
-                        text-[var(--text-secondary)]
-                    ">
-                        {register.transaction_count}{" "}
-                        {register.transaction_count === 1
-                            ? "operación"
-                            : "operaciones"}
-                    </p>
-                </div>
+                        <p className="
+                            text-2xl
+                            font-bold
+                            text-[var(--text-primary)]
+                        ">
+                            {formatCurrency(register.total)}
+                        </p>
+                    </div>
+                </section>
 
 
-                <section className="mt-8">
+                {/* PAYMENT METHODS */}
 
-                    <h2 className="
-                        text-xl
-                        font-bold
-                        text-[var(--text-primary)]
-                    ">
-                        Por medio de pago
-                    </h2>
+                <section className="mt-10">
+
+                    <div>
+                        <h2 className="
+                            text-xl
+                            font-bold
+                            text-[var(--text-primary)]
+                        ">
+                            Por medio de pago
+                        </h2>
+
+                        <p className="
+                            mt-1
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Distribución del dinero registrado según el medio utilizado.
+                        </p>
+                    </div>
+
 
                     <div className="
                         mt-4
                         grid
                         gap-3
                         sm:grid-cols-2
+                        lg:grid-cols-4
                     ">
                         {Object.entries(
-                            register.totals_by_method
+                            totalsByMethod
                         ).map(
                             ([method, amount]) => (
                                 <div
                                     key={method}
                                     className="
-                                        rounded-2xl
+                                        rounded-xl
+                                        border
+                                        border-[var(--border)]
                                         bg-[var(--surface)]
                                         p-5
                                     "
@@ -204,7 +454,7 @@ function RegisterReport() {
                                     </p>
 
                                     <p className="
-                                        mt-1
+                                        mt-2
                                         text-xl
                                         font-semibold
                                         text-[var(--text-primary)]
@@ -219,76 +469,139 @@ function RegisterReport() {
                 </section>
 
 
-                <section className="mt-8">
+                {/* TRANSACTION TYPES */}
 
-                    <h2 className="
-                        text-xl
-                        font-bold
-                        text-[var(--text-primary)]
-                    ">
-                        Por tipo de operación
-                    </h2>
+                <section className="mt-10">
+
+                    <div>
+                        <h2 className="
+                            text-xl
+                            font-bold
+                            text-[var(--text-primary)]
+                        ">
+                            Por tipo de operación
+                        </h2>
+
+                        <p className="
+                            mt-1
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Desglose de los movimientos registrados durante la caja.
+                        </p>
+                    </div>
+
 
                     <div className="
                         mt-4
                         grid
                         gap-3
                         sm:grid-cols-2
+                        lg:grid-cols-3
                     ">
                         {Object.entries(
-                            register.totals_by_type
+                            totalsByType
                         ).map(
-                            ([type, amount]) => (
-                                <div
-                                    key={type}
-                                    className="
-                                        rounded-2xl
-                                        bg-[var(--surface)]
-                                        p-5
-                                    "
-                                >
-                                    <p className="
-                                        text-sm
-                                        text-[var(--text-secondary)]
-                                    ">
-                                        {getTransactionLabel(type)}
-                                    </p>
+                            ([type, amount]) => {
+                                const isLoss =
+                                    type === "loss";
 
-                                    <p className="
-                                        mt-1
-                                        text-xl
-                                        font-semibold
-                                        text-[var(--text-primary)]
-                                    ">
-                                        {formatCurrency(amount)}
-                                    </p>
-                                </div>
-                            )
+                                const isProvider =
+                                    type === "provider";
+
+                                return (
+                                    <div
+                                        key={type}
+                                        className="
+                                            rounded-xl
+                                            border
+                                            border-[var(--border)]
+                                            bg-[var(--surface)]
+                                            p-5
+                                        "
+                                    >
+                                        <div className="
+                                            flex
+                                            items-center
+                                            justify-between
+                                            gap-3
+                                        ">
+                                            <p className="
+                                                text-sm
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                {getTransactionLabel(type)}
+                                            </p>
+
+                                            {isLoss && (
+                                                <span className="
+                                                    text-xs
+                                                    font-medium
+                                                    text-[var(--danger)]
+                                                ">
+                                                    Salida
+                                                </span>
+                                            )}
+
+                                            {isProvider && (
+                                                <span className="
+                                                    text-xs
+                                                    font-medium
+                                                    text-[var(--danger)]
+                                                ">
+                                                    Salida
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <p className={`
+                                            mt-2
+                                            text-xl
+                                            font-semibold
+                                            ${
+                                                isLoss ||
+                                                isProvider
+                                                    ? "text-[var(--danger)]"
+                                                    : "text-[var(--success)]"
+                                            }
+                                        `}>
+                                            {isLoss ||
+                                            isProvider
+                                                ? "-"
+                                                : "+"}
+                                            {formatCurrency(amount)}
+                                        </p>
+                                    </div>
+                                );
+                            }
                         )}
                     </div>
 
                 </section>
 
+
                 {/* FIADO */}
 
-                <section className="mt-8">
+                <section className="mt-10">
 
-                    <h2 className="
-                        text-xl
-                        font-bold
-                        text-[var(--text-primary)]
-                    ">
-                        Fiado
-                    </h2>
+                    <div>
+                        <h2 className="
+                            text-xl
+                            font-bold
+                            text-[var(--text-primary)]
+                        ">
+                            Fiado
+                        </h2>
 
-                    <p className="
-                        mt-1
-                        text-sm
-                        text-[var(--text-secondary)]
-                    ">
-                        Movimientos de fiado registrados
-                        durante esta caja.
-                    </p>
+                        <p className="
+                            mt-1
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Movimientos de deuda durante esta caja. No forman parte
+                            del dinero disponible en efectivo.
+                        </p>
+                    </div>
 
 
                     <div className="
@@ -301,7 +614,9 @@ function RegisterReport() {
                         {/* NEW DEBT */}
 
                         <div className="
-                            rounded-2xl
+                            rounded-xl
+                            border
+                            border-[var(--border)]
                             bg-[var(--surface)]
                             p-5
                         ">
@@ -313,14 +628,22 @@ function RegisterReport() {
                             </p>
 
                             <p className="
-                                mt-1
+                                mt-2
                                 text-xl
                                 font-semibold
-                                text-[var(--text-primary)]
+                                text-[var(--warning)]
                             ">
                                 {formatCurrency(
-                                    register.fiado.new_debt
+                                    fiado.new_debt
                                 )}
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Deuda generada
                             </p>
                         </div>
 
@@ -328,7 +651,9 @@ function RegisterReport() {
                         {/* PAYMENTS */}
 
                         <div className="
-                            rounded-2xl
+                            rounded-xl
+                            border
+                            border-[var(--border)]
                             bg-[var(--surface)]
                             p-5
                         ">
@@ -340,22 +665,30 @@ function RegisterReport() {
                             </p>
 
                             <p className="
-                                mt-1
+                                mt-2
                                 text-xl
                                 font-semibold
-                                text-[var(--text-primary)]
+                                text-[var(--success)]
                             ">
                                 {formatCurrency(
-                                    register.fiado.payments
+                                    fiado.payments
                                 )}
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Dinero ingresado
                             </p>
                         </div>
 
 
-                        {/* NET */}
+                        {/* NET DEBT MOVEMENT */}
 
                         <div className="
-                            rounded-2xl
+                            rounded-xl
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
@@ -365,18 +698,25 @@ function RegisterReport() {
                                 text-sm
                                 text-[var(--text-secondary)]
                             ">
-                                Movimiento neto
+                                Variación de deuda
                             </p>
 
                             <p className="
-                                mt-1
+                                mt-2
                                 text-xl
                                 font-semibold
                                 text-[var(--text-primary)]
                             ">
-                                {formatCurrency(
-                                    register.fiado.net
-                                )}
+                                {Number(fiado.net) > 0 ? "+" : ""}
+                                {formatCurrency(fiado.net)}
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Deuda generada − pagos
                             </p>
                         </div>
 
@@ -385,11 +725,13 @@ function RegisterReport() {
 
                     {/* CLIENT BREAKDOWN */}
 
-                    {register.fiado.clients.length > 0 && (
+                    {fiado.clients.length > 0 && (
                         <div className="
                             mt-4
                             overflow-hidden
-                            rounded-2xl
+                            rounded-xl
+                            border
+                            border-[var(--border)]
                             bg-[var(--surface)]
                         ">
 
@@ -412,8 +754,7 @@ function RegisterReport() {
                                 divide-y
                                 divide-[var(--border)]
                             ">
-
-                                {register.fiado.clients.map(
+                                {fiado.clients.map(
                                     (client) => (
                                         <div
                                             key={client.client_id}
@@ -435,13 +776,11 @@ function RegisterReport() {
                                             </p>
 
 
-                                            <div className="
-                                                text-sm
-                                            ">
+                                            <div className="text-sm">
                                                 <span className="
                                                     text-[var(--text-secondary)]
                                                 ">
-                                                    Monto fiado:{" "}
+                                                    Fiado:{" "}
                                                 </span>
 
                                                 <span className="
@@ -455,9 +794,7 @@ function RegisterReport() {
                                             </div>
 
 
-                                            <div className="
-                                                text-sm
-                                            ">
+                                            <div className="text-sm">
                                                 <span className="
                                                     text-[var(--text-secondary)]
                                                 ">
@@ -480,7 +817,10 @@ function RegisterReport() {
                                                 font-semibold
                                                 text-[var(--text-primary)]
                                             ">
-                                                Neto:  
+                                                Deuda neta:{" "}
+                                                {Number(client.net) > 0
+                                                    ? "+"
+                                                    : ""}
                                                 {formatCurrency(
                                                     client.net
                                                 )}
@@ -489,7 +829,6 @@ function RegisterReport() {
                                         </div>
                                     )
                                 )}
-
                             </div>
 
                         </div>
@@ -498,25 +837,176 @@ function RegisterReport() {
                 </section>
 
 
-                <button
-                    onClick={() =>
-                        navigate("/registers")
-                    }
-                    className="
-                        mt-8
-                        w-full
-                        rounded-xl
-                        border
-                        border-[var(--border)]
-                        bg-[var(--surface)]
-                        px-4
-                        py-3
-                        font-semibold
-                        text-[var(--text-primary)]
-                    "
-                >
-                    Volver al historial
-                </button>
+                {/* TRANSACTIONS */}
+
+                {transactions.length > 0 && (
+                    <section className="mt-10">
+
+                        <div>
+                            <h2 className="
+                                text-xl
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                Operaciones
+                            </h2>
+
+                            <p className="
+                                mt-1
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Detalle de todos los movimientos de esta caja.
+                            </p>
+                        </div>
+
+
+                        <div className="
+                            mt-4
+                            overflow-hidden
+                            rounded-xl
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                        ">
+                            <div className="
+                                divide-y
+                                divide-[var(--border)]
+                            ">
+                                {transactions.map(
+                                    (transaction) => {
+                                        const amount =
+                                            Number(
+                                                transaction.total ??
+                                                transaction.amount ??
+                                                0
+                                            );
+
+                                        const isOutgoing =
+                                            transaction.type === "loss" ||
+                                            transaction.type === "provider";
+
+                                        return (
+                                            <div
+                                                key={transaction.id}
+                                                className="
+                                                    px-5
+                                                    py-4
+                                                "
+                                            >
+                                                <div className="
+                                                    flex
+                                                    flex-col
+                                                    gap-2
+                                                    sm:flex-row
+                                                    sm:items-center
+                                                    sm:justify-between
+                                                ">
+                                                    <div>
+                                                        <p className="
+                                                            font-medium
+                                                            text-[var(--text-primary)]
+                                                        ">
+                                                            {getTransactionLabel(
+                                                                transaction.type
+                                                            )}
+                                                        </p>
+
+                                                        <div className="
+                                                            mt-1
+                                                            flex
+                                                            flex-wrap
+                                                            gap-x-3
+                                                            gap-y-1
+                                                            text-xs
+                                                            text-[var(--text-secondary)]
+                                                        ">
+                                                            {transaction.client_name && (
+                                                                <span>
+                                                                    Cliente:{" "}
+                                                                    {transaction.client_name}
+                                                                </span>
+                                                            )}
+
+                                                            {transaction.provider_name && (
+                                                                <span>
+                                                                    Proveedor:{" "}
+                                                                    {transaction.provider_name}
+                                                                </span>
+                                                            )}
+
+                                                            {transaction.description && (
+                                                                <span>
+                                                                    {transaction.description}
+                                                                </span>
+                                                            )}
+
+                                                            {transaction.created_at && (
+                                                                <span>
+                                                                    {formatDate(
+                                                                        transaction.created_at
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <p className={`
+                                                        text-lg
+                                                        font-semibold
+                                                        ${
+                                                            isOutgoing
+                                                                ? "text-[var(--danger)]"
+                                                                : "text-[var(--success)]"
+                                                        }
+                                                    `}>
+                                                        {isOutgoing
+                                                            ? "-"
+                                                            : "+"}
+                                                        {formatCurrency(
+                                                            amount
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                )}
+                            </div>
+                        </div>
+
+                    </section>
+                )}
+
+
+                <div className="
+                    mt-10
+                    border-t
+                    border-[var(--border)]
+                    pt-6
+                ">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            navigate("/registers")
+                        }
+                        className="
+                            w-full
+                            rounded-xl
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            px-4
+                            py-3
+                            font-semibold
+                            text-[var(--text-primary)]
+                            transition
+                            hover:bg-[var(--surface-accent)]
+                        "
+                    >
+                        Volver al historial
+                    </button>
+                </div>
 
             </div>
         </div>

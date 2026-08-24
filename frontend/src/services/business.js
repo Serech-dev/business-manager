@@ -125,12 +125,6 @@ export function getMethodLabel(method) {
 }
 
 
-export async function getClients() { 
-    const response = await api.get( "business/clients/" ); 
-    return response.data; 
-}
-
-
 export async function getClient(id) {
     const response = await api.get(
         `business/clients/${id}/`
@@ -154,6 +148,20 @@ export async function createClient(data) {
     const response = await api.post(
         "business/clients/",
         data
+    );
+
+    return response.data;
+}
+
+
+export async function getClients(search = "") {
+    const response = await api.get(
+        "business/clients/",
+        {
+            params: search
+                ? { search }
+                : {},
+        }
     );
 
     return response.data;

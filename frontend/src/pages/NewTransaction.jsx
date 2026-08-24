@@ -42,10 +42,13 @@ function NewTransaction() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-
     const isExchange =
         type === "exchange" ||
         type === "sale_exchange";
+
+    const needsClient =
+        type !== "provider" &&
+        type !== "loss";
 
 
     useEffect(() => {
@@ -82,7 +85,7 @@ function NewTransaction() {
 
 
     useEffect(() => {
-        if (!clientSearch.trim()) {
+        if (!needsClient || !clientSearch.trim()) {
             setClientResults([]);
             return;
         }
@@ -108,7 +111,7 @@ function NewTransaction() {
         );
 
         return () => clearTimeout(timeout);
-    }, [clientSearch]);
+    }, [clientSearch, needsClient]);
 
 
     function updateAmount(index, field, value) {
@@ -221,7 +224,11 @@ function NewTransaction() {
 
         let client = selectedClient;
 
-        if (!client && clientSearch.trim()) {
+        if (
+            needsClient &&
+            !client &&
+            clientSearch.trim()
+        ) {
             try {
                 client = await createClient({
                     name: clientSearch.trim(),
@@ -280,7 +287,9 @@ function NewTransaction() {
                 type,
 
                 client:
-                    client?.id || null,
+                    needsClient
+                        ? client?.id || null
+                        : null,
 
                 provider:
                     provider?.id || null,
@@ -326,15 +335,12 @@ function NewTransaction() {
                 max-w-6xl
             ">
 
-                {/* HEADER */}
-
                 <header className="
                     border-b
                     border-[var(--border)]
                     pb-6
                 ">
                     <div>
-
                         <p className="
                             text-sm
                             font-medium
@@ -363,7 +369,6 @@ function NewTransaction() {
                         ">
                             Registrá un movimiento de la caja actual.
                         </p>
-
                     </div>
                 </header>
 
@@ -372,15 +377,12 @@ function NewTransaction() {
                     onSubmit={handleSubmit}
                     className="mt-8"
                 >
-
                     <div className="
                         grid
                         gap-6
                         lg:grid-cols-[minmax(0,1fr)_320px]
                         lg:items-start
                     ">
-
-                        {/* MAIN FORM */}
 
                         <div className="space-y-6">
 
@@ -391,7 +393,6 @@ function NewTransaction() {
                                 border-[var(--border)]
                                 bg-[var(--surface)]
                             ">
-
                                 <div className="
                                     border-b
                                     border-[var(--border)]
@@ -414,14 +415,12 @@ function NewTransaction() {
                                     </p>
                                 </div>
 
-
                                 <div className="
                                     grid
                                     gap-6
                                     p-6
                                     md:grid-cols-2
                                 ">
-
                                     <div>
                                         <label
                                             htmlFor="type"
@@ -486,7 +485,6 @@ function NewTransaction() {
                                             <option value="loss">
                                                 Pérdida
                                             </option>
-
                                         </select>
                                     </div>
 
@@ -531,9 +529,7 @@ function NewTransaction() {
                                             placeholder="Opcional"
                                         />
                                     </div>
-
                                 </div>
-
                             </section>
 
 
@@ -545,7 +541,6 @@ function NewTransaction() {
                                     border-[var(--border)]
                                     bg-[var(--surface)]
                                 ">
-
                                     <div className="
                                         border-b
                                         border-[var(--border)]
@@ -568,11 +563,9 @@ function NewTransaction() {
                                         </p>
                                     </div>
 
-
                                     <div className="relative p-6">
 
                                         {selectedProvider ? (
-
                                             <div className="
                                                 flex
                                                 items-center
@@ -583,7 +576,6 @@ function NewTransaction() {
                                                 px-4
                                                 py-3
                                             ">
-
                                                 <div>
                                                     <p className="
                                                         text-sm
@@ -593,7 +585,6 @@ function NewTransaction() {
                                                         {selectedProvider.name}
                                                     </p>
                                                 </div>
-
 
                                                 <button
                                                     type="button"
@@ -610,11 +601,8 @@ function NewTransaction() {
                                                 >
                                                     Cambiar
                                                 </button>
-
                                             </div>
-
                                         ) : (
-
                                             <>
                                                 <label
                                                     htmlFor="provider"
@@ -626,7 +614,6 @@ function NewTransaction() {
                                                 >
                                                     Buscar proveedor
                                                 </label>
-
 
                                                 <input
                                                     id="provider"
@@ -656,11 +643,9 @@ function NewTransaction() {
                                                     autoComplete="off"
                                                 />
 
-
                                                 {providerSearch.trim() && (
                                                     <>
                                                         {isSearchingProviders ? (
-
                                                             <p className="
                                                                 mt-2
                                                                 text-xs
@@ -668,9 +653,7 @@ function NewTransaction() {
                                                             ">
                                                                 Buscando proveedores...
                                                             </p>
-
                                                         ) : providerResults.length > 0 ? (
-
                                                             <div className="
                                                                 absolute
                                                                 left-6
@@ -717,9 +700,7 @@ function NewTransaction() {
                                                                     )
                                                                 )}
                                                             </div>
-
                                                         ) : (
-
                                                             <p className="
                                                                 mt-2
                                                                 text-xs
@@ -727,30 +708,25 @@ function NewTransaction() {
                                                             ">
                                                                 No existe un proveedor con ese nombre. Se creará al registrar la operación.
                                                             </p>
-
                                                         )}
                                                     </>
                                                 )}
-
                                             </>
-
                                         )}
 
                                     </div>
-
                                 </section>
                             )}
 
 
                             {/* CLIENT */}
 
-                            {type !== "provider" && (
+                            {needsClient && (
                                 <section className="
                                     border
                                     border-[var(--border)]
                                     bg-[var(--surface)]
                                 ">
-
                                     <div className="
                                         border-b
                                         border-[var(--border)]
@@ -773,11 +749,9 @@ function NewTransaction() {
                                         </p>
                                     </div>
 
-
                                     <div className="relative p-6">
 
                                         {selectedClient ? (
-
                                             <div className="
                                                 flex
                                                 items-center
@@ -788,7 +762,6 @@ function NewTransaction() {
                                                 px-4
                                                 py-3
                                             ">
-
                                                 <div>
                                                     <p className="
                                                         text-sm
@@ -809,7 +782,6 @@ function NewTransaction() {
                                                     )}
                                                 </div>
 
-
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -825,11 +797,8 @@ function NewTransaction() {
                                                 >
                                                     Cambiar
                                                 </button>
-
                                             </div>
-
                                         ) : (
-
                                             <>
                                                 <label
                                                     htmlFor="client"
@@ -841,7 +810,6 @@ function NewTransaction() {
                                                 >
                                                     Buscar cliente
                                                 </label>
-
 
                                                 <input
                                                     id="client"
@@ -871,102 +839,129 @@ function NewTransaction() {
                                                     autoComplete="off"
                                                 />
 
-
                                                 {clientSearch.trim() && (
-                                                    <>
-                                                        {isSearchingClients ? (
+                                                <>
+                                                    {isSearchingClients ? (
 
-                                                            <p className="
-                                                                mt-2
-                                                                text-xs
-                                                                text-[var(--text-secondary)]
-                                                            ">
-                                                                Buscando clientes...
-                                                            </p>
+                                                        <p className="
+                                                            mt-2
+                                                            text-xs
+                                                            text-[var(--text-secondary)]
+                                                        ">
+                                                            Buscando clientes...
+                                                        </p>
 
-                                                        ) : clientResults.length > 0 ? (
+                                                    ) : (
 
-                                                            <div className="
-                                                                absolute
-                                                                left-6
-                                                                right-6
-                                                                top-[100%]
-                                                                z-20
-                                                                border
-                                                                border-[var(--border)]
-                                                                bg-[var(--surface)]
-                                                                shadow-lg
-                                                            ">
-                                                                {clientResults.map(
-                                                                    (client) => (
-                                                                        <button
-                                                                            key={client.id}
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                setSelectedClient(client);
-                                                                                setClientSearch(client.name);
-                                                                                setClientResults([]);
-                                                                            }}
-                                                                            className="
-                                                                                flex
-                                                                                w-full
-                                                                                items-center
-                                                                                justify-between
-                                                                                border-b
-                                                                                border-[var(--border)]
-                                                                                px-4
-                                                                                py-3
-                                                                                text-left
-                                                                                transition
-                                                                                hover:bg-[var(--surface-accent)]
-                                                                            "
-                                                                        >
-                                                                            <span>
-                                                                                <span className="
-                                                                                    block
-                                                                                    text-sm
-                                                                                    font-medium
-                                                                                    text-[var(--text-primary)]
-                                                                                ">
-                                                                                    {client.name}
-                                                                                </span>
+                                                        <div className="
+                                                            absolute
+                                                            left-6
+                                                            right-6
+                                                            top-[100%]
+                                                            z-20
+                                                            border
+                                                            border-[var(--border)]
+                                                            bg-[var(--surface)]
+                                                            shadow-lg
+                                                        ">
 
-                                                                                {client.phone && (
-                                                                                    <span className="
-                                                                                        mt-1
-                                                                                        block
-                                                                                        text-xs
-                                                                                        text-[var(--text-secondary)]
-                                                                                    ">
-                                                                                        {client.phone}
-                                                                                    </span>
-                                                                                )}
+                                                            {clientResults.map((client) => (
+                                                                <button
+                                                                    key={client.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setSelectedClient(client);
+                                                                        setClientSearch(client.name);
+                                                                        setClientResults([]);
+                                                                    }}
+                                                                    className="
+                                                                        flex
+                                                                        w-full
+                                                                        items-center
+                                                                        justify-between
+                                                                        border-b
+                                                                        border-[var(--border)]
+                                                                        px-4
+                                                                        py-3
+                                                                        text-left
+                                                                        transition
+                                                                        hover:bg-[var(--surface-accent)]
+                                                                    "
+                                                                >
+                                                                    <span>
+                                                                        <span className="
+                                                                            block
+                                                                            text-sm
+                                                                            font-medium
+                                                                            text-[var(--text-primary)]
+                                                                        ">
+                                                                            {client.name}
+                                                                        </span>
+
+                                                                        {client.phone && (
+                                                                            <span className="
+                                                                                mt-1
+                                                                                block
+                                                                                text-xs
+                                                                                text-[var(--text-secondary)]
+                                                                            ">
+                                                                                {client.phone}
                                                                             </span>
-                                                                        </button>
-                                                                    )
-                                                                )}
-                                                            </div>
+                                                                        )}
+                                                                    </span>
+                                                                </button>
+                                                            ))}
 
-                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedClient({
+                                                                        id: null,
+                                                                        name: clientSearch.trim(),
+                                                                    });
 
-                                                            <p className="
-                                                                mt-2
-                                                                text-xs
-                                                                text-[var(--warning)]
-                                                            ">
-                                                                No existe un cliente con ese nombre. Se creará al registrar la operación.
-                                                            </p>
+                                                                    setClientResults([]);
+                                                                }}
+                                                                className="
+                                                                    flex
+                                                                    w-full
+                                                                    items-center
+                                                                    px-4
+                                                                    py-3
+                                                                    text-left
+                                                                    transition
+                                                                    hover:bg-[var(--surface-accent)]
+                                                                "
+                                                            >
+                                                                <span>
+                                                                    <span className="
+                                                                        block
+                                                                        text-sm
+                                                                        font-semibold
+                                                                        text-[var(--primary)]
+                                                                    ">
+                                                                        + Crear "{clientSearch.trim()}"
+                                                                    </span>
 
-                                                        )}
-                                                    </>
-                                                )}
+                                                                    <span className="
+                                                                        mt-1
+                                                                        block
+                                                                        text-xs
+                                                                        text-[var(--text-secondary)]
+                                                                    ">
+                                                                        Nuevo cliente
+                                                                    </span>
+                                                                </span>
+                                                            </button>
 
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                             </>
-
                                         )}
 
                                     </div>
-
                                 </section>
                             )}
 
@@ -979,7 +974,6 @@ function NewTransaction() {
                                     border-[var(--border)]
                                     bg-[var(--surface)]
                                 ">
-
                                     <div className="
                                         border-b
                                         border-[var(--border)]
@@ -1001,7 +995,6 @@ function NewTransaction() {
                                             Indicá el monto sobre el cual se calcula la comisión.
                                         </p>
                                     </div>
-
 
                                     <div className="
                                         max-w-md
@@ -1064,7 +1057,6 @@ function NewTransaction() {
                                             />
                                         </div>
 
-
                                         {exchangeAmount && (
                                             <div className="
                                                 mt-4
@@ -1091,9 +1083,7 @@ function NewTransaction() {
                                                 </strong>
                                             </div>
                                         )}
-
                                     </div>
-
                                 </section>
                             )}
 
@@ -1105,7 +1095,6 @@ function NewTransaction() {
                                 border-[var(--border)]
                                 bg-[var(--surface)]
                             ">
-
                                 <div className="
                                     flex
                                     items-start
@@ -1116,7 +1105,6 @@ function NewTransaction() {
                                     px-6
                                     py-5
                                 ">
-
                                     <div>
                                         <h2 className="
                                             font-semibold
@@ -1133,7 +1121,6 @@ function NewTransaction() {
                                             Podés dividir la operación entre distintos medios de pago.
                                         </p>
                                     </div>
-
 
                                     <button
                                         type="button"
@@ -1155,9 +1142,7 @@ function NewTransaction() {
                                     >
                                         + Agregar
                                     </button>
-
                                 </div>
-
 
                                 <div className="
                                     divide-y
@@ -1174,7 +1159,6 @@ function NewTransaction() {
                                                     p-6
                                                 "
                                             >
-
                                                 <select
                                                     value={item.method}
                                                     onChange={(event) =>
@@ -1215,7 +1199,6 @@ function NewTransaction() {
                                                         Fiado
                                                     </option>
                                                 </select>
-
 
                                                 <div className="
                                                     relative
@@ -1265,7 +1248,6 @@ function NewTransaction() {
                                                     />
                                                 </div>
 
-
                                                 {amounts.length > 1 && (
                                                     <button
                                                         type="button"
@@ -1286,12 +1268,10 @@ function NewTransaction() {
                                                         ×
                                                     </button>
                                                 )}
-
                                             </div>
                                         )
                                     )}
                                 </div>
-
                             </section>
 
                         </div>
@@ -1303,13 +1283,11 @@ function NewTransaction() {
                             lg:sticky
                             lg:top-6
                         ">
-
                             <section className="
                                 border
                                 border-[var(--border)]
                                 bg-[var(--surface)]
                             ">
-
                                 <div className="
                                     border-b
                                     border-[var(--border)]
@@ -1347,13 +1325,11 @@ function NewTransaction() {
                                     </p>
                                 </div>
 
-
                                 <div className="
                                     space-y-3
                                     px-6
                                     py-5
                                 ">
-
                                     <div className="
                                         flex
                                         justify-between
@@ -1376,13 +1352,11 @@ function NewTransaction() {
                                                 exchange: "Cambio",
                                                 sale_exchange: "Venta + Cambio",
                                                 provider: "Proveedor",
-                                                expense: "Gasto",
                                                 loss: "Pérdida",
                                                 payment: "Pago de fiado",
                                             }[type]}
                                         </span>
                                     </div>
-
 
                                     {selectedClient && (
                                         <div className="
@@ -1407,7 +1381,6 @@ function NewTransaction() {
                                         </div>
                                     )}
 
-
                                     {selectedProvider && (
                                         <div className="
                                             flex
@@ -1431,7 +1404,6 @@ function NewTransaction() {
                                         </div>
                                     )}
 
-
                                     {isExchange && (
                                         <div className="
                                             flex
@@ -1454,9 +1426,7 @@ function NewTransaction() {
                                             </span>
                                         </div>
                                     )}
-
                                 </div>
-
 
                                 <div className="
                                     border-t
@@ -1485,7 +1455,6 @@ function NewTransaction() {
                                             : "Registrar operación"}
                                     </button>
 
-
                                     <button
                                         type="button"
                                         onClick={() => navigate("/")}
@@ -1506,15 +1475,11 @@ function NewTransaction() {
                                         Cancelar
                                     </button>
                                 </div>
-
                             </section>
-
                         </aside>
 
                     </div>
-
                 </form>
-
             </div>
         </div>
     );

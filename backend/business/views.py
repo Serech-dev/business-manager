@@ -42,7 +42,7 @@ class ClientListCreateView(generics.ListCreateAPIView):
 
         if search:
             queryset = queryset.filter(
-                name__icontains=search
+                name__istartswith=search
             )
 
         return queryset

@@ -10,6 +10,17 @@ import {
 import { formatCurrency } from "../utils/formatCurrency";
 
 
+function formatDate(value) {
+    return new Intl.DateTimeFormat(
+        "es-AR",
+        {
+            dateStyle: "short",
+            timeStyle: "short",
+        }
+    ).format(new Date(value));
+}
+
+
 function TransactionCard({
     transaction,
     onDelete,
@@ -19,9 +30,7 @@ function TransactionCard({
         useState(null);
 
 
-    async function handleReceivedChange(
-        amount
-    ) {
+    async function handleReceivedChange(amount) {
         setUpdatingAmountId(amount.id);
 
         try {
@@ -32,17 +41,17 @@ function TransactionCard({
                 );
 
             onTransactionUpdate({
-            ...transaction,
-            amounts: transaction.amounts.map(
-                (currentAmount) =>
-                    currentAmount.id === amount.id
-                        ? {
-                            ...currentAmount,
-                            ...updatedAmount,
-                        }
-                        : currentAmount
-            ),
-        });
+                ...transaction,
+                amounts: transaction.amounts.map(
+                    (currentAmount) =>
+                        currentAmount.id === amount.id
+                            ? {
+                                ...currentAmount,
+                                ...updatedAmount,
+                            }
+                            : currentAmount
+                ),
+            });
         } catch (error) {
             console.error(error);
 
@@ -55,12 +64,31 @@ function TransactionCard({
     }
 
 
+    const isProvider =
+        transaction.type === "provider";
+
+    const isLoss =
+        transaction.type === "loss";
+
+    const isPayment =
+        transaction.type === "payment";
+
+    const isIncoming =
+        !isProvider &&
+        !isLoss;
+
+    const title = isProvider
+        ? `Proveedor · ${transaction.provider?.name || "Sin proveedor"}`
+        : transaction.client?.name
+            ? `${getTransactionLabel(transaction.type)} · ${transaction.client.name}`
+            : getTransactionLabel(transaction.type);
+
+
     return (
         <article className="
             border
             border-[var(--border)]
             bg-[var(--surface)]
-            p-5
             transition
             hover:bg-[var(--surface-accent)]
         ">
@@ -71,182 +99,311 @@ function TransactionCard({
                 flex
                 items-start
                 justify-between
-                gap-6
+                gap-5
+                px-5
+                py-4
             ">
 
                 <div className="min-w-0">
 
+                    <h4 className="
+                        truncate
+                        font-semibold
+                        text-[var(--text-primary)]
+                    ">
+                        {title}
+                    </h4>
+
+
                     <div className="
+                        mt-1
                         flex
+                        flex-wrap
                         items-center
-                        gap-3
+                        gap-x-2
+                        gap-y-1
+                        text-xs
+                        text-[var(--text-secondary)]
                     ">
 
-                        <h4 className="
-                            font-semibold
-                            text-[var(--text-primary)]
-                        ">
-                            {getTransactionLabel(
-                                transaction.type
-                            )}
-                        </h4>
+                        {transaction.created_at && (
+                            <span>
+                                {formatDate(
+                                    transaction.created_at
+                                )}
+                            </span>
+                        )}
 
-                        <span className="
-                            text-xs
-                            text-[var(--text-secondary)]
-                        ">
+                        <span>
                             #{transaction.id}
                         </span>
 
                     </div>
 
-
-                    {transaction.description && (
-                        <p className="
-                            mt-1
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            {transaction.description}
-                        </p>
-                    )}
-
                 </div>
 
 
-                <strong className="
+                <div className="
                     shrink-0
-                    text-lg
-                    font-semibold
-                    text-[var(--text-primary)]
+                    text-right
                 ">
-                    {formatCurrency(
-                        transaction.total
-                    )}
-                </strong>
+
+                    <strong className={`
+                        text-lg
+                        font-semibold
+                        ${
+                            isIncoming
+                                ? "text-[var(--success)]"
+                                : isLoss || isProvider
+                                    ? "text-[var(--danger)]"
+                                    : "text-[var(--text-primary)]"
+                        }
+                    `}>
+                        {isIncoming ? "+" : "-"}
+                        {formatCurrency(
+                            transaction.total
+                        )}
+                    </strong>
+
+                </div>
 
             </div>
+
+
+            {/* DESCRIPTION */}
+
+            {transaction.description && (
+                <div className="
+                    border-t
+                    border-[var(--border)]
+                    px-5
+                    py-3
+                ">
+                    <p className="
+                        text-sm
+                        text-[var(--text-secondary)]
+                    ">
+                        {transaction.description}
+                    </p>
+                </div>
+            )}
+
+
+            {/* CONTEXT */}
+
+            {(transaction.exchange_amount ||
+                transaction.provider?.name ||
+                transaction.client?.name) && (
+
+                <div className="
+                    flex
+                    flex-wrap
+                    gap-x-5
+                    gap-y-2
+                    border-t
+                    border-[var(--border)]
+                    px-5
+                    py-3
+                    text-sm
+                ">
+
+                    {transaction.client?.name && (
+                        <div>
+                            <span className="
+                                text-[var(--text-secondary)]
+                            ">
+                                Cliente:{" "}
+                            </span>
+
+                            <span className="
+                                font-medium
+                                text-[var(--text-primary)]
+                            ">
+                                {transaction.client.name}
+                            </span>
+                        </div>
+                    )}
+
+
+                    {transaction.provider?.name && (
+                        <div>
+                            <span className="
+                                text-[var(--text-secondary)]
+                            ">
+                                Proveedor:{" "}
+                            </span>
+
+                            <span className="
+                                font-medium
+                                text-[var(--text-primary)]
+                            ">
+                                {transaction.provider.name}
+                            </span>
+                        </div>
+                    )}
+
+
+                    {transaction.exchange_amount && (
+                        <div>
+                            <span className="
+                                text-[var(--text-secondary)]
+                            ">
+                                Cambio:{" "}
+                            </span>
+
+                            <span className="
+                                font-medium
+                                text-[var(--text-primary)]
+                            ">
+                                {formatCurrency(
+                                    transaction.exchange_amount
+                                )}
+                            </span>
+                        </div>
+                    )}
+
+                </div>
+            )}
 
 
             {/* PAYMENTS */}
 
             <div className="
-                mt-5
-                space-y-2
+                border-t
+                border-[var(--border)]
+                px-5
+                py-3
             ">
 
-                {transaction.amounts.map(
-                    (amount) => {
+                <div className="
+                    space-y-2
+                ">
 
-                        const isTransfer =
-                            amount.method === "transfer";
+                    {transaction.amounts.map(
+                        (amount) => {
 
-                        const isUpdating =
-                            updatingAmountId ===
-                            amount.id;
+                            const isTransfer =
+                                amount.method === "transfer";
 
-
-                        return (
-                            <div
-                                key={amount.id}
-                                className="
-                                    flex
-                                    flex-wrap
-                                    items-center
-                                    gap-x-3
-                                    gap-y-2
-                                    text-sm
-                                "
-                            >
-
-                                <span className="
-                                    font-medium
-                                    text-[var(--text-primary)]
-                                ">
-                                    {getMethodLabel(
-                                        amount.method
-                                    )}
-                                </span>
+                            const isUpdating =
+                                updatingAmountId ===
+                                amount.id;
 
 
-                                <span className="
-                                    text-[var(--text-secondary)]
-                                ">
-                                    {formatCurrency(
-                                        amount.amount
-                                    )}
-                                </span>
+                            return (
+                                <div
+                                    key={amount.id}
+                                    className="
+                                        flex
+                                        flex-wrap
+                                        items-center
+                                        gap-x-3
+                                        gap-y-1
+                                        text-sm
+                                    "
+                                >
 
-
-                                {isTransfer && (
-                                    <>
-                                        <span className="
-                                            text-[var(--text-secondary)]
-                                        ">
-                                            ·
-                                        </span>
-
-                                        {amount.received ? (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    handleReceivedChange(
-                                                        amount
-                                                    )
-                                                }
-                                                disabled={
-                                                    isUpdating
-                                                }
-                                                className="
-                                                    text-xs
-                                                    font-semibold
-                                                    text-[var(--success-text)]
-                                                    transition
-                                                    hover:underline
-                                                    disabled:cursor-not-allowed
-                                                    disabled:opacity-50
-                                                "
-                                            >
-                                                ✓ Recibida
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    handleReceivedChange(
-                                                        amount
-                                                    )
-                                                }
-                                                disabled={
-                                                    isUpdating
-                                                }
-                                                className="
-                                                    border
-                                                    border-[var(--warning)]
-                                                    px-2.5
-                                                    py-1
-                                                    text-xs
-                                                    font-semibold
-                                                    text-[var(--warning)]
-                                                    transition
-                                                    hover:bg-[var(--surface-accent)]
-                                                    disabled:cursor-not-allowed
-                                                    disabled:opacity-50
-                                                "
-                                            >
-                                                {isUpdating
-                                                    ? "Actualizando..."
-                                                    : "⚠ Pendiente · Marcar recibida"}
-                                            </button>
+                                    <span className="
+                                        font-medium
+                                        text-[var(--text-primary)]
+                                    ">
+                                        {getMethodLabel(
+                                            amount.method
                                         )}
+                                    </span>
 
-                                    </>
-                                )}
 
-                            </div>
-                        );
-                    }
-                )}
+                                    <span className="
+                                        text-[var(--text-secondary)]
+                                    ">
+                                        {formatCurrency(
+                                            amount.amount
+                                        )}
+                                    </span>
+
+
+                                    {amount.method === "debt" && (
+                                        <span className="
+                                            text-xs
+                                            font-medium
+                                            text-[var(--warning)]
+                                        ">
+                                            Fiado
+                                        </span>
+                                    )}
+
+
+                                    {isTransfer && (
+                                        <>
+                                            <span className="
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                ·
+                                            </span>
+
+                                            {amount.received ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleReceivedChange(
+                                                            amount
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        isUpdating
+                                                    }
+                                                    className="
+                                                        text-xs
+                                                        font-semibold
+                                                        text-[var(--success)]
+                                                        transition
+                                                        hover:underline
+                                                        disabled:cursor-not-allowed
+                                                        disabled:opacity-50
+                                                    "
+                                                >
+                                                    ✓ Recibida
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleReceivedChange(
+                                                            amount
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        isUpdating
+                                                    }
+                                                    className="
+                                                        border
+                                                        border-[var(--warning)]
+                                                        px-2
+                                                        py-1
+                                                        text-xs
+                                                        font-semibold
+                                                        text-[var(--warning)]
+                                                        transition
+                                                        hover:bg-[var(--surface-accent)]
+                                                        disabled:cursor-not-allowed
+                                                        disabled:opacity-50
+                                                    "
+                                                >
+                                                    {isUpdating
+                                                        ? "Actualizando..."
+                                                        : "Pendiente · Marcar recibida"}
+                                                </button>
+                                            )}
+
+                                        </>
+                                    )}
+
+                                </div>
+                            );
+                        }
+                    )}
+
+                </div>
 
             </div>
 
@@ -254,13 +411,28 @@ function TransactionCard({
             {/* FOOTER */}
 
             <div className="
-                mt-5
                 flex
-                justify-end
+                items-center
+                justify-between
                 border-t
                 border-[var(--border)]
-                pt-4
+                px-5
+                py-3
             ">
+
+                <span className="
+                    text-xs
+                    text-[var(--text-secondary)]
+                ">
+                    {isPayment
+                        ? "Pago de deuda"
+                        : isLoss
+                            ? "Salida de caja"
+                            : isProvider
+                                ? "Salida de caja"
+                                : "Movimiento"}
+                </span>
+
 
                 <button
                     type="button"
