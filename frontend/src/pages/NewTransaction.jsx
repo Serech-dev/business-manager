@@ -475,21 +475,18 @@ function NewTransaction() {
                                                 Venta + Cambio
                                             </option>
 
-                                            <option value="provider">
-                                                Proveedor
+                                            <option value="payment">
+                                                Pago de fiado
                                             </option>
 
-                                            <option value="expense">
-                                                Gasto
+                                            <option value="provider">
+                                                Proveedor
                                             </option>
 
                                             <option value="loss">
                                                 Pérdida
                                             </option>
 
-                                            <option value="payment">
-                                                Pago de fiado
-                                            </option>
                                         </select>
                                     </div>
 

@@ -5,6 +5,13 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import (
+    Q,
+    Sum,
+    Case,
+    When,
+    DecimalField,
+)
 
 from .models import Provider, Register, Transaction, TransactionAmount
 from .serializers import (
@@ -330,9 +337,16 @@ class ProviderListCreateView(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Provider.objects.filter(
-            user=self.request.user
-        ).order_by("name")
+        return (
+            Provider.objects
+            .filter(
+                user=self.request.user
+            )
+            .prefetch_related(
+                "transactions__amounts"
+            )
+            .order_by("name")
+        )
 
     def perform_create(self, serializer):
         serializer.save(
@@ -347,6 +361,12 @@ class ProviderDetailView(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Provider.objects.filter(
-            user=self.request.user
+        return (
+            Provider.objects
+            .filter(
+                user=self.request.user
+            )
+            .prefetch_related(
+                "transactions__amounts"
+            )
         )

@@ -108,9 +108,7 @@ function ProviderDetail({ isNewProvider = false }) {
             );
 
             if (isNewProvider) {
-                navigate(
-                    `/providers/`
-                );
+                navigate("/providers");
             }
         } catch (error) {
             console.error(error);
@@ -144,6 +142,65 @@ function ProviderDetail({ isNewProvider = false }) {
     if (!provider) {
         return null;
     }
+
+
+    const totalAmount = transactions.reduce(
+        (total, transaction) =>
+            total +
+            Number(transaction.total || 0),
+        0
+    );
+
+
+    const cashTotal = transactions.reduce(
+        (total, transaction) =>
+            total +
+            (transaction.amounts || []).reduce(
+                (amountTotal, amount) =>
+                    amountTotal +
+                    (
+                        amount.method === "cash"
+                            ? Number(amount.amount) || 0
+                            : 0
+                    ),
+                0
+            ),
+        0
+    );
+
+
+    const transferTotal = transactions.reduce(
+        (total, transaction) =>
+            total +
+            (transaction.amounts || []).reduce(
+                (amountTotal, amount) =>
+                    amountTotal +
+                    (
+                        amount.method === "transfer"
+                            ? Number(amount.amount) || 0
+                            : 0
+                    ),
+                0
+            ),
+        0
+    );
+
+
+    const owedTotal = transactions.reduce(
+        (total, transaction) =>
+            total +
+            (transaction.amounts || []).reduce(
+                (amountTotal, amount) =>
+                    amountTotal +
+                    (
+                        amount.method === "debt"
+                            ? Number(amount.amount) || 0
+                            : 0
+                    ),
+                0
+            ),
+        0
+    );
 
 
     return (
@@ -195,7 +252,7 @@ function ProviderDetail({ isNewProvider = false }) {
                 lg:items-start
             ">
 
-                {/* PROVIDER INFORMATION */}
+                {/* INFORMATION */}
 
                 <section className="
                     border
@@ -250,9 +307,7 @@ function ProviderDetail({ isNewProvider = false }) {
                                 id="name"
                                 value={name}
                                 onChange={(event) =>
-                                    setName(
-                                        event.target.value
-                                    )
+                                    setName(event.target.value)
                                 }
                                 className="
                                     mt-2
@@ -289,9 +344,7 @@ function ProviderDetail({ isNewProvider = false }) {
                                 id="phone"
                                 value={phone}
                                 onChange={(event) =>
-                                    setPhone(
-                                        event.target.value
-                                    )
+                                    setPhone(event.target.value)
                                 }
                                 className="
                                     mt-2
@@ -328,9 +381,7 @@ function ProviderDetail({ isNewProvider = false }) {
                                 id="notes"
                                 value={notes}
                                 onChange={(event) =>
-                                    setNotes(
-                                        event.target.value
-                                    )
+                                    setNotes(event.target.value)
                                 }
                                 rows={4}
                                 className="
@@ -372,9 +423,7 @@ function ProviderDetail({ isNewProvider = false }) {
                         >
                             {isSaving
                                 ? "Guardando..."
-                                : isNewProvider
-                                    ? "Crear proveedor"
-                                    : "Guardar cambios"}
+                                : "Guardar cambios"}
                         </button>
 
                     </form>
@@ -382,7 +431,7 @@ function ProviderDetail({ isNewProvider = false }) {
                 </section>
 
 
-                {/* SUMMARY */}
+                {/* FINANCIAL SUMMARY */}
 
                 <aside className="
                     border
@@ -408,23 +457,122 @@ function ProviderDetail({ isNewProvider = false }) {
                     </div>
 
 
-                    <div className="p-6">
+                    <div className="
+                        divide-y
+                        divide-[var(--border)]
+                    ">
 
-                        <p className="
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            Operaciones
-                        </p>
+                        <div className="p-6">
+                            <p className="
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Total
+                            </p>
 
-                        <p className="
-                            mt-1
-                            text-2xl
-                            font-bold
-                            text-[var(--text-primary)]
+                            <p className="
+                                mt-1
+                                text-3xl
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                {formatCurrency(totalAmount)}
+                            </p>
+                        </div>
+
+
+                        <div className="
+                            space-y-4
+                            p-6
                         ">
-                            {transactions.length}
-                        </p>
+
+                            <div className="
+                                flex
+                                items-center
+                                justify-between
+                                gap-4
+                            ">
+                                <span className="
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Efectivo
+                                </span>
+
+                                <span className="
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                ">
+                                    {formatCurrency(cashTotal)}
+                                </span>
+                            </div>
+
+
+                            <div className="
+                                flex
+                                items-center
+                                justify-between
+                                gap-4
+                            ">
+                                <span className="
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Transferencia
+                                </span>
+
+                                <span className="
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                ">
+                                    {formatCurrency(transferTotal)}
+                                </span>
+                            </div>
+
+
+                            <div className="
+                                flex
+                                items-center
+                                justify-between
+                                gap-4
+                            ">
+                                <span className="
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Adeudado
+                                </span>
+
+                                <span className="
+                                    font-semibold
+                                    text-[var(--danger)]
+                                ">
+                                    {formatCurrency(owedTotal)}
+                                </span>
+                            </div>
+
+                        </div>
+
+
+                        <div className="p-6">
+
+                            <p className="
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Operaciones
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-2xl
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                {transactions.length}
+                            </p>
+
+                        </div>
 
                     </div>
 
@@ -437,34 +585,25 @@ function ProviderDetail({ isNewProvider = false }) {
 
             <section className="mt-8">
 
-                <div className="
-                    flex
-                    items-end
-                    justify-between
-                    gap-4
-                ">
+                <div>
+                    <p className="
+                        text-xs
+                        font-semibold
+                        uppercase
+                        tracking-wider
+                        text-[var(--text-secondary)]
+                    ">
+                        Historial
+                    </p>
 
-                    <div>
-                        <p className="
-                            text-xs
-                            font-semibold
-                            uppercase
-                            tracking-wider
-                            text-[var(--text-secondary)]
-                        ">
-                            Historial
-                        </p>
-
-                        <h2 className="
-                            mt-1
-                            text-xl
-                            font-bold
-                            text-[var(--text-primary)]
-                        ">
-                            Operaciones
-                        </h2>
-                    </div>
-
+                    <h2 className="
+                        mt-1
+                        text-xl
+                        font-bold
+                        text-[var(--text-primary)]
+                    ">
+                        Operaciones
+                    </h2>
                 </div>
 
 

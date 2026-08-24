@@ -196,6 +196,37 @@ class TransactionSerializer(
                     "amounts":
                         "Un pago de fiado no puede registrarse como fiado."
                 })
+            
+        if transaction_type == Transaction.Type.PROVIDER:
+            provider = attrs.get(
+                "provider",
+                getattr(
+                    self.instance,
+                    "provider",
+                    None,
+                ),
+            )
+
+            if provider is None:
+                raise serializers.ValidationError({
+                    "provider":
+                        "Una operación de proveedor requiere un proveedor."
+                })
+
+            client = attrs.get(
+                "client",
+                getattr(
+                    self.instance,
+                    "client",
+                    None,
+                ),
+            )
+
+            if client is not None:
+                raise serializers.ValidationError({
+                    "client":
+                        "Una operación de proveedor no puede tener un cliente."
+                })
 
         return attrs
 
@@ -464,6 +495,11 @@ class TransactionAmountReceivedSerializer(
 class ProviderSerializer(
     serializers.ModelSerializer
 ):
+    total_amount = serializers.SerializerMethodField()
+    cash = serializers.SerializerMethodField()
+    transfer = serializers.SerializerMethodField()
+    owed = serializers.SerializerMethodField()
+
     class Meta:
         model = Provider
 
@@ -473,9 +509,51 @@ class ProviderSerializer(
             "phone",
             "notes",
             "created_at",
+            "total_amount",
+            "cash",
+            "transfer",
+            "owed",
         ]
 
         read_only_fields = [
             "id",
             "created_at",
+            "total_amount",
+            "cash",
+            "transfer",
+            "owed",
         ]
+
+    def get_provider_transactions(self, obj):
+        return obj.transactions.prefetch_related("amounts").all()
+
+    def get_total_amount(self, obj):
+        return sum(
+            amount.amount
+            for transaction in self.get_provider_transactions(obj)
+            for amount in transaction.amounts.all()
+        )
+
+    def get_cash(self, obj):
+        return sum(
+            amount.amount
+            for transaction in self.get_provider_transactions(obj)
+            for amount in transaction.amounts.all()
+            if amount.method == TransactionAmount.Method.CASH
+        )
+
+    def get_transfer(self, obj):
+        return sum(
+            amount.amount
+            for transaction in self.get_provider_transactions(obj)
+            for amount in transaction.amounts.all()
+            if amount.method == TransactionAmount.Method.TRANSFER
+        )
+
+    def get_owed(self, obj):
+        return sum(
+            amount.amount
+            for transaction in self.get_provider_transactions(obj)
+            for amount in transaction.amounts.all()
+            if amount.method == TransactionAmount.Method.DEBT
+        )

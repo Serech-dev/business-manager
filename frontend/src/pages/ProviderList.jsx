@@ -6,6 +6,8 @@ import {
     getProviders,
 } from "../services/business";
 
+import { formatCurrency } from "../utils/formatCurrency";
+
 
 function ProviderList() {
     const navigate = useNavigate();
@@ -104,7 +106,7 @@ function ProviderList() {
                         text-sm
                         text-[var(--text-secondary)]
                     ">
-                        Proveedores registrados y seguimiento de operaciones.
+                        Proveedores registrados y movimientos asociados.
                     </p>
                 </div>
 
@@ -248,11 +250,7 @@ function ProviderList() {
                                         )
                                     }
                                     className="
-                                        flex
                                         w-full
-                                        items-center
-                                        justify-between
-                                        gap-4
                                         px-6
                                         py-5
                                         text-left
@@ -262,34 +260,145 @@ function ProviderList() {
                                 >
 
                                     <div className="
-                                        min-w-0
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-6
                                     ">
-                                        <p className="
-                                            truncate
-                                            font-semibold
-                                            text-[var(--text-primary)]
-                                        ">
-                                            {provider.name}
-                                        </p>
 
-                                        {provider.phone && (
+                                        {/* PROVIDER */}
+
+                                        <div className="
+                                            min-w-0
+                                            flex-1
+                                        ">
+                                            <p className="
+                                                truncate
+                                                font-semibold
+                                                text-[var(--text-primary)]
+                                            ">
+                                                {provider.name}
+                                            </p>
+
+                                            {provider.phone && (
+                                                <p className="
+                                                    mt-1
+                                                    text-sm
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    {provider.notes}
+                                                </p>
+                                            )}
+                                        </div>
+
+
+                                        {/* TOTAL */}
+
+                                        <div className="
+                                            shrink-0
+                                            text-right
+                                        ">
+                                            <p className="
+                                                text-xs
+                                                font-medium
+                                                uppercase
+                                                tracking-wide
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                Total
+                                            </p>
+
+                                            <p className="
+                                                mt-1
+                                                text-xl
+                                                font-bold
+                                                text-[var(--text-primary)]
+                                            ">
+                                                {formatCurrency(
+                                                    provider.total_amount
+                                                )}
+                                            </p>
+                                        </div>
+
+                                    </div>
+
+
+                                    {/* BREAKDOWN */}
+
+                                    <div className="
+                                        mt-4
+                                        grid
+                                        grid-cols-3
+                                        gap-3
+                                        border-t
+                                        border-[var(--border)]
+                                        pt-4
+                                        sm:grid-cols-3
+                                    ">
+
+                                        <div>
+                                            <p className="
+                                                text-xs
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                Efectivo
+                                            </p>
+
                                             <p className="
                                                 mt-1
                                                 text-sm
+                                                font-semibold
+                                                text-[var(--text-primary)]
+                                            ">
+                                                {formatCurrency(
+                                                    provider.cash
+                                                )}
+                                            </p>
+                                        </div>
+
+
+                                        <div>
+                                            <p className="
+                                                text-xs
                                                 text-[var(--text-secondary)]
                                             ">
-                                                {provider.phone}
+                                                Transferencia
                                             </p>
-                                        )}
-                                    </div>
 
-                                    <span className="
-                                        shrink-0
-                                        text-lg
-                                        text-[var(--text-secondary)]
-                                    ">
-                                        →
-                                    </span>
+                                            <p className="
+                                                mt-1
+                                                text-sm
+                                                font-semibold
+                                                text-[var(--text-primary)]
+                                            ">
+                                                {formatCurrency(
+                                                    provider.transfer
+                                                )}
+                                            </p>
+                                        </div>
+
+
+                                        <div>
+                                            <p className="
+                                                text-xs
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                Adeudado
+                                            </p>
+
+                                            <p className="
+                                                mt-1
+                                                text-sm
+                                                font-semibold
+                                                text-[var(--danger)]
+                                            ">
+                                                {formatCurrency(
+                                                    provider.owed
+                                                )}
+                                            </p>
+                                        </div>
+
+                                    </div>
 
                                 </button>
                             )
