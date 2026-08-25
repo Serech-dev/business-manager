@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import Sidebar from "./Sidebar";
+import HelpButton from "./HelpButton";
 import { getCurrentRegister } from "../services/business";
 
 
@@ -48,6 +49,7 @@ function AppLayout() {
                     }}
                 />
             </main>
+            <HelpButton />
         </div>
     );
 }
