@@ -470,7 +470,7 @@ function NewTransaction() {
                                             </option>
 
                                             <option value="payment">
-                                                Pago de fiado
+                                                A cuenta
                                             </option>
 
                                             <option value="provider">
