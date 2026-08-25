@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
     closeRegister,
     getCurrentRegister,
+    getClosedRegisters,
 } from "../services/business";
 
 import ConfirmDialog from "./ConfirmDialog";
@@ -29,11 +30,17 @@ function Sidebar({
         try {
             await closeRegister();
 
-            setRegister(null);
+            const registers = await getClosedRegisters();
+            const closedRegister = registers[0];
 
             toast.success(
                 "Caja cerrada."
             );
+
+            navigate(
+                `/registers/${closedRegister.id}`
+            );
+
         } catch (error) {
             console.error(error);
 

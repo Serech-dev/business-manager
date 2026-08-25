@@ -113,11 +113,11 @@ class TransactionAmountReceivedView(
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        if not instance.transaction.register.is_open:
+        if instance.method != TransactionAmount.Method.TRANSFER:
             return Response(
                 {
                     "detail":
-                        "No se puede modificar una operación de una caja cerrada."
+                        "Solo se puede confirmar una transferencia."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

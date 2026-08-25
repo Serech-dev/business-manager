@@ -6,10 +6,12 @@ import {
 import toast from "react-hot-toast";
 
 import {
+    getMethodLabel,
     getClosedRegister,
     getTransactionLabel,
-    getMethodLabel,
+    updateTransactionAmountReceived
 } from "../services/business";
+
 import { formatCurrency } from "../utils/formatCurrency";
 
 
@@ -23,7 +25,6 @@ function formatDate(value) {
     ).format(new Date(value));
 }
 
-
 function RegisterReport() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -32,25 +33,46 @@ function RegisterReport() {
     const [isLoading, setIsLoading] = useState(true);
 
 
-    useEffect(() => {
-        async function loadRegister() {
-            try {
-                const data = await getClosedRegister(id);
-                setRegister(data);
-            } catch (error) {
-                console.error(error);
+    async function loadRegister() {
+        try {
+            const data = await getClosedRegister(id);
+            setRegister(data);
+        } catch (error) {
+            console.error(error);
 
-                toast.error(
-                    "No se pudo cargar el cierre."
-                );
-            } finally {
-                setIsLoading(false);
-            }
+            toast.error(
+                "No se pudo cargar el cierre."
+            );
+        } finally {
+            setIsLoading(false);
         }
+    }
 
+    useEffect(() => {
         loadRegister();
     }, [id]);
 
+    async function handleConfirmTransfer(transfer) {
+        try {
+            await updateTransactionAmountReceived(
+                transfer.amount_id,
+                true
+            );
+
+            toast.success(
+                "Transferencia marcada como recibida."
+            );
+
+            await loadRegister();
+
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                "No se pudo confirmar la transferencia."
+            );
+        }
+    }
 
     if (isLoading) {
         return (
@@ -86,29 +108,31 @@ function RegisterReport() {
     const totalsByType =
         register.totals_by_type || {};
 
-    const fiado = register.fiado || {
-        new_debt: 0,
-        payments: 0,
-        net: 0,
-        clients: [],
-    };
+    const fiado =
+        register.fiado || {
+            new_debt: 0,
+            payments: 0,
+            net: 0,
+            clients: [],
+        };
+
+    const pendingTransfers =
+        register.pending_transfers || [];
 
     const transactions =
         register.transactions || [];
 
-
     const moneyIn =
-        Number(register.money_in ?? register.total_in ?? register.income ?? 0);
+        Number(register.money_in || 0);
 
     const moneyOut =
-        Number(register.money_out ?? register.total_out ?? register.expenses ?? 0);
+        Number(register.money_out || 0);
 
     const netMovement =
-        Number(
-            register.net ??
-            register.net_movement ??
-            moneyIn - moneyOut
-        );
+        Number(register.net_movement || 0);
+
+    const exchangeIncome =
+        Number(register.exchange_income || 0);
 
 
     return (
@@ -126,6 +150,7 @@ function RegisterReport() {
                 {/* HEADER */}
 
                 <header>
+
                     <p className="
                         text-sm
                         font-medium
@@ -136,6 +161,7 @@ function RegisterReport() {
                         Historial de cajas
                     </p>
 
+
                     <div className="
                         mt-1
                         flex
@@ -145,7 +171,9 @@ function RegisterReport() {
                         sm:items-end
                         sm:justify-between
                     ">
+
                         <div>
+
                             <h1 className="
                                 text-3xl
                                 font-bold
@@ -154,6 +182,7 @@ function RegisterReport() {
                             ">
                                 Cierre de caja #{register.id}
                             </h1>
+
 
                             <p className="
                                 mt-2
@@ -165,7 +194,9 @@ function RegisterReport() {
                                     ? "operación"
                                     : "operaciones"}
                             </p>
+
                         </div>
+
 
                         <button
                             type="button"
@@ -190,8 +221,11 @@ function RegisterReport() {
                         >
                             Volver al historial
                         </button>
+
                     </div>
 
+
+                    {/* DATES */}
 
                     <div className="
                         mt-5
@@ -200,6 +234,7 @@ function RegisterReport() {
                         text-sm
                         sm:grid-cols-2
                     ">
+
                         <div className="
                             rounded-xl
                             border
@@ -208,6 +243,7 @@ function RegisterReport() {
                             px-4
                             py-3
                         ">
+
                             <p className="
                                 text-xs
                                 uppercase
@@ -226,7 +262,9 @@ function RegisterReport() {
                                     register.opened_at
                                 )}
                             </p>
+
                         </div>
+
 
                         <div className="
                             rounded-xl
@@ -236,6 +274,7 @@ function RegisterReport() {
                             px-4
                             py-3
                         ">
+
                             <p className="
                                 text-xs
                                 uppercase
@@ -254,8 +293,11 @@ function RegisterReport() {
                                     register.closed_at
                                 )}
                             </p>
+
                         </div>
+
                     </div>
+
                 </header>
 
 
@@ -268,6 +310,8 @@ function RegisterReport() {
                     sm:grid-cols-3
                 ">
 
+                    {/* MONEY IN */}
+
                     <div className="
                         rounded-2xl
                         border
@@ -275,6 +319,7 @@ function RegisterReport() {
                         bg-[var(--surface)]
                         p-6
                     ">
+
                         <p className="
                             text-sm
                             text-[var(--text-secondary)]
@@ -290,8 +335,19 @@ function RegisterReport() {
                         ">
                             +{formatCurrency(moneyIn)}
                         </p>
+
+                        <p className="
+                            mt-2
+                            text-xs
+                            text-[var(--text-secondary)]
+                        ">
+                            Dinero que ingresó efectivamente a la caja.
+                        </p>
+
                     </div>
 
+
+                    {/* MONEY OUT */}
 
                     <div className="
                         rounded-2xl
@@ -300,6 +356,7 @@ function RegisterReport() {
                         bg-[var(--surface)]
                         p-6
                     ">
+
                         <p className="
                             text-sm
                             text-[var(--text-secondary)]
@@ -315,8 +372,19 @@ function RegisterReport() {
                         ">
                             -{formatCurrency(moneyOut)}
                         </p>
+
+                        <p className="
+                            mt-2
+                            text-xs
+                            text-[var(--text-secondary)]
+                        ">
+                            Dinero que salió efectivamente de la caja.
+                        </p>
+
                     </div>
 
+
+                    {/* NET */}
 
                     <div className="
                         rounded-2xl
@@ -325,6 +393,7 @@ function RegisterReport() {
                         bg-[var(--surface)]
                         p-6
                     ">
+
                         <p className="
                             text-sm
                             text-[var(--text-secondary)]
@@ -353,53 +422,165 @@ function RegisterReport() {
                         ">
                             Ingresos − salidas
                         </p>
+
                     </div>
 
                 </section>
 
+                {/* PENDING TRANSFERS */}
 
-                {/* TOTAL */}
-
-                <section className="
-                    mt-4
-                    rounded-2xl
-                    border
-                    border-[var(--border)]
-                    bg-[var(--surface)]
-                    p-6
-                ">
-                    <div className="
-                        flex
-                        items-center
-                        justify-between
-                        gap-4
+                {pendingTransfers.length > 0 && (
+                    <section className="
+                        mt-8
+                        rounded-2xl
+                        border
+                        border-[var(--warning)]
+                        bg-[var(--surface)]
+                        p-6
                     ">
+
                         <div>
-                            <p className="
-                                text-sm
-                                text-[var(--text-secondary)]
+
+                            <h2 className="
+                                text-lg
+                                font-bold
+                                text-[var(--text-primary)]
                             ">
-                                Total registrado
-                            </p>
+                                Transferencias pendientes
+                            </h2>
 
                             <p className="
                                 mt-1
-                                text-xs
+                                text-sm
                                 text-[var(--text-secondary)]
                             ">
-                                Suma de todos los movimientos
+                                Estas transferencias no estaban marcadas
+                                como recibidas al cerrar la caja.
                             </p>
+
                         </div>
 
-                        <p className="
-                            text-2xl
-                            font-bold
-                            text-[var(--text-primary)]
+
+                        <div className="
+                            mt-4
+                            space-y-3
                         ">
-                            {formatCurrency(register.total)}
-                        </p>
-                    </div>
-                </section>
+
+                            {pendingTransfers.map(
+                                (transfer) => (
+                                    <div
+                                        key={transfer.amount_id}
+                                        className="
+                                            flex
+                                            flex-col
+                                            gap-2
+                                            rounded-xl
+                                            border
+                                            border-[var(--border)]
+                                            bg-[var(--background)]
+                                            px-4
+                                            py-3
+                                            sm:flex-row
+                                            sm:items-center
+                                            sm:justify-between
+                                        "
+                                    >
+
+                                        <div>
+
+                                            <p className="
+                                                text-sm
+                                                font-semibold
+                                                text-[var(--text-primary)]
+                                            ">
+                                                Transferencia #
+                                                {transfer.transaction_id}
+                                            </p>
+
+                                            <div className="
+                                                mt-1
+                                                flex
+                                                flex-wrap
+                                                gap-x-3
+                                                gap-y-1
+                                                text-xs
+                                                text-[var(--text-secondary)]
+                                            ">
+
+                                                {transfer.client_name && (
+                                                    <span>
+                                                        Cliente:{" "}
+                                                        {transfer.client_name}
+                                                    </span>
+                                                )}
+
+                                                {transfer.description && (
+                                                    <span>
+                                                        {transfer.description}
+                                                    </span>
+                                                )}
+
+                                                {transfer.created_at && (
+                                                    <span>
+                                                        {formatDate(
+                                                            transfer.created_at
+                                                        )}
+                                                    </span>
+                                                )}
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div className="
+                                            flex
+                                            items-center
+                                            gap-3
+                                        ">
+
+                                            <p className="
+                                                text-lg
+                                                font-semibold
+                                                text-[var(--warning)]
+                                            ">
+                                                {formatCurrency(
+                                                    transfer.amount
+                                                )}
+                                            </p>
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleConfirmTransfer(
+                                                        transfer
+                                                    )
+                                                }
+                                                className="
+                                                    border
+                                                    border-[var(--warning)]
+                                                    px-2
+                                                    py-1
+                                                    text-xs
+                                                    font-semibold
+                                                    text-[var(--warning)]
+                                                    transition
+                                                    hover:bg-[var(--surface-accent)]
+                                                "
+                                            >
+                                                Marcar recibida
+                                            </button>
+
+                                        </div>
+
+                                    </div>
+                                )
+                            )}
+
+                        </div>
+
+                    </section>
+                )}
 
 
                 {/* PAYMENT METHODS */}
@@ -407,6 +588,7 @@ function RegisterReport() {
                 <section className="mt-10">
 
                     <div>
+
                         <h2 className="
                             text-xl
                             font-bold
@@ -420,8 +602,9 @@ function RegisterReport() {
                             text-sm
                             text-[var(--text-secondary)]
                         ">
-                            Distribución del dinero registrado según el medio utilizado.
+                            Dinero efectivamente registrado por cada medio.
                         </p>
+
                     </div>
 
 
@@ -432,6 +615,7 @@ function RegisterReport() {
                         sm:grid-cols-2
                         lg:grid-cols-4
                     ">
+
                         {Object.entries(
                             totalsByMethod
                         ).map(
@@ -446,6 +630,7 @@ function RegisterReport() {
                                         p-5
                                     "
                                 >
+
                                     <p className="
                                         text-sm
                                         text-[var(--text-secondary)]
@@ -461,9 +646,11 @@ function RegisterReport() {
                                     ">
                                         {formatCurrency(amount)}
                                     </p>
+
                                 </div>
                             )
                         )}
+
                     </div>
 
                 </section>
@@ -474,12 +661,13 @@ function RegisterReport() {
                 <section className="mt-10">
 
                     <div>
+
                         <h2 className="
                             text-xl
                             font-bold
                             text-[var(--text-primary)]
                         ">
-                            Por tipo de operación
+                            Movimiento por tipo
                         </h2>
 
                         <p className="
@@ -487,8 +675,10 @@ function RegisterReport() {
                             text-sm
                             text-[var(--text-secondary)]
                         ">
-                            Desglose de los movimientos registrados durante la caja.
+                            Dinero que entró o salió según el tipo
+                            de operación.
                         </p>
+
                     </div>
 
 
@@ -499,15 +689,17 @@ function RegisterReport() {
                         sm:grid-cols-2
                         lg:grid-cols-3
                     ">
+
                         {Object.entries(
                             totalsByType
                         ).map(
                             ([type, amount]) => {
-                                const isLoss =
-                                    type === "loss";
 
-                                const isProvider =
-                                    type === "provider";
+                                const isOutgoing =
+                                    type === "loss" ||
+                                    type === "provider" ||
+                                    type === "expense";
+
 
                                 return (
                                     <div
@@ -520,12 +712,14 @@ function RegisterReport() {
                                             p-5
                                         "
                                     >
+
                                         <div className="
                                             flex
                                             items-center
                                             justify-between
                                             gap-3
                                         ">
+
                                             <p className="
                                                 text-sm
                                                 text-[var(--text-secondary)]
@@ -533,48 +727,44 @@ function RegisterReport() {
                                                 {getTransactionLabel(type)}
                                             </p>
 
-                                            {isLoss && (
-                                                <span className="
-                                                    text-xs
-                                                    font-medium
-                                                    text-[var(--danger)]
-                                                ">
-                                                    Salida
-                                                </span>
-                                            )}
+                                            <span className={`
+                                                text-xs
+                                                font-medium
+                                                ${
+                                                    isOutgoing
+                                                        ? "text-[var(--danger)]"
+                                                        : "text-[var(--success)]"
+                                                }
+                                            `}>
+                                                {isOutgoing
+                                                    ? "Salida"
+                                                    : "Entrada"}
+                                            </span>
 
-                                            {isProvider && (
-                                                <span className="
-                                                    text-xs
-                                                    font-medium
-                                                    text-[var(--danger)]
-                                                ">
-                                                    Salida
-                                                </span>
-                                            )}
                                         </div>
+
 
                                         <p className={`
                                             mt-2
                                             text-xl
                                             font-semibold
                                             ${
-                                                isLoss ||
-                                                isProvider
+                                                isOutgoing
                                                     ? "text-[var(--danger)]"
                                                     : "text-[var(--success)]"
                                             }
                                         `}>
-                                            {isLoss ||
-                                            isProvider
+                                            {isOutgoing
                                                 ? "-"
                                                 : "+"}
                                             {formatCurrency(amount)}
                                         </p>
+
                                     </div>
                                 );
                             }
                         )}
+
                     </div>
 
                 </section>
@@ -585,6 +775,7 @@ function RegisterReport() {
                 <section className="mt-10">
 
                     <div>
+
                         <h2 className="
                             text-xl
                             font-bold
@@ -598,9 +789,10 @@ function RegisterReport() {
                             text-sm
                             text-[var(--text-secondary)]
                         ">
-                            Movimientos de deuda durante esta caja. No forman parte
-                            del dinero disponible en efectivo.
+                            Movimientos de deuda durante esta caja.
+                            No forman parte del dinero disponible.
                         </p>
+
                     </div>
 
 
@@ -620,6 +812,7 @@ function RegisterReport() {
                             bg-[var(--surface)]
                             p-5
                         ">
+
                             <p className="
                                 text-sm
                                 text-[var(--text-secondary)]
@@ -645,6 +838,7 @@ function RegisterReport() {
                             ">
                                 Deuda generada
                             </p>
+
                         </div>
 
 
@@ -657,6 +851,7 @@ function RegisterReport() {
                             bg-[var(--surface)]
                             p-5
                         ">
+
                             <p className="
                                 text-sm
                                 text-[var(--text-secondary)]
@@ -682,10 +877,11 @@ function RegisterReport() {
                             ">
                                 Dinero ingresado
                             </p>
+
                         </div>
 
 
-                        {/* NET DEBT MOVEMENT */}
+                        {/* NET DEBT */}
 
                         <div className="
                             rounded-xl
@@ -694,6 +890,7 @@ function RegisterReport() {
                             bg-[var(--surface)]
                             p-5
                         ">
+
                             <p className="
                                 text-sm
                                 text-[var(--text-secondary)]
@@ -701,14 +898,22 @@ function RegisterReport() {
                                 Variación de deuda
                             </p>
 
-                            <p className="
+                            <p className={`
                                 mt-2
                                 text-xl
                                 font-semibold
-                                text-[var(--text-primary)]
-                            ">
-                                {Number(fiado.net) > 0 ? "+" : ""}
-                                {formatCurrency(fiado.net)}
+                                ${
+                                    Number(fiado.net) > 0
+                                        ? "text-[var(--warning)]"
+                                        : "text-[var(--success)]"
+                                }
+                            `}>
+                                {Number(fiado.net) > 0
+                                    ? "+"
+                                    : ""}
+                                {formatCurrency(
+                                    fiado.net
+                                )}
                             </p>
 
                             <p className="
@@ -718,6 +923,7 @@ function RegisterReport() {
                             ">
                                 Deuda generada − pagos
                             </p>
+
                         </div>
 
                     </div>
@@ -754,6 +960,7 @@ function RegisterReport() {
                                 divide-y
                                 divide-[var(--border)]
                             ">
+
                                 {fiado.clients.map(
                                     (client) => (
                                         <div
@@ -777,6 +984,7 @@ function RegisterReport() {
 
 
                                             <div className="text-sm">
+
                                                 <span className="
                                                     text-[var(--text-secondary)]
                                                 ">
@@ -791,10 +999,12 @@ function RegisterReport() {
                                                         client.debt
                                                     )}
                                                 </span>
+
                                             </div>
 
 
                                             <div className="text-sm">
+
                                                 <span className="
                                                     text-[var(--text-secondary)]
                                                 ">
@@ -809,6 +1019,7 @@ function RegisterReport() {
                                                         client.payments
                                                     )}
                                                 </span>
+
                                             </div>
 
 
@@ -829,6 +1040,7 @@ function RegisterReport() {
                                         </div>
                                     )
                                 )}
+
                             </div>
 
                         </div>
@@ -843,6 +1055,7 @@ function RegisterReport() {
                     <section className="mt-10">
 
                         <div>
+
                             <h2 className="
                                 text-xl
                                 font-bold
@@ -858,6 +1071,7 @@ function RegisterReport() {
                             ">
                                 Detalle de todos los movimientos de esta caja.
                             </p>
+
                         </div>
 
 
@@ -869,12 +1083,15 @@ function RegisterReport() {
                             border-[var(--border)]
                             bg-[var(--surface)]
                         ">
+
                             <div className="
                                 divide-y
                                 divide-[var(--border)]
                             ">
+
                                 {transactions.map(
                                     (transaction) => {
+
                                         const amount =
                                             Number(
                                                 transaction.total ??
@@ -884,7 +1101,9 @@ function RegisterReport() {
 
                                         const isOutgoing =
                                             transaction.type === "loss" ||
-                                            transaction.type === "provider";
+                                            transaction.type === "provider" ||
+                                            transaction.type === "expense";
+
 
                                         return (
                                             <div
@@ -894,6 +1113,7 @@ function RegisterReport() {
                                                     py-4
                                                 "
                                             >
+
                                                 <div className="
                                                     flex
                                                     flex-col
@@ -902,7 +1122,9 @@ function RegisterReport() {
                                                     sm:items-center
                                                     sm:justify-between
                                                 ">
+
                                                     <div>
+
                                                         <p className="
                                                             font-medium
                                                             text-[var(--text-primary)]
@@ -911,6 +1133,7 @@ function RegisterReport() {
                                                                 transaction.type
                                                             )}
                                                         </p>
+
 
                                                         <div className="
                                                             mt-1
@@ -921,6 +1144,7 @@ function RegisterReport() {
                                                             text-xs
                                                             text-[var(--text-secondary)]
                                                         ">
+
                                                             {transaction.client_name && (
                                                                 <span>
                                                                     Cliente:{" "}
@@ -948,8 +1172,11 @@ function RegisterReport() {
                                                                     )}
                                                                 </span>
                                                             )}
+
                                                         </div>
+
                                                     </div>
+
 
                                                     <p className={`
                                                         text-lg
@@ -967,17 +1194,23 @@ function RegisterReport() {
                                                             amount
                                                         )}
                                                     </p>
+
                                                 </div>
+
                                             </div>
                                         );
                                     }
                                 )}
+
                             </div>
+
                         </div>
 
                     </section>
                 )}
 
+
+                {/* FOOTER */}
 
                 <div className="
                     mt-10
@@ -985,6 +1218,7 @@ function RegisterReport() {
                     border-[var(--border)]
                     pt-6
                 ">
+
                     <button
                         type="button"
                         onClick={() =>
@@ -1006,6 +1240,7 @@ function RegisterReport() {
                     >
                         Volver al historial
                     </button>
+
                 </div>
 
             </div>

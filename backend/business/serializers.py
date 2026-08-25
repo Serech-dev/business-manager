@@ -233,18 +233,34 @@ class TransactionSerializer(
     def _calculate_exchange_fee(
         self,
         transaction,
+        amounts,
     ):
-        if transaction.type in [
+        if transaction.type not in [
             Transaction.Type.EXCHANGE,
             Transaction.Type.SALE_EXCHANGE,
         ]:
-            return (
-                transaction.exchange_amount
-                * Decimal("0.10")
-            )
+            return None
 
-        return None
+        if not transaction.exchange_amount:
+            return None
 
+        paid_amount = sum(
+            amount["amount"]
+            for amount in amounts
+            if amount["method"]
+            != TransactionAmount.Method.DEBT
+        )
+
+        fee = (
+            paid_amount
+            - transaction.exchange_amount
+        )
+
+        return max(
+            fee,
+            Decimal("0")
+        )
+    
     def _get_open_register(self):
         return Register.objects.filter(
             user=self.context["request"].user,
@@ -273,7 +289,8 @@ class TransactionSerializer(
 
         transaction.exchange_fee = (
             self._calculate_exchange_fee(
-                transaction
+                transaction,
+                amounts,
             )
         )
 
@@ -309,15 +326,14 @@ class TransactionSerializer(
                 value,
             )
 
-        instance.exchange_fee = (
-            self._calculate_exchange_fee(
-                instance
-            )
-        )
-
-        instance.save()
-
         if amounts is not None:
+            instance.exchange_fee = (
+                self._calculate_exchange_fee(
+                    instance,
+                    amounts,
+                )
+            )
+
             instance.amounts.all().delete()
 
             TransactionAmount.objects.bulk_create([
@@ -328,8 +344,23 @@ class TransactionSerializer(
                 for amount in amounts
             ])
 
-        return instance
+        else:
+            instance.exchange_fee = (
+                self._calculate_exchange_fee(
+                    instance,
+                    [
+                        {
+                            "amount": amount.amount,
+                            "method": amount.method,
+                        }
+                        for amount in instance.amounts.all()
+                    ],
+                )
+            )
 
+        instance.save()
+
+        return instance
 
 class RegisterSerializer(
     serializers.ModelSerializer
@@ -340,8 +371,18 @@ class RegisterSerializer(
 
     transaction_count = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
+
+    money_in = serializers.SerializerMethodField()
+    money_out = serializers.SerializerMethodField()
+    net_movement = serializers.SerializerMethodField()
+
     totals_by_method = serializers.SerializerMethodField()
     totals_by_type = serializers.SerializerMethodField()
+
+    exchange_income = serializers.SerializerMethodField()
+
+    pending_transfers = serializers.SerializerMethodField()
+
     fiado = serializers.SerializerMethodField()
 
     class Meta:
@@ -352,60 +393,265 @@ class RegisterSerializer(
             "opened_at",
             "closed_at",
             "is_open",
+
             "transaction_count",
+
             "total",
+            "money_in",
+            "money_out",
+            "net_movement",
+
             "totals_by_method",
             "totals_by_type",
+
+            "exchange_income",
+
+            "pending_transfers",
+
             "fiado",
         ]
 
         read_only_fields = fields
 
+
     def _get_transactions(self, obj):
         return (
             obj.transactions
-            .select_related("client")
-            .prefetch_related("amounts")
+            .select_related(
+                "client",
+                "provider",
+            )
+            .prefetch_related(
+                "amounts"
+            )
             .all()
         )
+
+
+    def _is_money_movement(self, amount):
+        """
+        Determines whether a transaction amount
+        represents money that actually moved through
+        the register.
+        """
+
+        # Fiado is debt, not money.
+        if (
+            amount.method
+            == TransactionAmount.Method.DEBT
+        ):
+            return False
+
+        # A transfer is not money received until
+        # explicitly confirmed.
+        if (
+            amount.method
+            == TransactionAmount.Method.TRANSFER
+            and not amount.received
+        ):
+            return False
+
+        return True
+
+
+    def _get_money_amount(self, transaction):
+        money_amount = sum(
+            amount.amount
+            for amount in transaction.amounts.all()
+            if self._is_money_movement(amount)
+        )
+
+        if transaction.type in [
+            Transaction.Type.EXCHANGE,
+            Transaction.Type.SALE_EXCHANGE,
+        ]:
+            money_amount -= transaction.exchange_amount or Decimal("0")
+
+        return money_amount
+
+
+    def _is_outgoing(self, transaction):
+        return transaction.type in [
+            Transaction.Type.PROVIDER,
+            Transaction.Type.EXPENSE,
+            Transaction.Type.LOSS,
+        ]
+
 
     def get_transaction_count(self, obj):
         return obj.transactions.count()
 
+
     def get_total(self, obj):
-        return sum(
-            amount.amount
-            for transaction in self._get_transactions(obj)
-            for amount in transaction.amounts.all()
+        total = Decimal("0")
+
+        for transaction in self._get_transactions(obj):
+
+            # Exchange income is only the commission.
+            if transaction.type in [
+                Transaction.Type.EXCHANGE,
+                Transaction.Type.SALE_EXCHANGE,
+            ]:
+                total += transaction.exchange_fee or Decimal("0")
+                continue
+
+            for amount in transaction.amounts.all():
+                total += amount.amount
+
+        return total
+
+
+    def get_money_in(self, obj):
+        total = 0
+
+        for transaction in self._get_transactions(obj):
+
+            if self._is_outgoing(transaction):
+                continue
+
+            total += self._get_money_amount(
+                transaction
+            )
+
+        return total
+
+
+    def get_money_out(self, obj):
+        total = 0
+
+        for transaction in self._get_transactions(obj):
+
+            if not self._is_outgoing(transaction):
+                continue
+
+            total += self._get_money_amount(
+                transaction
+            )
+
+        return total
+
+
+    def get_net_movement(self, obj):
+        return (
+            self.get_money_in(obj)
+            - self.get_money_out(obj)
         )
+
 
     def get_totals_by_method(self, obj):
         totals = {}
 
         for transaction in self._get_transactions(obj):
+
+            if transaction.type in [
+                Transaction.Type.EXCHANGE,
+                Transaction.Type.SALE_EXCHANGE,
+            ]:
+                money_amount = self._get_money_amount(
+                    transaction
+                )
+
+                if money_amount <= 0:
+                    continue
+
+                # For now, the exchange payment method
+                # receives the net movement.
+                for amount in transaction.amounts.all():
+                    if not self._is_money_movement(amount):
+                        continue
+
+                    totals[amount.method] = (
+                        totals.get(amount.method, 0)
+                        + money_amount
+                    )
+
+                    break
+
+                continue
+
             for amount in transaction.amounts.all():
+
+                if not self._is_money_movement(amount):
+                    continue
+
                 totals[amount.method] = (
-                    totals.get(amount.method, 0)
+                    totals.get(
+                        amount.method,
+                        0
+                    )
                     + amount.amount
                 )
 
         return totals
 
+
     def get_totals_by_type(self, obj):
         totals = {}
 
         for transaction in self._get_transactions(obj):
-            transaction_total = sum(
-                amount.amount
-                for amount in transaction.amounts.all()
+
+            transaction_total = (
+                self._get_money_amount(
+                    transaction
+                )
             )
 
+            if transaction_total <= 0:
+                continue
+
             totals[transaction.type] = (
-                totals.get(transaction.type, 0)
+                totals.get(
+                    transaction.type,
+                    0
+                )
                 + transaction_total
             )
 
         return totals
+
+
+    def get_exchange_income(self, obj):
+        return sum(
+            transaction.exchange_fee or 0
+            for transaction in self._get_transactions(obj)
+            if transaction.type in [
+                Transaction.Type.EXCHANGE,
+                Transaction.Type.SALE_EXCHANGE,
+            ]
+        )
+
+
+    def get_pending_transfers(self, obj):
+        transfers = []
+
+        for transaction in self._get_transactions(obj):
+
+            for amount in transaction.amounts.all():
+
+                if (
+                    amount.method
+                    == TransactionAmount.Method.TRANSFER
+                    and not amount.received
+                ):
+                    transfers.append({
+                        "transaction_id": transaction.id,
+                        "amount_id": amount.id,
+                        "amount": amount.amount,
+                        "description": (
+                            transaction.description
+                        ),
+                        "client_name": (
+                            transaction.client.name
+                            if transaction.client
+                            else None
+                        ),
+                        "created_at": (
+                            transaction.created_at
+                        ),
+                    })
+
+        return transfers
+
 
     def get_fiado(self, obj):
         new_debt = 0
@@ -414,8 +660,11 @@ class RegisterSerializer(
 
         for transaction in self._get_transactions(obj):
 
-            # PAYMENT = money received against existing debt
-            if transaction.type == Transaction.Type.PAYMENT:
+            # Payment against existing debt.
+            if (
+                transaction.type
+                == Transaction.Type.PAYMENT
+            ):
                 amount = sum(
                     item.amount
                     for item in transaction.amounts.all()
@@ -424,27 +673,39 @@ class RegisterSerializer(
                 payments += amount
 
                 if transaction.client:
+
                     client_id = transaction.client.id
 
                     if client_id not in clients:
                         clients[client_id] = {
                             "client_id": client_id,
-                            "client_name": transaction.client.name,
+                            "client_name": (
+                                transaction.client.name
+                            ),
                             "debt": 0,
                             "payments": 0,
                             "net": 0,
                         }
 
-                    clients[client_id]["payments"] += amount
-                    clients[client_id]["net"] -= amount
+                    clients[client_id]["payments"] += (
+                        amount
+                    )
+
+                    clients[client_id]["net"] -= (
+                        amount
+                    )
 
                 continue
 
-            # DEBT amounts = new fiado
+
+            # New debt.
             debt_amount = sum(
                 item.amount
                 for item in transaction.amounts.all()
-                if item.method == TransactionAmount.Method.DEBT
+                if (
+                    item.method
+                    == TransactionAmount.Method.DEBT
+                )
             )
 
             if debt_amount <= 0:
@@ -453,25 +714,35 @@ class RegisterSerializer(
             new_debt += debt_amount
 
             if transaction.client:
+
                 client_id = transaction.client.id
 
                 if client_id not in clients:
                     clients[client_id] = {
                         "client_id": client_id,
-                        "client_name": transaction.client.name,
+                        "client_name": (
+                            transaction.client.name
+                        ),
                         "debt": 0,
                         "payments": 0,
                         "net": 0,
                     }
 
-                clients[client_id]["debt"] += debt_amount
-                clients[client_id]["net"] += debt_amount
+                clients[client_id]["debt"] += (
+                    debt_amount
+                )
+
+                clients[client_id]["net"] += (
+                    debt_amount
+                )
 
         return {
             "new_debt": new_debt,
             "payments": payments,
             "net": new_debt - payments,
-            "clients": list(clients.values()),
+            "clients": list(
+                clients.values()
+            ),
         }
 
 

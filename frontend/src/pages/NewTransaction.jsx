@@ -162,7 +162,23 @@ function NewTransaction() {
             return 0;
         }
 
-        return Number(exchangeAmount) * 0.10;
+        return Math.round(Number(exchangeAmount) * 0.10);
+    }
+
+
+    function getExchangeInput() {
+        return Number(exchangeAmount) || 0;
+    }
+
+
+    function getExchangeClientAmount() {
+        const input = getExchangeInput();
+
+        if (!input) {
+            return 0;
+        }
+
+        return input - getExchangeFee();
     }
 
 
@@ -298,7 +314,7 @@ function NewTransaction() {
 
                 exchange_amount:
                     isExchange
-                        ? exchangeAmount
+                        ? getExchangeClientAmount()
                         : null,
 
                 amounts: validAmounts,
@@ -1032,11 +1048,20 @@ function NewTransaction() {
                                                 type="number"
                                                 min="0"
                                                 value={exchangeAmount}
-                                                onChange={(event) =>
-                                                    setExchangeAmount(
-                                                        event.target.value
-                                                    )
-                                                }
+                                                onChange={(event) => {
+                                                    const value = event.target.value;
+
+                                                    setExchangeAmount(value);
+
+                                                    if (isExchange) {
+                                                        setAmounts((current) => [
+                                                            {
+                                                                ...current[0],
+                                                                amount: value,
+                                                            },
+                                                        ]);
+                                                    }
+                                                }}
                                                 className="
                                                     w-full
                                                     rounded-md
@@ -1057,30 +1082,57 @@ function NewTransaction() {
                                             />
                                         </div>
 
-                                        {exchangeAmount && (
+                                        {exchangeAmount && Number(exchangeAmount) > 0 && (
                                             <div className="
                                                 mt-4
-                                                flex
-                                                items-center
-                                                justify-between
                                                 border-t
                                                 border-[var(--border)]
                                                 pt-4
                                                 text-sm
                                             ">
-                                                <span className="
-                                                    text-[var(--text-secondary)]
+                                                <div className="
+                                                    flex
+                                                    items-center
+                                                    justify-between
                                                 ">
-                                                    Comisión de cambio
-                                                </span>
+                                                    <span className="
+                                                        text-[var(--text-secondary)]
+                                                    ">
+                                                        Comisión de cambio: 10%
+                                                    </span>
 
-                                                <strong className="
-                                                    text-[var(--text-primary)]
+                                                    <strong className="
+                                                        text-[var(--text-primary)]
+                                                    ">
+                                                        {formatCurrency(
+                                                            getExchangeFee()
+                                                        )}
+                                                    </strong>
+                                                </div>
+
+                                                <div className="
+                                                    mt-2
+                                                    flex
+                                                    items-center
+                                                    justify-between
                                                 ">
-                                                    {formatCurrency(
-                                                        getExchangeFee()
-                                                    )}
-                                                </strong>
+                                                    <span className="
+                                                        font-medium
+                                                        text-[var(--text-primary)]
+                                                    ">
+                                                        Cliente recibe
+                                                    </span>
+
+                                                    <strong className="
+                                                        text-lg
+                                                        font-bold
+                                                        text-[var(--success)]
+                                                    ">
+                                                        {formatCurrency(
+                                                            getExchangeClientAmount()
+                                                        )}
+                                                    </strong>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
