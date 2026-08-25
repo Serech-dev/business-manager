@@ -416,19 +416,9 @@ function Dashboard() {
 
                             ) : (
 
-                                <div className="
-                                    mt-5
-                                    overflow-hidden
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--surface)]
-                                ">
-
                                     <div className="
-                                        divide-y
-                                        divide-[var(--border)]
+                                        space-y-3
                                     ">
-
                                         {transactions.map(
                                             (transaction) => (
                                                 <TransactionCard
@@ -443,10 +433,7 @@ function Dashboard() {
                                                 />
                                             )
                                         )}
-
                                     </div>
-
-                                </div>
 
                             )}
 

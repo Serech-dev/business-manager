@@ -25,6 +25,16 @@ function formatDate(value) {
     ).format(new Date(value));
 }
 
+function formatDateLong(value) {
+    return new Intl.DateTimeFormat(
+        "es-AR",
+        {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        }
+    ).format(new Date(value));
+}
 
 function RegisterReport() {
     const navigate = useNavigate();
@@ -189,7 +199,7 @@ function RegisterReport() {
                                 tracking-tight
                                 text-[var(--text-primary)]
                             ">
-                                Cierre de caja #{register.id}
+                                Caja del {formatDateLong(register.opened_at)}
                             </h1>
 
                             <p className="
