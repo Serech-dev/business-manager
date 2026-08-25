@@ -1,3 +1,13 @@
+v0.7.0
+
+-implement clients
+-implement providers
+-implement transactions
+-implement registers
+-implement reports for closed registers
+-setup sidebar layout
+-add help guide
+
 v0.1.1
 
 -basic frontend imported from market-manager
