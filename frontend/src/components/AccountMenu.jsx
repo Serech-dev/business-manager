@@ -4,42 +4,31 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 
 
-function AccountMenu({ user, onLogout }) {
+function AccountMenu() {
     const [isOpen, setIsOpen] = useState(false);
+    const [user, setUser] = useState(null);
     const menuRef = useRef(null);
 
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (
-                menuRef.current &&
-                !menuRef.current.contains(event.target)
-            ) {
-                setIsOpen(false);
-            }
-        }
-
-        function handleEscape(event) {
-            if (event.key === "Escape") {
-                setIsOpen(false);
-            }
-        }
-
-        document.addEventListener("mousedown", handleClickOutside);
-        document.addEventListener("keydown", handleEscape);
-
-        return () => {
-            document.removeEventListener(
-                "mousedown",
-                handleClickOutside
-            );
-            document.removeEventListener(
-                "keydown",
-                handleEscape
-            );
-        };
-    }, []);
-
     const navigate = useNavigate();
+
+
+    useEffect(() => {
+        const storedUser =
+            localStorage.getItem(
+                "businessManagerAuthUser"
+            );
+
+        if (storedUser) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (error) {
+                console.error(
+                    "No se pudo leer el usuario guardado.",
+                    error
+                );
+            }
+        }
+    }, []);
 
     function handleLogout() {
         logout();
@@ -65,38 +54,6 @@ function AccountMenu({ user, onLogout }) {
                         shadow-lg
                     "
                 >
-                    {/* ACCOUNT INFO */}
-
-                    <div className="
-                        border-b
-                        border-[var(--border)]
-                        px-4
-                        py-4
-                    ">
-                        <p className="
-                            text-xs
-                            font-medium
-                            uppercase
-                            tracking-wide
-                            text-[var(--text-secondary)]
-                        ">
-                            Cuenta
-                        </p>
-
-                        <p
-                            className="
-                                mt-1
-                                truncate
-                                text-sm
-                                font-medium
-                                text-[var(--text-primary)]
-                            "
-                            title={user?.email}
-                        >
-                            {user?.email}
-                        </p>
-                    </div>
-
 
                     {/* THEME */}
 

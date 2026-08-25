@@ -242,7 +242,7 @@ function NewTransaction() {
 
         if (
             needsClient &&
-            !client &&
+            !client?.id &&
             clientSearch.trim()
         ) {
             try {
@@ -294,37 +294,36 @@ function NewTransaction() {
 
             return;
         }
-
-
+        
         setIsSubmitting(true);
-
+        
         try {
             await createTransaction({
                 type,
 
                 client:
                     needsClient
-                        ? client?.id || null
+                    ? client?.id || null
                         : null,
-
-                provider:
-                    provider?.id || null,
-
+                        
+                        provider:
+                        provider?.id || null,
+                        
                 description,
 
                 exchange_amount:
-                    isExchange
+                isExchange
                         ? getExchangeClientAmount()
                         : null,
+                        
+                        amounts: validAmounts,
+                    });
 
-                amounts: validAmounts,
-            });
 
-
-            toast.success(
-                "Operación registrada."
-            );
-
+                    toast.success(
+                        "Operación registrada."
+                    );
+                    
             navigate("/");
         } catch (error) {
             console.error(error);

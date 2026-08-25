@@ -1102,8 +1102,8 @@ function RegisterReport() {
                             ">
                                 <span>Proveedor</span>
                                 <span className="text-right">Deuda</span>
-                                <span className="text-right">Pagado</span>
-                                <span className="text-right">Movimiento</span>
+                                <span className="text-right">Pago</span>
+                                <span className="text-right">Pendiente</span>
                             </div>
 
 
@@ -1206,7 +1206,7 @@ function RegisterReport() {
                                                     sm:hidden
                                                     text-[var(--text-secondary)]
                                                 ">
-                                                    Movimiento
+                                                    Pendiente
                                                 </span>
 
                                                 <span className={
