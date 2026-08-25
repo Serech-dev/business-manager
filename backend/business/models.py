@@ -221,8 +221,8 @@ class Transaction(models.Model):
 
         if self.type == self.Type.PAYMENT:
             if self.client:
-                return f"Pago de fiado de {self.client.name}"
-            return "Pago de fiado"
+                return f"A cuenta de {self.client.name}"
+            return "A cuenta"
 
         if self.type == self.Type.PROVIDER:
             if self.provider:
