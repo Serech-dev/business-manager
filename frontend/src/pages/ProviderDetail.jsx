@@ -244,348 +244,198 @@ function ProviderDetail({ isNewProvider = false }) {
             </header>
 
 
-            <div className="
+            {/* INFORMATION */}
+
+            <section className="
                 mt-8
-                grid
-                gap-6
-                lg:grid-cols-[minmax(0,1fr)_320px]
-                lg:items-start
+                border
+                border-[var(--border)]
+                bg-[var(--surface)]
             ">
 
-                {/* INFORMATION */}
-
-                <section className="
-                    border
+                <div className="
+                    border-b
                     border-[var(--border)]
-                    bg-[var(--surface)]
+                    px-6
+                    py-5
                 ">
-
-                    <div className="
-                        border-b
-                        border-[var(--border)]
-                        px-6
-                        py-5
+                    <h2 className="
+                        font-semibold
+                        text-[var(--text-primary)]
                     ">
-                        <h2 className="
-                            font-semibold
-                            text-[var(--text-primary)]
-                        ">
-                            Información
-                        </h2>
+                        Información
+                    </h2>
 
-                        <p className="
-                            mt-1
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            Datos guardados del proveedor.
-                        </p>
-                    </div>
+                    <p className="
+                        mt-1
+                        text-sm
+                        text-[var(--text-secondary)]
+                    ">
+                        Datos guardados del proveedor.
+                    </p>
+                </div>
 
 
-                    <form
-                        onSubmit={handleSave}
-                        className="
-                            space-y-6
-                            p-6
-                        "
-                    >
+                <form
+                    onSubmit={handleSave}
+                    className="
+                        space-y-5
+                        p-6
+                    "
+                >
 
-                        <div>
-                            <label
-                                htmlFor="name"
-                                className="
-                                    text-sm
-                                    font-medium
-                                    text-[var(--text-primary)]
-                                "
-                            >
-                                Nombre
-                            </label>
-
-                            <input
-                                id="name"
-                                value={name}
-                                onChange={(event) =>
-                                    setName(event.target.value)
-                                }
-                                className="
-                                    mt-2
-                                    w-full
-                                    rounded-md
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--background)]
-                                    px-3
-                                    py-2.5
-                                    text-[var(--text-primary)]
-                                    outline-none
-                                    focus:border-[var(--primary)]
-                                    focus:ring-2
-                                    focus:ring-[var(--primary)]/20
-                                "
-                            />
-                        </div>
-
-
-                        <div>
-                            <label
-                                htmlFor="phone"
-                                className="
-                                    text-sm
-                                    font-medium
-                                    text-[var(--text-primary)]
-                                "
-                            >
-                                Teléfono
-                            </label>
-
-                            <input
-                                id="phone"
-                                value={phone}
-                                onChange={(event) =>
-                                    setPhone(event.target.value)
-                                }
-                                className="
-                                    mt-2
-                                    w-full
-                                    rounded-md
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--background)]
-                                    px-3
-                                    py-2.5
-                                    text-[var(--text-primary)]
-                                    outline-none
-                                    focus:border-[var(--primary)]
-                                    focus:ring-2
-                                    focus:ring-[var(--primary)]/20
-                                "
-                            />
-                        </div>
-
-
-                        <div>
-                            <label
-                                htmlFor="notes"
-                                className="
-                                    text-sm
-                                    font-medium
-                                    text-[var(--text-primary)]
-                                "
-                            >
-                                Notas
-                            </label>
-
-                            <textarea
-                                id="notes"
-                                value={notes}
-                                onChange={(event) =>
-                                    setNotes(event.target.value)
-                                }
-                                rows={4}
-                                className="
-                                    mt-2
-                                    w-full
-                                    resize-none
-                                    rounded-md
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--background)]
-                                    px-3
-                                    py-2.5
-                                    text-[var(--text-primary)]
-                                    outline-none
-                                    focus:border-[var(--primary)]
-                                    focus:ring-2
-                                    focus:ring-[var(--primary)]/20
-                                "
-                            />
-                        </div>
-
-
-                        <button
-                            type="submit"
-                            disabled={isSaving}
+                    <div>
+                        <label
+                            htmlFor="name"
                             className="
-                                rounded-md
-                                bg-[var(--primary)]
-                                px-5
-                                py-2.5
                                 text-sm
-                                font-semibold
-                                text-white
-                                transition
-                                hover:bg-[var(--primary-hover)]
-                                disabled:cursor-not-allowed
-                                disabled:opacity-50
+                                font-medium
+                                text-[var(--text-primary)]
                             "
                         >
-                            {isSaving
-                                ? "Guardando..."
-                                : "Guardar cambios"}
-                        </button>
+                            Nombre
+                        </label>
 
-                    </form>
+                        <input
+                            id="name"
+                            value={name}
+                            onChange={(event) =>
+                                setName(event.target.value)
+                            }
+                            className="
+                                mt-2
+                                w-full
+                                rounded-md
+                                border
+                                border-[var(--border)]
+                                bg-[var(--background)]
+                                px-3
+                                py-2.5
+                                text-[var(--text-primary)]
+                                outline-none
+                                focus:border-[var(--primary)]
+                                focus:ring-2
+                                focus:ring-[var(--primary)]/20
+                            "
+                        />
+                    </div>
 
-                </section>
+
+                    <div>
+                        <label
+                            htmlFor="phone"
+                            className="
+                                text-sm
+                                font-medium
+                                text-[var(--text-primary)]
+                            "
+                        >
+                            Teléfono
+                        </label>
+
+                        <input
+                            id="phone"
+                            value={phone}
+                            onChange={(event) =>
+                                setPhone(event.target.value)
+                            }
+                            className="
+                                mt-2
+                                w-full
+                                rounded-md
+                                border
+                                border-[var(--border)]
+                                bg-[var(--background)]
+                                px-3
+                                py-2.5
+                                text-[var(--text-primary)]
+                                outline-none
+                                focus:border-[var(--primary)]
+                                focus:ring-2
+                                focus:ring-[var(--primary)]/20
+                            "
+                        />
+                    </div>
 
 
-                {/* FINANCIAL SUMMARY */}
+                    <div>
+                        <label
+                            htmlFor="notes"
+                            className="
+                                text-sm
+                                font-medium
+                                text-[var(--text-primary)]
+                            "
+                        >
+                            Notas
+                        </label>
 
-                <aside className="
-                    border
-                    border-[var(--border)]
-                    bg-[var(--surface)]
-                ">
+                        <textarea
+                            id="notes"
+                            value={notes}
+                            onChange={(event) =>
+                                setNotes(event.target.value)
+                            }
+                            rows={2}
+                            className="
+                                mt-2
+                                w-full
+                                resize-none
+                                rounded-md
+                                border
+                                border-[var(--border)]
+                                bg-[var(--background)]
+                                px-3
+                                py-2.5
+                                text-sm
+                                text-[var(--text-primary)]
+                                outline-none
+                                focus:border-[var(--primary)]
+                                focus:ring-2
+                                focus:ring-[var(--primary)]/20
+                            "
+                            placeholder="Notas opcionales"
+                        />
+                    </div>
 
-                    <div className="
-                        border-b
-                        border-[var(--border)]
-                        px-6
-                        py-5
-                    ">
-                        <p className="
-                            text-xs
+
+                    <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="
+                            rounded-md
+                            bg-[var(--primary)]
+                            px-5
+                            py-2.5
+                            text-sm
                             font-semibold
-                            uppercase
-                            tracking-wider
-                            text-[var(--text-secondary)]
-                        ">
-                            Resumen
-                        </p>
-                    </div>
+                            text-white
+                            transition
+                            hover:bg-[var(--primary-hover)]
+                            disabled:cursor-not-allowed
+                            disabled:opacity-50
+                        "
+                    >
+                        {isSaving
+                            ? "Guardando..."
+                            : "Guardar cambios"}
+                    </button>
 
+                </form>
 
-                    <div className="
-                        divide-y
-                        divide-[var(--border)]
-                    ">
-
-                        <div className="p-6">
-                            <p className="
-                                text-sm
-                                text-[var(--text-secondary)]
-                            ">
-                                Total
-                            </p>
-
-                            <p className="
-                                mt-1
-                                text-3xl
-                                font-bold
-                                text-[var(--text-primary)]
-                            ">
-                                {formatCurrency(totalAmount)}
-                            </p>
-                        </div>
-
-
-                        <div className="
-                            space-y-4
-                            p-6
-                        ">
-
-                            <div className="
-                                flex
-                                items-center
-                                justify-between
-                                gap-4
-                            ">
-                                <span className="
-                                    text-sm
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Efectivo
-                                </span>
-
-                                <span className="
-                                    font-semibold
-                                    text-[var(--text-primary)]
-                                ">
-                                    {formatCurrency(cashTotal)}
-                                </span>
-                            </div>
-
-
-                            <div className="
-                                flex
-                                items-center
-                                justify-between
-                                gap-4
-                            ">
-                                <span className="
-                                    text-sm
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Transferencia
-                                </span>
-
-                                <span className="
-                                    font-semibold
-                                    text-[var(--text-primary)]
-                                ">
-                                    {formatCurrency(transferTotal)}
-                                </span>
-                            </div>
-
-
-                            <div className="
-                                flex
-                                items-center
-                                justify-between
-                                gap-4
-                            ">
-                                <span className="
-                                    text-sm
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Adeudado
-                                </span>
-
-                                <span className="
-                                    font-semibold
-                                    text-[var(--danger)]
-                                ">
-                                    {formatCurrency(owedTotal)}
-                                </span>
-                            </div>
-
-                        </div>
-
-
-                        <div className="p-6">
-
-                            <p className="
-                                text-sm
-                                text-[var(--text-secondary)]
-                            ">
-                                Operaciones
-                            </p>
-
-                            <p className="
-                                mt-1
-                                text-2xl
-                                font-bold
-                                text-[var(--text-primary)]
-                            ">
-                                {transactions.length}
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </aside>
-
-            </div>
+            </section>
 
 
             {/* TRANSACTION HISTORY */}
 
             <section className="mt-8">
 
-                <div>
+                <div className="
+                    border-b
+                    border-[var(--border)]
+                    pb-4
+                ">
+
                     <p className="
                         text-xs
                         font-semibold
@@ -596,14 +446,34 @@ function ProviderDetail({ isNewProvider = false }) {
                         Historial
                     </p>
 
-                    <h2 className="
+                    <div className="
                         mt-1
-                        text-xl
-                        font-bold
-                        text-[var(--text-primary)]
+                        flex
+                        items-baseline
+                        justify-between
+                        gap-4
                     ">
-                        Operaciones
-                    </h2>
+
+                        <h2 className="
+                            text-xl
+                            font-bold
+                            text-[var(--text-primary)]
+                        ">
+                            Operaciones
+                        </h2>
+
+                        <span className="
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            {transactions.length}{" "}
+                            {transactions.length === 1
+                                ? "operación"
+                                : "operaciones"}
+                        </span>
+
+                    </div>
+
                 </div>
 
 
@@ -618,6 +488,7 @@ function ProviderDetail({ isNewProvider = false }) {
                         p-10
                         text-center
                     ">
+
                         <p className="
                             font-semibold
                             text-[var(--text-primary)]
@@ -632,12 +503,13 @@ function ProviderDetail({ isNewProvider = false }) {
                         ">
                             Este proveedor todavía no tiene operaciones asociadas.
                         </p>
+
                     </div>
 
                 ) : (
 
                     <div className="
-                        mt-5
+                        mt-4
                         overflow-hidden
                         border
                         border-[var(--border)]
@@ -654,43 +526,69 @@ function ProviderDetail({ isNewProvider = false }) {
                                     <div
                                         key={transaction.id}
                                         className="
-                                            flex
-                                            items-center
-                                            justify-between
-                                            gap-4
                                             px-6
                                             py-4
                                         "
                                     >
 
-                                        <div>
-                                            <p className="
-                                                font-medium
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {getTransactionLabel(
-                                                    transaction.type
-                                                )}
-                                            </p>
-
-                                            <p className="
-                                                mt-1
-                                                text-xs
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                {new Date(
-                                                    transaction.created_at
-                                                ).toLocaleString(
-                                                    "es-AR"
-                                                )}
-                                            </p>
-                                        </div>
-
-
                                         <div className="
-                                            text-right
+                                            flex
+                                            items-center
+                                            justify-between
+                                            gap-6
                                         ">
+
+                                            <div className="
+                                                min-w-0
+                                                flex-1
+                                            ">
+
+                                                <p className="
+                                                    truncate
+                                                    font-medium
+                                                    text-[var(--text-primary)]
+                                                ">
+                                                    {transaction.description}
+                                                </p>
+
+                                                <div className="
+                                                    mt-1
+                                                    flex
+                                                    flex-wrap
+                                                    items-center
+                                                    gap-x-3
+                                                    gap-y-1
+                                                    text-xs
+                                                    text-[var(--text-secondary)]
+                                                ">
+
+                                                    <span>
+                                                        {new Date(
+                                                            transaction.created_at
+                                                        ).toLocaleString(
+                                                            "es-AR"
+                                                        )}
+                                                    </span>
+
+                                                    <span>
+                                                        {transaction.amounts
+                                                            ?.map(
+                                                                (amount) =>
+                                                                    getMethodLabel(
+                                                                        amount.method
+                                                                    )
+                                                            )
+                                                            .join(" · ")}
+                                                    </span>
+
+                                                </div>
+
+                                            </div>
+
+
                                             <p className="
+                                                shrink-0
+                                                text-right
                                                 font-semibold
                                                 text-[var(--text-primary)]
                                             ">
@@ -699,20 +597,6 @@ function ProviderDetail({ isNewProvider = false }) {
                                                 )}
                                             </p>
 
-                                            <p className="
-                                                mt-1
-                                                text-xs
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                {transaction.amounts
-                                                    ?.map(
-                                                        (amount) =>
-                                                            getMethodLabel(
-                                                                amount.method
-                                                            )
-                                                    )
-                                                    .join(" · ")}
-                                            </p>
                                         </div>
 
                                     </div>

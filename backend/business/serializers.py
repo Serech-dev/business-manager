@@ -362,6 +362,17 @@ class TransactionSerializer(
 
         return instance
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        if not instance.description:
+            representation["description"] = (
+                instance.get_display_description()
+            )
+
+        return representation
+
+
 class RegisterSerializer(
     serializers.ModelSerializer
 ):
@@ -766,10 +777,8 @@ class TransactionAmountReceivedSerializer(
 class ProviderSerializer(
     serializers.ModelSerializer
 ):
-    total_amount = serializers.SerializerMethodField()
-    cash = serializers.SerializerMethodField()
-    transfer = serializers.SerializerMethodField()
-    owed = serializers.SerializerMethodField()
+    current_register_total = serializers.SerializerMethodField()
+    current_register_transactions = serializers.SerializerMethodField()
 
     class Meta:
         model = Provider
@@ -780,51 +789,42 @@ class ProviderSerializer(
             "phone",
             "notes",
             "created_at",
-            "total_amount",
-            "cash",
-            "transfer",
-            "owed",
+            "current_register_total",
+            "current_register_transactions",
         ]
 
         read_only_fields = [
             "id",
             "created_at",
-            "total_amount",
-            "cash",
-            "transfer",
-            "owed",
+            "current_register_total",
+            "current_register_transactions",
         ]
 
+    def _get_current_register(self):
+        request = self.context["request"]
+
+        return Register.objects.filter(
+            user=request.user,
+            closed_at__isnull=True,
+        ).first()
+
     def get_provider_transactions(self, obj):
-        return obj.transactions.prefetch_related("amounts").all()
+        register = self._get_current_register()
 
-    def get_total_amount(self, obj):
+        if register is None:
+            return obj.transactions.none()
+
+        return obj.transactions.filter(
+            register=register,
+        ).prefetch_related("amounts")
+
+    def get_current_register_total(self, obj):
         return sum(
             amount.amount
             for transaction in self.get_provider_transactions(obj)
             for amount in transaction.amounts.all()
+            if amount.method != TransactionAmount.Method.DEBT
         )
 
-    def get_cash(self, obj):
-        return sum(
-            amount.amount
-            for transaction in self.get_provider_transactions(obj)
-            for amount in transaction.amounts.all()
-            if amount.method == TransactionAmount.Method.CASH
-        )
-
-    def get_transfer(self, obj):
-        return sum(
-            amount.amount
-            for transaction in self.get_provider_transactions(obj)
-            for amount in transaction.amounts.all()
-            if amount.method == TransactionAmount.Method.TRANSFER
-        )
-
-    def get_owed(self, obj):
-        return sum(
-            amount.amount
-            for transaction in self.get_provider_transactions(obj)
-            for amount in transaction.amounts.all()
-            if amount.method == TransactionAmount.Method.DEBT
-        )
+    def get_current_register_transactions(self, obj):
+        return self.get_provider_transactions(obj).count()

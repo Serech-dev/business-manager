@@ -111,7 +111,7 @@ function TransactionCard({
                         font-semibold
                         text-[var(--text-primary)]
                     ">
-                        {title}
+                        {transaction.description}
                     </h4>
 
 
@@ -168,25 +168,6 @@ function TransactionCard({
                 </div>
 
             </div>
-
-
-            {/* DESCRIPTION */}
-
-            {transaction.description && (
-                <div className="
-                    border-t
-                    border-[var(--border)]
-                    px-5
-                    py-3
-                ">
-                    <p className="
-                        text-sm
-                        text-[var(--text-secondary)]
-                    ">
-                        {transaction.description}
-                    </p>
-                </div>
-            )}
 
 
             {/* CONTEXT */}

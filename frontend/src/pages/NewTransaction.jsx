@@ -343,7 +343,7 @@ function NewTransaction() {
             min-h-screen
             bg-[var(--background)]
             px-6
-            py-8
+            py-5
             lg:px-10
         ">
             <div className="
@@ -354,7 +354,7 @@ function NewTransaction() {
                 <header className="
                     border-b
                     border-[var(--border)]
-                    pb-6
+                    pb-4
                 ">
                     <div>
                         <p className="
@@ -391,16 +391,16 @@ function NewTransaction() {
 
                 <form
                     onSubmit={handleSubmit}
-                    className="mt-8"
+                    className="mt-5"
                 >
                     <div className="
                         grid
-                        gap-6
+                        gap-4
                         lg:grid-cols-[minmax(0,1fr)_320px]
                         lg:items-start
                     ">
 
-                        <div className="space-y-6">
+                        <div className="space-y-4">
 
                             {/* BASIC INFORMATION */}
 
@@ -410,32 +410,11 @@ function NewTransaction() {
                                 bg-[var(--surface)]
                             ">
                                 <div className="
-                                    border-b
-                                    border-[var(--border)]
-                                    px-6
-                                    py-5
-                                ">
-                                    <h2 className="
-                                        font-semibold
-                                        text-[var(--text-primary)]
-                                    ">
-                                        Información de la operación
-                                    </h2>
-
-                                    <p className="
-                                        mt-1
-                                        text-sm
-                                        text-[var(--text-secondary)]
-                                    ">
-                                        Indicá qué tipo de movimiento estás registrando.
-                                    </p>
-                                </div>
-
-                                <div className="
                                     grid
-                                    gap-6
-                                    p-6
-                                    md:grid-cols-2
+                                    gap-4
+                                    p-5
+                                    md:grid-cols-[220px_minmax(0,1fr)]
+                                    md:items-end
                                 ">
                                     <div>
                                         <label
@@ -504,7 +483,6 @@ function NewTransaction() {
                                         </select>
                                     </div>
 
-
                                     <div>
                                         <label
                                             htmlFor="description"
@@ -521,9 +499,7 @@ function NewTransaction() {
                                             id="description"
                                             value={description}
                                             onChange={(event) =>
-                                                setDescription(
-                                                    event.target.value
-                                                )
+                                                setDescription(event.target.value)
                                             }
                                             className="
                                                 mt-2
@@ -542,7 +518,7 @@ function NewTransaction() {
                                                 focus:ring-2
                                                 focus:ring-[var(--primary)]/20
                                             "
-                                            placeholder="Opcional"
+                                            placeholder="Descripción opcional"
                                         />
                                     </div>
                                 </div>

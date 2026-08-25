@@ -191,87 +191,83 @@ function ProviderList() {
 
             {/* PROVIDERS */}
 
-            {filteredProviders.length === 0 ? (
+                {filteredProviders.length === 0 ? (
 
-                <section className="
-                    mt-5
-                    border
-                    border-dashed
-                    border-[var(--border)]
-                    bg-[var(--surface)]
-                    p-12
-                    text-center
-                ">
-
-                    <p className="
-                        font-semibold
-                        text-[var(--text-primary)]
-                    ">
-                        {search
-                            ? "No se encontraron proveedores"
-                            : "No hay proveedores registrados"}
-                    </p>
-
-                    <p className="
-                        mt-1
-                        text-sm
-                        text-[var(--text-secondary)]
-                    ">
-                        {search
-                            ? "Probá con otro nombre o teléfono."
-                            : "Los proveedores aparecerán aquí cuando sean utilizados en una operación."}
-                    </p>
-
-                </section>
-
-            ) : (
-
-                <section className="
-                    mt-5
-                    overflow-hidden
-                    border
-                    border-[var(--border)]
-                    bg-[var(--surface)]
-                ">
-
-                    <div className="
-                        divide-y
-                        divide-[var(--border)]
+                    <section className="
+                        mt-5
+                        border
+                        border-dashed
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-12
+                        text-center
                     ">
 
-                        {filteredProviders.map(
-                            (provider) => (
-                                <button
-                                    key={provider.id}
-                                    type="button"
-                                    onClick={() =>
-                                        navigate(
-                                            `/providers/${provider.id}`
-                                        )
-                                    }
-                                    className="
-                                        w-full
-                                        px-6
-                                        py-5
-                                        text-left
-                                        transition
-                                        hover:bg-[var(--surface-accent)]
-                                    "
-                                >
+                        <p className="
+                            font-semibold
+                            text-[var(--text-primary)]
+                        ">
+                            {search
+                                ? "No se encontraron proveedores"
+                                : "No hay proveedores registrados"}
+                        </p>
 
-                                    <div className="
-                                        flex
-                                        items-center
-                                        justify-between
-                                        gap-6
-                                    ">
+                        <p className="
+                            mt-1
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            {search
+                                ? "Probá con otro nombre o teléfono."
+                                : "Los proveedores aparecerán aquí cuando sean utilizados en una operación."}
+                        </p>
 
-                                        {/* PROVIDER */}
+                    </section>
+
+                ) : (
+
+                    <section className="
+                        mt-5
+                        overflow-hidden
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                    ">
+
+                        <div className="
+                            divide-y
+                            divide-[var(--border)]
+                        ">
+
+                            {filteredProviders.map(
+                                (provider) => (
+                                    <button
+                                        key={provider.id}
+                                        type="button"
+                                        onClick={() =>
+                                            navigate(
+                                                `/providers/${provider.id}`
+                                            )
+                                        }
+                                        className="
+                                            flex
+                                            w-full
+                                            items-center
+                                            justify-between
+                                            gap-6
+                                            px-6
+                                            py-5
+                                            text-left
+                                            transition
+                                            hover:bg-[var(--surface-accent)]
+                                        "
+                                    >
 
                                         <div className="
                                             min-w-0
                                             flex-1
                                         ">
+
                                             <p className="
                                                 truncate
                                                 font-semibold
@@ -286,129 +282,65 @@ function ProviderList() {
                                                     text-sm
                                                     text-[var(--text-secondary)]
                                                 ">
-                                                    {provider.notes}
+                                                    {provider.phone}
                                                 </p>
                                             )}
+
                                         </div>
 
-
-                                        {/* TOTAL */}
 
                                         <div className="
                                             shrink-0
                                             text-right
                                         ">
-                                            <p className="
-                                                text-xs
-                                                font-medium
-                                                uppercase
-                                                tracking-wide
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                Total
-                                            </p>
 
-                                            <p className="
-                                                mt-1
-                                                text-xl
-                                                font-bold
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {formatCurrency(
-                                                    provider.total_amount
-                                                )}
-                                            </p>
+                                            {provider.current_register_transactions > 0 ? (
+
+                                                <>
+                                                    <p className="
+                                                        text-sm
+                                                        font-semibold
+                                                        text-[var(--text-primary)]
+                                                    ">
+                                                        {formatCurrency(
+                                                            provider.current_register_total
+                                                        )}
+                                                    </p>
+
+                                                    <p className="
+                                                        mt-1
+                                                        text-xs
+                                                        text-[var(--text-secondary)]
+                                                    ">
+                                                        {provider.current_register_transactions}{" "}
+                                                        {provider.current_register_transactions === 1
+                                                            ? "movimiento"
+                                                            : "movimientos"}
+                                                    </p>
+                                                </>
+
+                                            ) : (
+
+                                                <p className="
+                                                    text-xs
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    Sin movimientos
+                                                </p>
+
+                                            )}
+
                                         </div>
 
-                                    </div>
+                                    </button>
+                                )
+                            )}
 
+                        </div>
 
-                                    {/* BREAKDOWN */}
+                    </section>
 
-                                    <div className="
-                                        mt-4
-                                        grid
-                                        grid-cols-3
-                                        gap-3
-                                        border-t
-                                        border-[var(--border)]
-                                        pt-4
-                                        sm:grid-cols-3
-                                    ">
-
-                                        <div>
-                                            <p className="
-                                                text-xs
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                Efectivo
-                                            </p>
-
-                                            <p className="
-                                                mt-1
-                                                text-sm
-                                                font-semibold
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {formatCurrency(
-                                                    provider.cash
-                                                )}
-                                            </p>
-                                        </div>
-
-
-                                        <div>
-                                            <p className="
-                                                text-xs
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                Transferencia
-                                            </p>
-
-                                            <p className="
-                                                mt-1
-                                                text-sm
-                                                font-semibold
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {formatCurrency(
-                                                    provider.transfer
-                                                )}
-                                            </p>
-                                        </div>
-
-
-                                        <div>
-                                            <p className="
-                                                text-xs
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                Adeudado
-                                            </p>
-
-                                            <p className="
-                                                mt-1
-                                                text-sm
-                                                font-semibold
-                                                text-[var(--danger)]
-                                            ">
-                                                {formatCurrency(
-                                                    provider.owed
-                                                )}
-                                            </p>
-                                        </div>
-
-                                    </div>
-
-                                </button>
-                            )
-                        )}
-
-                    </div>
-
-                </section>
-
-            )}
+                )}
 
         </div>
     );

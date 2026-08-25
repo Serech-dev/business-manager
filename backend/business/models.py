@@ -189,6 +189,53 @@ class Transaction(models.Model):
         related_name="transactions",
     )
 
+    def get_display_description(self):
+        if self.description:
+            return self.description
+
+        if self.type == self.Type.SALE:
+            if self.client:
+                return f"Venta a {self.client.name}"
+            return "Venta"
+
+        if self.type == self.Type.SUBE:
+            if self.client:
+                return f"Carga SUBE a {self.client.name}"
+            return "Carga SUBE"
+
+        if self.type == self.Type.PHONE:
+            if self.client:
+                return f"Carga de celular a {self.client.name}"
+            return "Carga de celular"
+
+        if self.type == self.Type.EXCHANGE:
+            if self.client:
+                return f"Cambio para {self.client.name}"
+            return "Cambio"
+
+        if self.type == self.Type.SALE_EXCHANGE:
+            if self.client:
+                return f"Venta + cambio a {self.client.name}"
+            return "Venta + cambio"
+
+        if self.type == self.Type.PAYMENT:
+            if self.client:
+                return f"Pago de fiado de {self.client.name}"
+            return "Pago de fiado"
+
+        if self.type == self.Type.PROVIDER:
+            if self.provider:
+                return f"Pago a proveedor {self.provider.name}"
+            return "Pago a proveedor"
+
+        if self.type == self.Type.EXPENSE:
+            return "Gasto"
+
+        if self.type == self.Type.LOSS:
+            return "Pérdida"
+
+        return self.get_type_display()
+
     def __str__(self):
         return f"{self.get_type_display()} #{self.id}"
 

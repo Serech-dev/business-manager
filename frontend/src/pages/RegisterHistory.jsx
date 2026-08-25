@@ -24,6 +24,16 @@ function formatDate(value) {
     ).format(new Date(value));
 }
 
+function formatDateLong(value) {
+    return new Intl.DateTimeFormat(
+        "es-AR",
+        {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        }
+    ).format(new Date(value));
+}
 
 function RegisterHistory() {
     const navigate = useNavigate();
@@ -185,7 +195,7 @@ function RegisterHistory() {
                                                 font-semibold
                                                 text-[var(--text-primary)]
                                             ">
-                                                Caja #{register.id}
+                                                Caja del {formatDateLong(register.opened_at)}
                                             </h2>
 
                                             <p className="

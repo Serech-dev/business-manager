@@ -4,14 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useOutletContext } from "react-router-dom";
 
 import {
-    closeRegister,
+    openRegister,
+    getTransactions,
     deleteTransaction,
     getCurrentRegister,
-    getTransactions,
-    openRegister,
 } from "../services/business";
 
 import TransactionCard from "../components/TransactionCard";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 
 function Dashboard() {
@@ -21,6 +21,9 @@ function Dashboard() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [isOpening, setIsOpening] = useState(false);
+
+    const [transactionToDelete, setTransactionToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const {
         register,
@@ -89,45 +92,8 @@ function Dashboard() {
         }
     }
 
-    async function handleCloseRegister() {
-        const confirmed = window.confirm(
-            "¿Querés cerrar la caja?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        setIsClosing(true);
-
-        try {
-            await closeRegister();
-
-            setRegister(null);
-
-            toast.success(
-                "Caja cerrada."
-            );
-        } catch (error) {
-            console.error(error);
-
-            toast.error(
-                "No se pudo cerrar la caja."
-            );
-        } finally {
-            setIsClosing(false);
-        }
-    }
-
-
     async function handleDelete(id) {
-        const confirmed = window.confirm(
-            "¿Querés eliminar esta operación?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
+        setIsDeleting(true);
 
         try {
             await deleteTransaction(id);
@@ -147,12 +113,17 @@ function Dashboard() {
             toast.success(
                 "Operación eliminada."
             );
+
+            setTransactionToDelete(null);
+
         } catch (error) {
             console.error(error);
 
             toast.error(
                 "No se pudo eliminar la operación."
             );
+        } finally {
+            setIsDeleting(false);
         }
     }
 
@@ -463,7 +434,9 @@ function Dashboard() {
                                                 <TransactionCard
                                                     key={transaction.id}
                                                     transaction={transaction}
-                                                    onDelete={handleDelete}
+                                                    onDelete={(id) => {
+                                                        setTransactionToDelete(id);
+                                                    }}
                                                     onTransactionUpdate={
                                                         handleTransactionUpdate
                                                     }
@@ -479,6 +452,24 @@ function Dashboard() {
 
                         </section>
 
+                    )}
+
+                    {transactionToDelete && (
+                        <ConfirmDialog
+                            title="Eliminar operación"
+                            message="¿Querés eliminar esta operación? Esta acción no se puede deshacer."
+                            confirmLabel="Eliminar"
+                            cancelLabel="Cancelar"
+                            isLoading={isDeleting}
+                            onCancel={() => {
+                                if (!isDeleting) {
+                                    setTransactionToDelete(null);
+                                }
+                            }}
+                            onConfirm={() =>
+                                handleDelete(transactionToDelete)
+                            }
+                        />
                     )}
 
                  </div>
