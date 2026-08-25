@@ -1,16 +1,18 @@
+import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
 
 import {
     getProvider,
     getTransactions,
     updateProvider,
     createProvider,
+    deleteProvider,
     getTransactionLabel,
     getMethodLabel,
 } from "../services/business";
 
+import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
 
 
@@ -31,6 +33,8 @@ function ProviderDetail({ isNewProvider = false }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     useEffect(() => {
         async function loadProvider() {
@@ -123,6 +127,29 @@ function ProviderDetail({ isNewProvider = false }) {
         }
     }
 
+    async function handleDelete() {
+        setIsDeleting(true);
+
+        try {
+            await deleteProvider(id);
+
+            toast.success(
+                "Proveedor eliminado."
+            );
+
+            navigate("/providers");
+
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                "No se pudo eliminar el proveedor."
+            );
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteDialog(false);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -386,10 +413,16 @@ function ProviderDetail({ isNewProvider = false }) {
                     </div>
 
 
-                    <div className="sm:col-span-2">
+                    <div className="
+                        flex
+                        items-center
+                        justify-between
+                        gap-4
+                        sm:col-span-2
+                    ">
                         <button
                             type="submit"
-                            disabled={isSaving}
+                            disabled={isSaving || isDeleting}
                             className="
                                 rounded-md
                                 bg-[var(--primary)]
@@ -408,6 +441,32 @@ function ProviderDetail({ isNewProvider = false }) {
                                 ? "Guardando..."
                                 : "Guardar cambios"}
                         </button>
+
+                        {!isNewProvider && (
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteDialog(true)}
+                                disabled={isSaving || isDeleting}
+                                className="
+                                    rounded-md
+                                    border
+                                    border-[var(--danger-border)]
+                                    px-4
+                                    py-2.5
+                                    text-sm
+                                    font-semibold
+                                    text-[var(--danger)]
+                                    transition
+                                    hover:bg-[var(--danger-bg)]
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+                            >
+                                {isDeleting
+                                    ? "Eliminando..."
+                                    : "Eliminar proveedor"}
+                            </button>
+                        )}
                     </div>
 
                 </form>
@@ -604,6 +663,32 @@ function ProviderDetail({ isNewProvider = false }) {
                     )}
 
                 </section>
+            )}
+
+            {showDeleteDialog && (
+                <ConfirmDialog
+                    title="Eliminar proveedor"
+                    message={
+                        <div>
+                            <div>
+                                ¿Querés eliminar al proveedor "{provider.name}"?
+                            </div>
+
+                            <div className="
+                                mt-2
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Esta acción no se puede deshacer.
+                            </div>
+                        </div>
+                    }
+                    confirmLabel="Eliminar proveedor"
+                    cancelLabel="Cancelar"
+                    onConfirm={handleDelete}
+                    onCancel={() => setShowDeleteDialog(false)}
+                    isLoading={isDeleting}
+                />
             )}
 
         </div>

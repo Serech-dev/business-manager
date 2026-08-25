@@ -167,6 +167,11 @@ export async function getClients(search = "") {
     return response.data;
 }
 
+export async function deleteClient(id) {
+    await api.delete(
+        `business/clients/${id}/`
+    );
+}
 
 export async function getProviders() { 
     const response = await api.get( "business/providers/" ); 
@@ -201,3 +206,11 @@ export async function createProvider(data) {
 
     return response.data;
 }
+
+
+export async function deleteProvider(id) {
+    await api.delete(
+        `business/providers/${id}/`
+    );
+}
+

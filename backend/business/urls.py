@@ -65,10 +65,12 @@ urlpatterns = [
         RegisterDetailView.as_view(),
         name="register-detail",
     ),
+
     path(
         "transaction-amounts/<int:pk>/received/",
         TransactionAmountReceivedView.as_view(),
     ),
+
     path(
         "clients/",
         ClientListCreateView.as_view(),
@@ -80,6 +82,7 @@ urlpatterns = [
         ClientDetailView.as_view(),
         name="client-detail",
     ),
+    
     path(
         "providers/",
         ProviderListCreateView.as_view(),

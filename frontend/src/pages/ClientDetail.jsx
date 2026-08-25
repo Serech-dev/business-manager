@@ -7,19 +7,23 @@ import {
     getTransactions,
     updateClient,
     createClient,
+    deleteClient,
     getTransactionLabel,
     getMethodLabel,
 } from "../services/business";
 
+import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
 
 
 function ClientDetail({ isNewClient = false }) {
     const { id } = useParams();
+    const navigate = useNavigate();
 
     const [client, setClient] = useState(
         isNewClient ? {} : null
     );
+
     const [transactions, setTransactions] = useState([]);
 
     const [name, setName] = useState("");
@@ -28,8 +32,9 @@ function ClientDetail({ isNewClient = false }) {
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-    const navigate = useNavigate();
 
     useEffect(() => {
         async function loadClient() {
@@ -107,7 +112,7 @@ function ClientDetail({ isNewClient = false }) {
             );
 
             if (isNewClient) {
-                navigate(`/clients/`);
+                navigate("/clients");
             }
         } catch (error) {
             console.error(error);
@@ -121,6 +126,31 @@ function ClientDetail({ isNewClient = false }) {
             setIsSaving(false);
         }
     }
+
+
+    async function handleDelete() {
+        setIsDeleting(true);
+
+        try {
+            await deleteClient(id);
+
+            toast.success(
+                "Cliente eliminado."
+            );
+
+            navigate("/clients");
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                "No se pudo eliminar el cliente."
+            );
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteDialog(false);
+        }
+    }
+
 
     if (isLoading) {
         return (
@@ -136,9 +166,11 @@ function ClientDetail({ isNewClient = false }) {
         );
     }
 
+
     if (!client) {
         return null;
     }
+
 
     const debtTransactions =
         transactions.filter(
@@ -172,7 +204,7 @@ function ClientDetail({ isNewClient = false }) {
         <div className="
             mx-auto
             max-w-7xl
-            px-8
+            px-6
             py-8
         ">
 
@@ -184,40 +216,81 @@ function ClientDetail({ isNewClient = false }) {
                 pb-6
             ">
 
-                <p className="
-                    text-xs
-                    font-semibold
-                    uppercase
-                    tracking-wider
-                    text-[var(--primary)]
+                <div className="
+                    flex
+                    flex-col
+                    gap-4
+                    sm:flex-row
+                    sm:items-end
+                    sm:justify-between
                 ">
-                    Cliente
-                </p>
 
-                <h1 className="
-                    mt-1
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                    text-[var(--text-primary)]
-                ">
-                    {isNewClient
-                        ? "Nuevo cliente"
-                        : client.name}
-                </h1>
+                    <div>
+
+                        <p className="
+                            text-xs
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[var(--primary)]
+                        ">
+                            Cliente
+                        </p>
+
+                        <h1 className="
+                            mt-1
+                            text-3xl
+                            font-bold
+                            tracking-tight
+                            text-[var(--text-primary)]
+                        ">
+                            {isNewClient
+                                ? "Nuevo cliente"
+                                : client.name}
+                        </h1>
+
+                    </div>
+
+
+                    {!isNewClient && (
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setShowDeleteDialog(true)
+                            }
+                            disabled={isDeleting}
+                            className="
+                                border
+                                border-[var(--danger-border)]
+                                px-4
+                                py-2
+                                text-sm
+                                font-semibold
+                                text-[var(--danger)]
+                                transition
+                                hover:bg-[var(--danger-bg)]
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                            "
+                        >
+                            {isDeleting
+                                ? "Eliminando..."
+                                : "Eliminar cliente"}
+                        </button>
+                    )}
+
+                </div>
 
             </header>
 
 
+            {/* CLIENT OVERVIEW */}
+
             <div className="
                 mt-8
-                grid
-                gap-6
-                lg:grid-cols-[minmax(0,1fr)_320px]
-                lg:items-start
             ">
 
-                {/* CLIENT INFORMATION */}
+                {/* INFORMATION */}
 
                 <section className="
                     border
@@ -228,9 +301,10 @@ function ClientDetail({ isNewClient = false }) {
                     <div className="
                         border-b
                         border-[var(--border)]
-                        px-6
-                        py-5
+                        px-5
+                        py-4
                     ">
+
                         <h2 className="
                             font-semibold
                             text-[var(--text-primary)]
@@ -240,23 +314,29 @@ function ClientDetail({ isNewClient = false }) {
 
                         <p className="
                             mt-1
-                            text-sm
+                            text-xs
                             text-[var(--text-secondary)]
                         ">
-                            Datos guardados del cliente.
+                            Datos del cliente.
                         </p>
+
                     </div>
 
 
                     <form
                         onSubmit={handleSave}
                         className="
-                            space-y-6
-                            p-6
+                            grid
+                            gap-5
+                            p-5
+                            sm:grid-cols-2
                         "
                     >
 
+                        {/* NAME */}
+
                         <div>
+
                             <label
                                 htmlFor="name"
                                 className="
@@ -290,10 +370,14 @@ function ClientDetail({ isNewClient = false }) {
                                     focus:ring-[var(--primary)]/20
                                 "
                             />
+
                         </div>
 
 
+                        {/* PHONE */}
+
                         <div>
+
                             <label
                                 htmlFor="phone"
                                 className="
@@ -327,10 +411,16 @@ function ClientDetail({ isNewClient = false }) {
                                     focus:ring-[var(--primary)]/20
                                 "
                             />
+
                         </div>
 
 
-                        <div>
+                        {/* NOTES */}
+
+                        <div className="
+                            sm:col-span-2
+                        ">
+
                             <label
                                 htmlFor="notes"
                                 className="
@@ -348,7 +438,7 @@ function ClientDetail({ isNewClient = false }) {
                                 onChange={(event) =>
                                     setNotes(event.target.value)
                                 }
-                                rows={4}
+                                rows={2}
                                 className="
                                     mt-2
                                     w-full
@@ -365,153 +455,79 @@ function ClientDetail({ isNewClient = false }) {
                                     focus:ring-2
                                     focus:ring-[var(--primary)]/20
                                 "
+                                placeholder="Información adicional..."
                             />
+
                         </div>
 
 
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            className="
-                                rounded-md
-                                bg-[var(--primary)]
-                                px-5
-                                py-2.5
-                                text-sm
-                                font-semibold
-                                text-white
-                                transition
-                                hover:bg-[var(--primary-hover)]
-                                disabled:cursor-not-allowed
-                                disabled:opacity-50
-                            "
-                        >
-                            {isSaving
-                                ? "Guardando..."
-                                : "Guardar cambios"}
-                        </button>
+                        {/* ACTIONS */}
+
+                        <div className="
+                            flex
+                            items-center
+                            gap-3
+                            sm:col-span-2
+                        ">
+
+                            <button
+                                type="submit"
+                                disabled={isSaving}
+                                className="
+                                    bg-[var(--primary)]
+                                    px-5
+                                    py-2.5
+                                    text-sm
+                                    font-semibold
+                                    text-white
+                                    transition
+                                    hover:bg-[var(--primary-hover)]
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+                            >
+                                {isSaving
+                                    ? "Guardando..."
+                                    : isNewClient
+                                        ? "Crear cliente"
+                                        : "Guardar cambios"}
+                            </button>
+
+                        </div>
 
                     </form>
 
                 </section>
-
-
-                {/* SUMMARY */}
-
-                <aside className="
-                    border
-                    border-[var(--border)]
-                    bg-[var(--surface)]
-                ">
-
-                    <div className="
-                        border-b
-                        border-[var(--border)]
-                        px-6
-                        py-5
-                    ">
-                        <p className="
-                            text-xs
-                            font-semibold
-                            uppercase
-                            tracking-wider
-                            text-[var(--text-secondary)]
-                        ">
-                            Resumen
-                        </p>
-                    </div>
-
-
-                    <div className="p-6">
-
-                        <p className="
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            Operaciones
-                        </p>
-
-                        <p className="
-                            mt-1
-                            text-2xl
-                            font-bold
-                            text-[var(--text-primary)]
-                        ">
-                            {transactions.length}
-                        </p>
-
-
-                        {debtTotal > 0 && (
-                            <div className="
-                                mt-6
-                                border-t
-                                border-[var(--border)]
-                                pt-5
-                            ">
-                                <p className="
-                                    text-sm
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Fiado registrado
-                                </p>
-
-                                <p className="
-                                    mt-1
-                                    text-xl
-                                    font-semibold
-                                    text-[var(--text-primary)]
-                                ">
-                                    ${formatCurrency(debtTotal)}
-                                </p>
-
-                                <p className="
-                                    mt-1
-                                    text-xs
-                                    text-[var(--text-secondary)]
-                                ">
-                                    Pendiente de implementar el pago.
-                                </p>
-                            </div>
-                        )}
-
-                    </div>
-
-                </aside>
 
             </div>
 
 
             {/* TRANSACTION HISTORY */}
 
-            <section className="mt-8">
+            <section className="
+                mt-8
+            ">
 
-                <div className="
-                    flex
-                    items-end
-                    justify-between
-                    gap-4
-                ">
+                <div>
 
-                    <div>
-                        <p className="
-                            text-xs
-                            font-semibold
-                            uppercase
-                            tracking-wider
-                            text-[var(--text-secondary)]
-                        ">
-                            Historial
-                        </p>
+                    <p className="
+                        text-xs
+                        font-semibold
+                        uppercase
+                        tracking-wider
+                        text-[var(--text-secondary)]
+                    ">
+                        Historial
+                    </p>
 
-                        <h2 className="
-                            mt-1
-                            text-xl
-                            font-bold
-                            text-[var(--text-primary)]
-                        ">
-                            Operaciones
-                        </h2>
-                    </div>
+                    <h2 className="
+                        mt-1
+                        text-xl
+                        font-bold
+                        text-[var(--text-primary)]
+                    ">
+                        Operaciones
+                    </h2>
 
                 </div>
 
@@ -519,14 +535,16 @@ function ClientDetail({ isNewClient = false }) {
                 {transactions.length === 0 ? (
 
                     <div className="
-                        mt-5
+                        mt-4
                         border
                         border-dashed
                         border-[var(--border)]
                         bg-[var(--surface)]
-                        p-10
+                        px-6
+                        py-8
                         text-center
                     ">
+
                         <p className="
                             font-semibold
                             text-[var(--text-primary)]
@@ -541,17 +559,52 @@ function ClientDetail({ isNewClient = false }) {
                         ">
                             Este cliente todavía no tiene operaciones asociadas.
                         </p>
+
                     </div>
 
                 ) : (
 
                     <div className="
-                        mt-5
+                        mt-4
                         overflow-hidden
                         border
                         border-[var(--border)]
                         bg-[var(--surface)]
                     ">
+
+                        {/* TABLE HEADER */}
+
+                        <div className="
+                            hidden
+                            border-b
+                            border-[var(--border)]
+                            bg-[var(--surface-muted)]
+                            px-5
+                            py-3
+                            text-xs
+                            font-semibold
+                            uppercase
+                            tracking-wide
+                            text-[var(--text-secondary)]
+                            sm:grid
+                            sm:grid-cols-[1fr_auto_auto]
+                            sm:gap-6
+                        ">
+
+                            <span>
+                                Operación
+                            </span>
+
+                            <span>
+                                Medio
+                            </span>
+
+                            <span className="text-right">
+                                Total
+                            </span>
+
+                        </div>
+
 
                         <div className="
                             divide-y
@@ -563,16 +616,20 @@ function ClientDetail({ isNewClient = false }) {
                                     <div
                                         key={transaction.id}
                                         className="
-                                            flex
-                                            items-center
-                                            justify-between
-                                            gap-4
-                                            px-6
+                                            grid
+                                            gap-3
+                                            px-5
                                             py-4
+                                            sm:grid-cols-[1fr_auto_auto]
+                                            sm:items-center
+                                            sm:gap-6
                                         "
                                     >
 
+                                        {/* OPERATION */}
+
                                         <div>
+
                                             <p className="
                                                 font-medium
                                                 text-[var(--text-primary)]
@@ -593,36 +650,39 @@ function ClientDetail({ isNewClient = false }) {
                                                     "es-AR"
                                                 )}
                                             </p>
+
                                         </div>
 
 
-                                        <div className="
-                                            text-right
+                                        {/* METHODS */}
+
+                                        <p className="
+                                            text-xs
+                                            text-[var(--text-secondary)]
                                         ">
-                                            <p className="
-                                                font-semibold
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {formatCurrency(
-                                                    transaction.total
-                                                )}
-                                            </p>
+                                            {transaction.amounts
+                                                ?.map(
+                                                    (amount) =>
+                                                        getMethodLabel(
+                                                            amount.method
+                                                        )
+                                                )
+                                                .join(" · ")}
+                                        </p>
 
-                                            <p className="
-                                                mt-1
-                                                text-xs
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                {transaction.amounts
-                                                    ?.map(
-                                                        (amount) =>
-                                                            getMethodLabel(
-                                                                amount.method
-                                                            )
-                                                    )
-                                                    .join(" · ")}
-                                            </p>
-                                        </div>
+
+                                        {/* TOTAL */}
+
+                                        <p className="
+                                            text-sm
+                                            font-semibold
+                                            text-[var(--text-primary)]
+                                            sm:text-right
+                                        ">
+                                            {formatCurrency(
+                                                transaction.total
+                                            )}
+                                        </p>
 
                                     </div>
                                 )
@@ -635,6 +695,37 @@ function ClientDetail({ isNewClient = false }) {
                 )}
 
             </section>
+
+
+            {/* DELETE CONFIRMATION */}
+
+            {showDeleteDialog && (
+                <ConfirmDialog
+                    title="Eliminar cliente"
+                    message={
+                        <div>
+                            <div>
+                                ¿Querés eliminar a {client.name}?
+                            </div>
+
+                            <div className="
+                                mt-2
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Esta acción no se puede deshacer.
+                            </div>
+                        </div>
+                    }
+                    confirmLabel="Eliminar"
+                    cancelLabel="Cancelar"
+                    onConfirm={handleDelete}
+                    onCancel={() =>
+                        setShowDeleteDialog(false)
+                    }
+                    isLoading={isDeleting}
+                />
+            )}
 
         </div>
     );
