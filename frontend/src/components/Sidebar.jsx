@@ -8,6 +8,7 @@ import {
     getClosedRegisters,
 } from "../services/business";
 
+import AccountMenu from "./AccountMenu";
 import ConfirmDialog from "./ConfirmDialog";
 
 
@@ -408,30 +409,34 @@ function Sidebar({
             {/* ACCOUNT */}
 
             <div className="
-                mt-2
-                text-sm
-                leading-6
-                text-[var(--text-secondary)]
+                border-t
+                border-[var(--border)]
+                p-4
             ">
+                <AccountMenu />
+            </div>
+
+
+            {/* CONFIRM DIALOG */}
 
             {showCloseDialog && (
                 <ConfirmDialog
                     title="Cerrar caja"
                     message={
-                        <>
-                            <p>
+                        <div>
+                            <div>
                                 ¿Querés cerrar la caja actual?
-                            </p>
+                            </div>
 
-                            <p className="
+                            <div className="
                                 mt-2
                                 text-xs
                                 text-[var(--text-secondary)]
                             ">
                                 Una vez cerrada, sus operaciones no podrán
                                 modificarse ni eliminarse.
-                            </p>
-                        </>
+                            </div>
+                        </div>
                     }
                     confirmLabel="Cerrar caja"
                     cancelLabel="Cancelar"
@@ -440,7 +445,6 @@ function Sidebar({
                     isLoading={isClosing}
                 />
             )}
-            </div>
         </aside>
     );
 }
