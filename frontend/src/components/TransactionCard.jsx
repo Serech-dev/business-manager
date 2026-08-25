@@ -284,35 +284,22 @@ function TransactionCard({
                                     "
                                 >
 
-                                    <span className="
+                                    <span className={`
                                         font-medium
-                                        text-[var(--text-primary)]
-                                    ">
-                                        {getMethodLabel(
-                                            amount.method
-                                        )}
+                                        ${
+                                            amount.method === "debt"
+                                                ? "text-[var(--warning)]"
+                                                : "text-[var(--text-primary)]"
+                                        }
+                                    `}>
+                                        {getMethodLabel(amount.method)}
                                     </span>
-
 
                                     <span className="
                                         text-[var(--text-secondary)]
                                     ">
-                                        {formatCurrency(
-                                            amount.amount
-                                        )}
+                                        {formatCurrency(amount.amount)}
                                     </span>
-
-
-                                    {amount.method === "debt" && (
-                                        <span className="
-                                            text-xs
-                                            font-medium
-                                            text-[var(--warning)]
-                                        ">
-                                            Fiado
-                                        </span>
-                                    )}
-
 
                                     {isTransfer && (
                                         <>

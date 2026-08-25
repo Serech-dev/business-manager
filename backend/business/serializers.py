@@ -143,12 +143,38 @@ class TransactionSerializer(
             ),
         )
 
+        provider = attrs.get(
+            "provider",
+            getattr(
+                self.instance,
+                "provider",
+                None,
+            ),
+        )
+
+        amounts = attrs.get("amounts")
+
+        # CLIENT PAYMENTS
+
         if transaction_type == Transaction.Type.PAYMENT:
             if client is None:
                 raise serializers.ValidationError({
                     "client":
                         "El pago de fiado requiere un cliente."
                 })
+
+            if amounts and any(
+                amount["method"]
+                == TransactionAmount.Method.DEBT
+                for amount in amounts
+            ):
+                raise serializers.ValidationError({
+                    "amounts":
+                        "Un pago de fiado no puede registrarse como fiado."
+                })
+
+
+        # EXCHANGE
 
         if transaction_type in [
             Transaction.Type.EXCHANGE,
@@ -172,21 +198,29 @@ class TransactionSerializer(
                         "El monto de cambio es obligatorio."
                 })
 
-        if transaction_type == Transaction.Type.PAYMENT:
-            client = attrs.get(
-                "client",
-                getattr(self.instance, "client", None),
-            )
 
-            if client is None:
+        # PROVIDER OPERATIONS
+
+        if transaction_type in [
+            Transaction.Type.PROVIDER,
+            Transaction.Type.PROVIDER_PAYMENT,
+        ]:
+            if provider is None:
                 raise serializers.ValidationError({
-                    "client":
-                        "El pago de fiado requiere un cliente."
+                    "provider":
+                        "Esta operación requiere un proveedor."
                 })
 
-        if transaction_type == Transaction.Type.PAYMENT:
-            amounts = attrs.get("amounts")
+            if client is not None:
+                raise serializers.ValidationError({
+                    "client":
+                        "Una operación de proveedor no puede tener un cliente."
+                })
 
+
+        # PROVIDER PAYMENTS
+
+        if transaction_type == Transaction.Type.PROVIDER_PAYMENT:
             if amounts and any(
                 amount["method"]
                 == TransactionAmount.Method.DEBT
@@ -194,38 +228,7 @@ class TransactionSerializer(
             ):
                 raise serializers.ValidationError({
                     "amounts":
-                        "Un pago de fiado no puede registrarse como fiado."
-                })
-            
-        if transaction_type == Transaction.Type.PROVIDER:
-            provider = attrs.get(
-                "provider",
-                getattr(
-                    self.instance,
-                    "provider",
-                    None,
-                ),
-            )
-
-            if provider is None:
-                raise serializers.ValidationError({
-                    "provider":
-                        "Una operación de proveedor requiere un proveedor."
-                })
-
-            client = attrs.get(
-                "client",
-                getattr(
-                    self.instance,
-                    "client",
-                    None,
-                ),
-            )
-
-            if client is not None:
-                raise serializers.ValidationError({
-                    "client":
-                        "Una operación de proveedor no puede tener un cliente."
+                        "Un pago a proveedor no puede registrarse como fiado."
                 })
 
         return attrs
@@ -394,6 +397,8 @@ class RegisterSerializer(
 
     pending_transfers = serializers.SerializerMethodField()
 
+    provider = serializers.SerializerMethodField()
+
     fiado = serializers.SerializerMethodField()
 
     class Meta:
@@ -420,6 +425,7 @@ class RegisterSerializer(
             "pending_transfers",
 
             "fiado",
+            "provider",
         ]
 
         read_only_fields = fields
@@ -671,11 +677,9 @@ class RegisterSerializer(
 
         for transaction in self._get_transactions(obj):
 
-            # Payment against existing debt.
-            if (
-                transaction.type
-                == Transaction.Type.PAYMENT
-            ):
+            # Client payment against existing debt.
+            if transaction.type == Transaction.Type.PAYMENT:
+
                 amount = sum(
                     item.amount
                     for item in transaction.amounts.all()
@@ -690,33 +694,31 @@ class RegisterSerializer(
                     if client_id not in clients:
                         clients[client_id] = {
                             "client_id": client_id,
-                            "client_name": (
-                                transaction.client.name
-                            ),
+                            "client_name": transaction.client.name,
                             "debt": 0,
                             "payments": 0,
                             "net": 0,
                         }
 
-                    clients[client_id]["payments"] += (
-                        amount
-                    )
-
-                    clients[client_id]["net"] -= (
-                        amount
-                    )
+                    clients[client_id]["payments"] += amount
+                    clients[client_id]["net"] -= amount
 
                 continue
 
 
-            # New debt.
+            # Only client transactions can generate
+            # client fiado.
+            if transaction.type in [
+                Transaction.Type.PROVIDER,
+                Transaction.Type.PROVIDER_PAYMENT,
+            ]:
+                continue
+
+
             debt_amount = sum(
                 item.amount
                 for item in transaction.amounts.all()
-                if (
-                    item.method
-                    == TransactionAmount.Method.DEBT
-                )
+                if item.method == TransactionAmount.Method.DEBT
             )
 
             if debt_amount <= 0:
@@ -731,28 +733,75 @@ class RegisterSerializer(
                 if client_id not in clients:
                     clients[client_id] = {
                         "client_id": client_id,
-                        "client_name": (
-                            transaction.client.name
-                        ),
+                        "client_name": transaction.client.name,
                         "debt": 0,
                         "payments": 0,
                         "net": 0,
                     }
 
-                clients[client_id]["debt"] += (
-                    debt_amount
-                )
-
-                clients[client_id]["net"] += (
-                    debt_amount
-                )
+                clients[client_id]["debt"] += debt_amount
+                clients[client_id]["net"] += debt_amount
 
         return {
             "new_debt": new_debt,
             "payments": payments,
             "net": new_debt - payments,
-            "clients": list(
-                clients.values()
+            "clients": list(clients.values()),
+        }
+
+    def get_provider(self, obj):
+        new_debt = 0
+        payments = 0
+        providers = {}
+
+        for transaction in self._get_transactions(obj):
+
+            if (
+                transaction.type != Transaction.Type.PROVIDER
+                or not transaction.provider
+            ):
+                continue
+
+            provider_id = transaction.provider.id
+
+            if provider_id not in providers:
+                providers[provider_id] = {
+                    "provider_id": provider_id,
+                    "provider_name": transaction.provider.name,
+                    "debt": 0,
+                    "payments": 0,
+                    "net": 0,
+                }
+
+            provider_debt = sum(
+                item.amount
+                for item in transaction.amounts.all()
+                if item.method == TransactionAmount.Method.DEBT
+            )
+
+            provider_payment = sum(
+                item.amount
+                for item in transaction.amounts.all()
+                if self._is_money_movement(item)
+                and item.method != TransactionAmount.Method.DEBT
+            )
+
+            new_debt += provider_debt
+            payments += provider_payment
+
+            providers[provider_id]["debt"] += provider_debt
+            providers[provider_id]["payments"] += provider_payment
+
+            providers[provider_id]["net"] += (
+                provider_debt - provider_payment
+            )
+
+        return {
+            "new_debt": new_debt,
+            "payments": payments,
+            "net": new_debt - payments,
+            "providers": list(
+                providers.values()
             ),
         }
 
@@ -779,6 +828,7 @@ class ProviderSerializer(
 ):
     current_register_total = serializers.SerializerMethodField()
     current_register_transactions = serializers.SerializerMethodField()
+    outstanding_debt = serializers.SerializerMethodField()
 
     class Meta:
         model = Provider
@@ -791,6 +841,7 @@ class ProviderSerializer(
             "created_at",
             "current_register_total",
             "current_register_transactions",
+            "outstanding_debt",
         ]
 
         read_only_fields = [
@@ -798,6 +849,7 @@ class ProviderSerializer(
             "created_at",
             "current_register_total",
             "current_register_transactions",
+            "outstanding_debt",
         ]
 
     def _get_current_register(self):
@@ -828,3 +880,25 @@ class ProviderSerializer(
 
     def get_current_register_transactions(self, obj):
         return self.get_provider_transactions(obj).count()
+
+    def get_outstanding_debt(self, obj):
+        debt_created = sum(
+            amount.amount
+            for transaction in obj.transactions.prefetch_related("amounts").all()
+            if transaction.type == Transaction.Type.PROVIDER
+            for amount in transaction.amounts.all()
+            if amount.method == TransactionAmount.Method.DEBT
+        )
+
+        debt_paid = sum(
+            amount.amount
+            for transaction in obj.transactions.prefetch_related("amounts").all()
+            if transaction.type == Transaction.Type.PROVIDER_PAYMENT
+            for amount in transaction.amounts.all()
+            if amount.method != TransactionAmount.Method.DEBT
+        )
+
+        return max(
+            debt_created - debt_paid,
+            0,
+        )

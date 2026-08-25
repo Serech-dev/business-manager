@@ -144,69 +144,64 @@ function ProviderDetail({ isNewProvider = false }) {
     }
 
 
-    const totalAmount = transactions.reduce(
-        (total, transaction) =>
-            total +
-            Number(transaction.total || 0),
-        0
+    const sortedTransactions = [
+        ...transactions,
+    ].sort(
+        (a, b) =>
+            new Date(b.created_at) -
+            new Date(a.created_at)
     );
 
 
-    const cashTotal = transactions.reduce(
-        (total, transaction) =>
-            total +
-            (transaction.amounts || []).reduce(
-                (amountTotal, amount) =>
-                    amountTotal +
-                    (
-                        amount.method === "cash"
-                            ? Number(amount.amount) || 0
-                            : 0
-                    ),
-                0
-            ),
-        0
-    );
+    function getProviderMovement(transaction) {
+        const debtAmount = (
+            transaction.amounts || []
+        ).reduce(
+            (total, amount) =>
+                total +
+                (
+                    amount.method === "debt"
+                        ? Number(amount.amount) || 0
+                        : 0
+                ),
+            0
+        );
 
+        const paidAmount = (
+            transaction.amounts || []
+        ).reduce(
+            (total, amount) =>
+                total +
+                (
+                    amount.method !== "debt"
+                        ? Number(amount.amount) || 0
+                        : 0
+                ),
+            0
+        );
 
-    const transferTotal = transactions.reduce(
-        (total, transaction) =>
-            total +
-            (transaction.amounts || []).reduce(
-                (amountTotal, amount) =>
-                    amountTotal +
-                    (
-                        amount.method === "transfer"
-                            ? Number(amount.amount) || 0
-                            : 0
-                    ),
-                0
-            ),
-        0
-    );
+        if (debtAmount > 0) {
+            return {
+                label: "Deuda",
+                amount: debtAmount,
+                sign: "+",
+                className: "text-[var(--danger)]",
+            };
+        }
 
-
-    const owedTotal = transactions.reduce(
-        (total, transaction) =>
-            total +
-            (transaction.amounts || []).reduce(
-                (amountTotal, amount) =>
-                    amountTotal +
-                    (
-                        amount.method === "debt"
-                            ? Number(amount.amount) || 0
-                            : 0
-                    ),
-                0
-            ),
-        0
-    );
+        return {
+            label: "Pago a Proveedor",
+            amount: paidAmount,
+            sign: "",
+            className: "text-[var(--text-primary)]",
+        };
+    }
 
 
     return (
         <div className="
             mx-auto
-            max-w-7xl
+            max-w-5xl
             px-8
             py-8
         ">
@@ -247,7 +242,7 @@ function ProviderDetail({ isNewProvider = false }) {
             {/* INFORMATION */}
 
             <section className="
-                mt-8
+                mt-6
                 border
                 border-[var(--border)]
                 bg-[var(--surface)]
@@ -257,7 +252,7 @@ function ProviderDetail({ isNewProvider = false }) {
                     border-b
                     border-[var(--border)]
                     px-6
-                    py-5
+                    py-4
                 ">
                     <h2 className="
                         font-semibold
@@ -265,22 +260,16 @@ function ProviderDetail({ isNewProvider = false }) {
                     ">
                         Información
                     </h2>
-
-                    <p className="
-                        mt-1
-                        text-sm
-                        text-[var(--text-secondary)]
-                    ">
-                        Datos guardados del proveedor.
-                    </p>
                 </div>
 
 
                 <form
                     onSubmit={handleSave}
                     className="
-                        space-y-5
+                        grid
+                        gap-5
                         p-6
+                        sm:grid-cols-2
                     "
                 >
 
@@ -358,7 +347,7 @@ function ProviderDetail({ isNewProvider = false }) {
                     </div>
 
 
-                    <div>
+                    <div className="sm:col-span-2">
                         <label
                             htmlFor="notes"
                             className="
@@ -387,39 +376,39 @@ function ProviderDetail({ isNewProvider = false }) {
                                 bg-[var(--background)]
                                 px-3
                                 py-2.5
-                                text-sm
                                 text-[var(--text-primary)]
                                 outline-none
                                 focus:border-[var(--primary)]
                                 focus:ring-2
                                 focus:ring-[var(--primary)]/20
                             "
-                            placeholder="Notas opcionales"
                         />
                     </div>
 
 
-                    <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="
-                            rounded-md
-                            bg-[var(--primary)]
-                            px-5
-                            py-2.5
-                            text-sm
-                            font-semibold
-                            text-white
-                            transition
-                            hover:bg-[var(--primary-hover)]
-                            disabled:cursor-not-allowed
-                            disabled:opacity-50
-                        "
-                    >
-                        {isSaving
-                            ? "Guardando..."
-                            : "Guardar cambios"}
-                    </button>
+                    <div className="sm:col-span-2">
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            className="
+                                rounded-md
+                                bg-[var(--primary)]
+                                px-5
+                                py-2.5
+                                text-sm
+                                font-semibold
+                                text-white
+                                transition
+                                hover:bg-[var(--primary-hover)]
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                            "
+                        >
+                            {isSaving
+                                ? "Guardando..."
+                                : "Guardar cambios"}
+                        </button>
+                    </div>
 
                 </form>
 
@@ -428,149 +417,140 @@ function ProviderDetail({ isNewProvider = false }) {
 
             {/* TRANSACTION HISTORY */}
 
-            <section className="mt-8">
+            {!isNewProvider && (
+                <section className="mt-10">
 
-                <div className="
-                    border-b
-                    border-[var(--border)]
-                    pb-4
-                ">
-
-                    <p className="
-                        text-xs
-                        font-semibold
-                        uppercase
-                        tracking-wider
-                        text-[var(--text-secondary)]
-                    ">
-                        Historial
-                    </p>
-
-                    <div className="
-                        mt-1
-                        flex
-                        items-baseline
-                        justify-between
-                        gap-4
-                    ">
-
-                        <h2 className="
-                            text-xl
-                            font-bold
-                            text-[var(--text-primary)]
-                        ">
-                            Operaciones
-                        </h2>
-
-                        <span className="
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            {transactions.length}{" "}
-                            {transactions.length === 1
-                                ? "operación"
-                                : "operaciones"}
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                {transactions.length === 0 ? (
-
-                    <div className="
-                        mt-5
-                        border
-                        border-dashed
-                        border-[var(--border)]
-                        bg-[var(--surface)]
-                        p-10
-                        text-center
-                    ">
-
+                    <div>
                         <p className="
+                            text-xs
                             font-semibold
-                            text-[var(--text-primary)]
-                        ">
-                            Sin operaciones
-                        </p>
-
-                        <p className="
-                            mt-1
-                            text-sm
+                            uppercase
+                            tracking-wider
                             text-[var(--text-secondary)]
                         ">
-                            Este proveedor todavía no tiene operaciones asociadas.
+                            Historial
                         </p>
-
-                    </div>
-
-                ) : (
-
-                    <div className="
-                        mt-4
-                        overflow-hidden
-                        border
-                        border-[var(--border)]
-                        bg-[var(--surface)]
-                    ">
 
                         <div className="
-                            divide-y
-                            divide-[var(--border)]
+                            mt-1
+                            flex
+                            items-baseline
+                            justify-between
+                            gap-4
+                        ">
+                            <h2 className="
+                                text-2xl
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                Movimientos
+                            </h2>
+
+                            <span className="
+                                shrink-0
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                {transactions.length}{" "}
+                                {transactions.length === 1
+                                    ? "movimiento"
+                                    : "movimientos"}
+                            </span>
+                        </div>
+                    </div>
+
+
+                    {sortedTransactions.length === 0 ? (
+
+                        <div className="
+                            mt-5
+                            border
+                            border-dashed
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            p-10
+                            text-center
+                        ">
+                            <p className="
+                                font-semibold
+                                text-[var(--text-primary)]
+                            ">
+                                Sin movimientos
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Este proveedor todavía no tiene movimientos registrados.
+                            </p>
+                        </div>
+
+                    ) : (
+
+                        <div className="
+                            mt-5
+                            overflow-hidden
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
                         ">
 
-                            {transactions.map(
-                                (transaction) => (
-                                    <div
-                                        key={transaction.id}
-                                        className="
-                                            px-6
-                                            py-4
-                                        "
-                                    >
+                            <div className="
+                                divide-y
+                                divide-[var(--border)]
+                            ">
 
-                                        <div className="
-                                            flex
-                                            items-center
-                                            justify-between
-                                            gap-6
-                                        ">
+                                {sortedTransactions.map(
+                                    (transaction) => {
+                                        const movement =
+                                            getProviderMovement(
+                                                transaction
+                                            );
 
-                                            <div className="
-                                                min-w-0
-                                                flex-1
-                                            ">
-
-                                                <p className="
-                                                    truncate
-                                                    font-medium
-                                                    text-[var(--text-primary)]
-                                                ">
-                                                    {transaction.description}
-                                                </p>
+                                        return (
+                                            <div
+                                                key={transaction.id}
+                                                className="
+                                                    flex
+                                                    items-center
+                                                    justify-between
+                                                    gap-6
+                                                    px-6
+                                                    py-5
+                                                "
+                                            >
 
                                                 <div className="
-                                                    mt-1
-                                                    flex
-                                                    flex-wrap
-                                                    items-center
-                                                    gap-x-3
-                                                    gap-y-1
-                                                    text-xs
-                                                    text-[var(--text-secondary)]
+                                                    min-w-0
+                                                    flex-1
                                                 ">
 
-                                                    <span>
+                                                    <p className="
+                                                        font-semibold
+                                                        text-[var(--text-primary)]
+                                                    ">
+                                                        {movement.label}
+                                                    </p>
+
+                                                    <p className="
+                                                        mt-1
+                                                        text-sm
+                                                        text-[var(--text-secondary)]
+                                                    ">
                                                         {new Date(
                                                             transaction.created_at
                                                         ).toLocaleString(
                                                             "es-AR"
                                                         )}
-                                                    </span>
+                                                    </p>
 
-                                                    <span>
+                                                    <p className="
+                                                        mt-1
+                                                        text-xs
+                                                        text-[var(--text-secondary)]
+                                                    ">
                                                         {transaction.amounts
                                                             ?.map(
                                                                 (amount) =>
@@ -579,37 +559,52 @@ function ProviderDetail({ isNewProvider = false }) {
                                                                     )
                                                             )
                                                             .join(" · ")}
-                                                    </span>
+                                                    </p>
+
+                                                </div>
+
+
+                                                <div className="
+                                                    shrink-0
+                                                    text-right
+                                                ">
+
+                                                    <p className={`
+                                                        text-lg
+                                                        font-bold
+                                                        ${movement.className}
+                                                    `}>
+                                                        {movement.sign}
+                                                        {formatCurrency(
+                                                            movement.amount
+                                                        )}
+                                                    </p>
+
+                                                    <p className="
+                                                        mt-1
+                                                        text-xs
+                                                        text-[var(--text-secondary)]
+                                                    ">
+                                                        {getTransactionLabel(
+                                                            transaction.type
+                                                        )}
+                                                    </p>
 
                                                 </div>
 
                                             </div>
+                                        );
+                                    }
+                                )}
 
-
-                                            <p className="
-                                                shrink-0
-                                                text-right
-                                                font-semibold
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {formatCurrency(
-                                                    transaction.total
-                                                )}
-                                            </p>
-
-                                        </div>
-
-                                    </div>
-                                )
-                            )}
+                            </div>
 
                         </div>
 
-                    </div>
+                    )}
 
-                )}
-
-            </section>
+                </section>
+            )}
 
         </div>
     );

@@ -16,6 +16,7 @@ function ProviderList() {
     const [search, setSearch] = useState("");
     const [isLoading, setIsLoading] = useState(true);
 
+
     useEffect(() => {
         async function loadProviders() {
             try {
@@ -106,7 +107,7 @@ function ProviderList() {
                         text-sm
                         text-[var(--text-secondary)]
                     ">
-                        Proveedores registrados y movimientos asociados.
+                        Proveedores y movimientos de la caja actual.
                     </p>
                 </div>
 
@@ -142,7 +143,6 @@ function ProviderList() {
                 justify-between
                 gap-4
             ">
-
                 <div className="
                     relative
                     max-w-md
@@ -185,89 +185,89 @@ function ProviderList() {
                         ? "proveedor"
                         : "proveedores"}
                 </span>
-
             </div>
 
 
             {/* PROVIDERS */}
 
-                {filteredProviders.length === 0 ? (
+            {filteredProviders.length === 0 ? (
 
-                    <section className="
-                        mt-5
-                        border
-                        border-dashed
-                        border-[var(--border)]
-                        bg-[var(--surface)]
-                        p-12
-                        text-center
+                <section className="
+                    mt-5
+                    border
+                    border-dashed
+                    border-[var(--border)]
+                    bg-[var(--surface)]
+                    p-12
+                    text-center
+                ">
+                    <p className="
+                        font-semibold
+                        text-[var(--text-primary)]
+                    ">
+                        {search
+                            ? "No se encontraron proveedores"
+                            : "No hay proveedores registrados"}
+                    </p>
+
+                    <p className="
+                        mt-1
+                        text-sm
+                        text-[var(--text-secondary)]
+                    ">
+                        {search
+                            ? "Probá con otro nombre o teléfono."
+                            : "Creá un proveedor para asociarlo a operaciones."}
+                    </p>
+                </section>
+
+            ) : (
+
+                <section className="
+                    mt-5
+                    overflow-hidden
+                    border
+                    border-[var(--border)]
+                    bg-[var(--surface)]
+                ">
+                    <div className="
+                        divide-y
+                        divide-[var(--border)]
                     ">
 
-                        <p className="
-                            font-semibold
-                            text-[var(--text-primary)]
-                        ">
-                            {search
-                                ? "No se encontraron proveedores"
-                                : "No hay proveedores registrados"}
-                        </p>
+                        {filteredProviders.map(
+                            (provider) => (
+                                <button
+                                    key={provider.id}
+                                    type="button"
+                                    onClick={() =>
+                                        navigate(
+                                            `/providers/${provider.id}`
+                                        )
+                                    }
+                                    className="
+                                        w-full
+                                        px-6
+                                        py-5
+                                        text-left
+                                        transition
+                                        hover:bg-[var(--surface-accent)]
+                                    "
+                                >
 
-                        <p className="
-                            mt-1
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            {search
-                                ? "Probá con otro nombre o teléfono."
-                                : "Los proveedores aparecerán aquí cuando sean utilizados en una operación."}
-                        </p>
+                                    <div className="
+                                        flex
+                                        items-center
+                                        justify-between
+                                        gap-6
+                                    ">
 
-                    </section>
-
-                ) : (
-
-                    <section className="
-                        mt-5
-                        overflow-hidden
-                        border
-                        border-[var(--border)]
-                        bg-[var(--surface)]
-                    ">
-
-                        <div className="
-                            divide-y
-                            divide-[var(--border)]
-                        ">
-
-                            {filteredProviders.map(
-                                (provider) => (
-                                    <button
-                                        key={provider.id}
-                                        type="button"
-                                        onClick={() =>
-                                            navigate(
-                                                `/providers/${provider.id}`
-                                            )
-                                        }
-                                        className="
-                                            flex
-                                            w-full
-                                            items-center
-                                            justify-between
-                                            gap-6
-                                            px-6
-                                            py-5
-                                            text-left
-                                            transition
-                                            hover:bg-[var(--surface-accent)]
-                                        "
-                                    >
+                                        {/* PROVIDER */}
 
                                         <div className="
                                             min-w-0
                                             flex-1
                                         ">
-
                                             <p className="
                                                 truncate
                                                 font-semibold
@@ -285,17 +285,16 @@ function ProviderList() {
                                                     {provider.phone}
                                                 </p>
                                             )}
-
                                         </div>
 
+
+                                        {/* CURRENT REGISTER */}
 
                                         <div className="
                                             shrink-0
                                             text-right
                                         ">
-
                                             {provider.current_register_transactions > 0 ? (
-
                                                 <>
                                                     <p className="
                                                         text-sm
@@ -318,29 +317,26 @@ function ProviderList() {
                                                             : "movimientos"}
                                                     </p>
                                                 </>
-
                                             ) : (
-
                                                 <p className="
                                                     text-xs
                                                     text-[var(--text-secondary)]
                                                 ">
                                                     Sin movimientos
                                                 </p>
-
                                             )}
-
                                         </div>
 
-                                    </button>
-                                )
-                            )}
+                                    </div>
 
-                        </div>
+                                </button>
+                            )
+                        )}
 
-                    </section>
+                    </div>
+                </section>
 
-                )}
+            )}
 
         </div>
     );

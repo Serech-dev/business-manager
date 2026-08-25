@@ -25,6 +25,7 @@ function formatDate(value) {
     ).format(new Date(value));
 }
 
+
 function RegisterReport() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -48,9 +49,11 @@ function RegisterReport() {
         }
     }
 
+
     useEffect(() => {
         loadRegister();
     }, [id]);
+
 
     async function handleConfirmTransfer(transfer) {
         try {
@@ -73,6 +76,7 @@ function RegisterReport() {
             );
         }
     }
+
 
     if (isLoading) {
         return (
@@ -116,6 +120,14 @@ function RegisterReport() {
             clients: [],
         };
 
+    const provider =
+        register.provider || {
+            new_debt: 0,
+            payments: 0,
+            net: 0,
+            providers: [],
+        };
+
     const pendingTransfers =
         register.pending_transfers || [];
 
@@ -130,9 +142,6 @@ function RegisterReport() {
 
     const netMovement =
         Number(register.net_movement || 0);
-
-    const exchangeIncome =
-        Number(register.exchange_income || 0);
 
 
     return (
@@ -182,7 +191,6 @@ function RegisterReport() {
                             ">
                                 Cierre de caja #{register.id}
                             </h1>
-
 
                             <p className="
                                 mt-2
@@ -236,14 +244,13 @@ function RegisterReport() {
                     ">
 
                         <div className="
-                            rounded-xl
+                            rounded-md
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             px-4
                             py-3
                         ">
-
                             <p className="
                                 text-xs
                                 uppercase
@@ -258,23 +265,19 @@ function RegisterReport() {
                                 font-medium
                                 text-[var(--text-primary)]
                             ">
-                                {formatDate(
-                                    register.opened_at
-                                )}
+                                {formatDate(register.opened_at)}
                             </p>
-
                         </div>
 
 
                         <div className="
-                            rounded-xl
+                            rounded-md
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             px-4
                             py-3
                         ">
-
                             <p className="
                                 text-xs
                                 uppercase
@@ -289,11 +292,8 @@ function RegisterReport() {
                                 font-medium
                                 text-[var(--text-primary)]
                             ">
-                                {formatDate(
-                                    register.closed_at
-                                )}
+                                {formatDate(register.closed_at)}
                             </p>
-
                         </div>
 
                     </div>
@@ -306,20 +306,17 @@ function RegisterReport() {
                 <section className="
                     mt-8
                     grid
-                    gap-4
+                    gap-3
                     sm:grid-cols-3
                 ">
 
-                    {/* MONEY IN */}
-
                     <div className="
-                        rounded-2xl
+                        rounded-md
                         border
                         border-[var(--border)]
                         bg-[var(--surface)]
-                        p-6
+                        p-5
                     ">
-
                         <p className="
                             text-sm
                             text-[var(--text-secondary)]
@@ -329,7 +326,7 @@ function RegisterReport() {
 
                         <p className="
                             mt-2
-                            text-3xl
+                            text-2xl
                             font-bold
                             text-[var(--success)]
                         ">
@@ -343,20 +340,16 @@ function RegisterReport() {
                         ">
                             Dinero que ingresó efectivamente a la caja.
                         </p>
-
                     </div>
 
 
-                    {/* MONEY OUT */}
-
                     <div className="
-                        rounded-2xl
+                        rounded-md
                         border
                         border-[var(--border)]
                         bg-[var(--surface)]
-                        p-6
+                        p-5
                     ">
-
                         <p className="
                             text-sm
                             text-[var(--text-secondary)]
@@ -366,7 +359,7 @@ function RegisterReport() {
 
                         <p className="
                             mt-2
-                            text-3xl
+                            text-2xl
                             font-bold
                             text-[var(--danger)]
                         ">
@@ -380,20 +373,16 @@ function RegisterReport() {
                         ">
                             Dinero que salió efectivamente de la caja.
                         </p>
-
                     </div>
 
 
-                    {/* NET */}
-
                     <div className="
-                        rounded-2xl
+                        rounded-md
                         border
                         border-[var(--border)]
                         bg-[var(--surface)]
-                        p-6
+                        p-5
                     ">
-
                         <p className="
                             text-sm
                             text-[var(--text-secondary)]
@@ -403,7 +392,7 @@ function RegisterReport() {
 
                         <p className={`
                             mt-2
-                            text-3xl
+                            text-2xl
                             font-bold
                             ${
                                 netMovement >= 0
@@ -422,25 +411,27 @@ function RegisterReport() {
                         ">
                             Ingresos − salidas
                         </p>
-
                     </div>
 
                 </section>
+
 
                 {/* PENDING TRANSFERS */}
 
                 {pendingTransfers.length > 0 && (
                     <section className="
                         mt-8
-                        rounded-2xl
                         border
                         border-[var(--warning)]
                         bg-[var(--surface)]
-                        p-6
                     ">
 
-                        <div>
-
+                        <div className="
+                            border-b
+                            border-[var(--border)]
+                            px-5
+                            py-4
+                        ">
                             <h2 className="
                                 text-lg
                                 font-bold
@@ -457,13 +448,12 @@ function RegisterReport() {
                                 Estas transferencias no estaban marcadas
                                 como recibidas al cerrar la caja.
                             </p>
-
                         </div>
 
 
                         <div className="
-                            mt-4
-                            space-y-3
+                            divide-y
+                            divide-[var(--border)]
                         ">
 
                             {pendingTransfers.map(
@@ -473,13 +463,9 @@ function RegisterReport() {
                                         className="
                                             flex
                                             flex-col
-                                            gap-2
-                                            rounded-xl
-                                            border
-                                            border-[var(--border)]
-                                            bg-[var(--background)]
-                                            px-4
-                                            py-3
+                                            gap-3
+                                            px-5
+                                            py-4
                                             sm:flex-row
                                             sm:items-center
                                             sm:justify-between
@@ -489,8 +475,7 @@ function RegisterReport() {
                                         <div>
 
                                             <p className="
-                                                text-sm
-                                                font-semibold
+                                                font-medium
                                                 text-[var(--text-primary)]
                                             ">
                                                 Transferencia #
@@ -540,7 +525,6 @@ function RegisterReport() {
                                         ">
 
                                             <p className="
-                                                text-lg
                                                 font-semibold
                                                 text-[var(--warning)]
                                             ">
@@ -559,8 +543,8 @@ function RegisterReport() {
                                                 className="
                                                     border
                                                     border-[var(--warning)]
-                                                    px-2
-                                                    py-1
+                                                    px-3
+                                                    py-1.5
                                                     text-xs
                                                     font-semibold
                                                     text-[var(--warning)]
@@ -588,7 +572,6 @@ function RegisterReport() {
                 <section className="mt-10">
 
                     <div>
-
                         <h2 className="
                             text-xl
                             font-bold
@@ -604,7 +587,6 @@ function RegisterReport() {
                         ">
                             Dinero efectivamente registrado por cada medio.
                         </p>
-
                     </div>
 
 
@@ -616,21 +598,18 @@ function RegisterReport() {
                         lg:grid-cols-4
                     ">
 
-                        {Object.entries(
-                            totalsByMethod
-                        ).map(
+                        {Object.entries(totalsByMethod).map(
                             ([method, amount]) => (
                                 <div
                                     key={method}
                                     className="
-                                        rounded-xl
+                                        rounded-md
                                         border
                                         border-[var(--border)]
                                         bg-[var(--surface)]
                                         p-5
                                     "
                                 >
-
                                     <p className="
                                         text-sm
                                         text-[var(--text-secondary)]
@@ -646,7 +625,6 @@ function RegisterReport() {
                                     ">
                                         {formatCurrency(amount)}
                                     </p>
-
                                 </div>
                             )
                         )}
@@ -661,7 +639,6 @@ function RegisterReport() {
                 <section className="mt-10">
 
                     <div>
-
                         <h2 className="
                             text-xl
                             font-bold
@@ -678,7 +655,6 @@ function RegisterReport() {
                             Dinero que entró o salió según el tipo
                             de operación.
                         </p>
-
                     </div>
 
 
@@ -690,9 +666,7 @@ function RegisterReport() {
                         lg:grid-cols-3
                     ">
 
-                        {Object.entries(
-                            totalsByType
-                        ).map(
+                        {Object.entries(totalsByType).map(
                             ([type, amount]) => {
 
                                 const isOutgoing =
@@ -700,12 +674,11 @@ function RegisterReport() {
                                     type === "provider" ||
                                     type === "expense";
 
-
                                 return (
                                     <div
                                         key={type}
                                         className="
-                                            rounded-xl
+                                            rounded-md
                                             border
                                             border-[var(--border)]
                                             bg-[var(--surface)]
@@ -754,9 +727,7 @@ function RegisterReport() {
                                                     : "text-[var(--success)]"
                                             }
                                         `}>
-                                            {isOutgoing
-                                                ? "-"
-                                                : "+"}
+                                            {isOutgoing ? "-" : "+"}
                                             {formatCurrency(amount)}
                                         </p>
 
@@ -775,7 +746,6 @@ function RegisterReport() {
                 <section className="mt-10">
 
                     <div>
-
                         <h2 className="
                             text-xl
                             font-bold
@@ -792,7 +762,6 @@ function RegisterReport() {
                             Movimientos de deuda durante esta caja.
                             No forman parte del dinero disponible.
                         </p>
-
                     </div>
 
 
@@ -803,16 +772,13 @@ function RegisterReport() {
                         sm:grid-cols-3
                     ">
 
-                        {/* NEW DEBT */}
-
                         <div className="
-                            rounded-xl
+                            rounded-md
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             p-5
                         ">
-
                             <p className="
                                 text-sm
                                 text-[var(--text-secondary)]
@@ -826,9 +792,7 @@ function RegisterReport() {
                                 font-semibold
                                 text-[var(--warning)]
                             ">
-                                {formatCurrency(
-                                    fiado.new_debt
-                                )}
+                                {formatCurrency(fiado.new_debt)}
                             </p>
 
                             <p className="
@@ -838,20 +802,16 @@ function RegisterReport() {
                             ">
                                 Deuda generada
                             </p>
-
                         </div>
 
 
-                        {/* PAYMENTS */}
-
                         <div className="
-                            rounded-xl
+                            rounded-md
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             p-5
                         ">
-
                             <p className="
                                 text-sm
                                 text-[var(--text-secondary)]
@@ -865,9 +825,7 @@ function RegisterReport() {
                                 font-semibold
                                 text-[var(--success)]
                             ">
-                                {formatCurrency(
-                                    fiado.payments
-                                )}
+                                {formatCurrency(fiado.payments)}
                             </p>
 
                             <p className="
@@ -877,25 +835,21 @@ function RegisterReport() {
                             ">
                                 Dinero ingresado
                             </p>
-
                         </div>
 
 
-                        {/* NET DEBT */}
-
                         <div className="
-                            rounded-xl
+                            rounded-md
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             p-5
                         ">
-
                             <p className="
                                 text-sm
                                 text-[var(--text-secondary)]
                             ">
-                                Variación de deuda
+                                Movimiento neto
                             </p>
 
                             <p className={`
@@ -908,12 +862,8 @@ function RegisterReport() {
                                         : "text-[var(--success)]"
                                 }
                             `}>
-                                {Number(fiado.net) > 0
-                                    ? "+"
-                                    : ""}
-                                {formatCurrency(
-                                    fiado.net
-                                )}
+                                {Number(fiado.net) > 0 ? "+" : ""}
+                                {formatCurrency(fiado.net)}
                             </p>
 
                             <p className="
@@ -923,7 +873,6 @@ function RegisterReport() {
                             ">
                                 Deuda generada − pagos
                             </p>
-
                         </div>
 
                     </div>
@@ -935,7 +884,6 @@ function RegisterReport() {
                         <div className="
                             mt-4
                             overflow-hidden
-                            rounded-xl
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
@@ -951,8 +899,32 @@ function RegisterReport() {
                                     font-semibold
                                     text-[var(--text-primary)]
                                 ">
-                                    Por cliente
+                                    Montos a cuenta
                                 </p>
+                            </div>
+
+
+                            {/* TABLE HEADER */}
+
+                            <div className="
+                                hidden
+                                border-b
+                                border-[var(--border)]
+                                bg-[var(--background)]
+                                px-5
+                                py-3
+                                text-xs
+                                font-medium
+                                uppercase
+                                tracking-wide
+                                text-[var(--text-secondary)]
+                                sm:grid
+                                sm:grid-cols-[1fr_140px_140px_160px]
+                            ">
+                                <span>Cliente</span>
+                                <span className="text-right">Fiado</span>
+                                <span className="text-right">Pagó</span>
+                                <span className="text-right">Neto</span>
                             </div>
 
 
@@ -970,7 +942,7 @@ function RegisterReport() {
                                                 gap-3
                                                 px-5
                                                 py-4
-                                                sm:grid-cols-[1fr_auto_auto_auto]
+                                                sm:grid-cols-[1fr_140px_140px_160px]
                                                 sm:items-center
                                             "
                                         >
@@ -983,12 +955,18 @@ function RegisterReport() {
                                             </p>
 
 
-                                            <div className="text-sm">
-
+                                            <div className="
+                                                flex
+                                                justify-between
+                                                text-sm
+                                                sm:block
+                                                sm:text-right
+                                            ">
                                                 <span className="
+                                                    sm:hidden
                                                     text-[var(--text-secondary)]
                                                 ">
-                                                    Fiado:{" "}
+                                                    Fiado
                                                 </span>
 
                                                 <span className="
@@ -999,16 +977,21 @@ function RegisterReport() {
                                                         client.debt
                                                     )}
                                                 </span>
-
                                             </div>
 
 
-                                            <div className="text-sm">
-
+                                            <div className="
+                                                flex
+                                                justify-between
+                                                text-sm
+                                                sm:block
+                                                sm:text-right
+                                            ">
                                                 <span className="
+                                                    sm:hidden
                                                     text-[var(--text-secondary)]
                                                 ">
-                                                    Pagó:{" "}
+                                                    Pagó
                                                 </span>
 
                                                 <span className="
@@ -1019,22 +1002,38 @@ function RegisterReport() {
                                                         client.payments
                                                     )}
                                                 </span>
-
                                             </div>
 
 
                                             <div className="
+                                                flex
+                                                justify-between
                                                 text-sm
                                                 font-semibold
-                                                text-[var(--text-primary)]
+                                                sm:block
+                                                sm:text-right
                                             ">
-                                                Deuda neta:{" "}
-                                                {Number(client.net) > 0
-                                                    ? "+"
-                                                    : ""}
-                                                {formatCurrency(
-                                                    client.net
-                                                )}
+                                                <span className="
+                                                    sm:hidden
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    Movimiento
+                                                </span>
+
+                                                <span className={
+                                                    Number(client.net) > 0
+                                                        ? "text-[var(--warning)]"
+                                                        : Number(client.net) < 0
+                                                            ? "text-[var(--success)]"
+                                                            : "text-[var(--text-primary)]"
+                                                }>
+                                                    {Number(client.net) > 0
+                                                        ? "+"
+                                                        : ""}
+                                                    {formatCurrency(
+                                                        client.net
+                                                    )}
+                                                </span>
                                             </div>
 
                                         </div>
@@ -1049,13 +1048,307 @@ function RegisterReport() {
                 </section>
 
 
+                {/* PROVIDERS */}
+
+                {provider.providers.length > 0 && (
+                    <section className="mt-10">
+
+                        <div>
+                            <h2 className="
+                                text-xl
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                Proveedores
+                            </h2>
+
+                            <p className="
+                                mt-1
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Movimientos registrados con cada proveedor
+                                durante esta caja.
+                            </p>
+                        </div>
+
+
+                        {/* PROVIDER TABLE */}
+
+                        <div className="
+                            mt-4
+                            overflow-hidden
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                        ">
+
+                            {/* HEADER */}
+
+                            <div className="
+                                hidden
+                                border-b
+                                border-[var(--border)]
+                                bg-[var(--background)]
+                                px-5
+                                py-3
+                                text-xs
+                                font-medium
+                                uppercase
+                                tracking-wide
+                                text-[var(--text-secondary)]
+                                sm:grid
+                                sm:grid-cols-[1fr_140px_140px_160px]
+                            ">
+                                <span>Proveedor</span>
+                                <span className="text-right">Deuda</span>
+                                <span className="text-right">Pagado</span>
+                                <span className="text-right">Movimiento</span>
+                            </div>
+
+
+                            {/* ROWS */}
+
+                            <div className="
+                                divide-y
+                                divide-[var(--border)]
+                            ">
+
+                                {provider.providers.map(
+                                    (item) => (
+                                        <div
+                                            key={item.provider_id}
+                                            className="
+                                                grid
+                                                gap-3
+                                                px-5
+                                                py-4
+                                                sm:grid-cols-[1fr_140px_140px_160px]
+                                                sm:items-center
+                                            "
+                                        >
+
+                                            {/* PROVIDER */}
+
+                                            <p className="
+                                                font-medium
+                                                text-[var(--text-primary)]
+                                            ">
+                                                {item.provider_name}
+                                            </p>
+
+
+                                            {/* DEBT */}
+
+                                            <div className="
+                                                flex
+                                                justify-between
+                                                text-sm
+                                                sm:block
+                                                sm:text-right
+                                            ">
+                                                <span className="
+                                                    sm:hidden
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    Deuda
+                                                </span>
+
+                                                <span className="
+                                                    font-medium
+                                                    text-[var(--warning)]
+                                                ">
+                                                    {formatCurrency(
+                                                        item.debt
+                                                    )}
+                                                </span>
+                                            </div>
+
+
+                                            {/* PAYMENT */}
+
+                                            <div className="
+                                                flex
+                                                justify-between
+                                                text-sm
+                                                sm:block
+                                                sm:text-right
+                                            ">
+                                                <span className="
+                                                    sm:hidden
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    Pagado
+                                                </span>
+
+                                                <span className="
+                                                    font-medium
+                                                    text-[var(--danger)]
+                                                ">
+                                                    {formatCurrency(
+                                                        item.payments
+                                                    )}
+                                                </span>
+                                            </div>
+
+
+                                            {/* NET */}
+
+                                            <div className="
+                                                flex
+                                                justify-between
+                                                text-sm
+                                                font-semibold
+                                                sm:block
+                                                sm:text-right
+                                            ">
+                                                <span className="
+                                                    sm:hidden
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    Movimiento
+                                                </span>
+
+                                                <span className={
+                                                    Number(item.net) > 0
+                                                        ? "text-[var(--warning)]"
+                                                        : Number(item.net) < 0
+                                                            ? "text-[var(--success)]"
+                                                            : "text-[var(--text-primary)]"
+                                                }>
+                                                    {Number(item.net) > 0
+                                                        ? "+"
+                                                        : ""}
+                                                    {formatCurrency(
+                                                        item.net
+                                                    )}
+                                                </span>
+                                            </div>
+
+                                        </div>
+                                    )
+                                )}
+
+                            </div>
+
+
+                            {/* TOTAL */}
+
+                            <div className="
+                                border-t
+                               - border-[var(--border)]
+                                bg-[var(--background)]
+                                px-5
+                                py-4
+                            ">
+                                <div className="
+                                    grid
+                                    gap-3
+                                    sm:grid-cols-[1fr_140px_140px_160px]
+                                    sm:items-center
+                                ">
+
+                                    <p className="
+                                        font-semibold
+                                        text-[var(--text-primary)]
+                                    ">
+                                        Total proveedores
+                                    </p>
+
+                                    <div className="
+                                        flex
+                                        justify-between
+                                        text-sm
+                                        sm:block
+                                        sm:text-right
+                                    ">
+                                        <span className="
+                                            sm:hidden
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            Deuda
+                                        </span>
+
+                                        <span className="
+                                            font-semibold
+                                            text-[var(--warning)]
+                                        ">
+                                            {formatCurrency(
+                                                provider.new_debt
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    <div className="
+                                        flex
+                                        justify-between
+                                        text-sm
+                                        sm:block
+                                        sm:text-right
+                                    ">
+                                        <span className="
+                                            sm:hidden
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            Pagado
+                                        </span>
+
+                                        <span className="
+                                            font-semibold
+                                            text-[var(--danger)]
+                                        ">
+                                            {formatCurrency(
+                                                provider.payments
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    <div className="
+                                        flex
+                                        justify-between
+                                        text-sm
+                                        font-semibold
+                                        sm:block
+                                        sm:text-right
+                                    ">
+                                        <span className="
+                                            sm:hidden
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            Movimiento
+                                        </span>
+
+                                        <span className={
+                                            Number(provider.net) > 0
+                                                ? "text-[var(--warning)]"
+                                                : Number(provider.net) < 0
+                                                    ? "text-[var(--success)]"
+                                                    : "text-[var(--text-primary)]"
+                                        }>
+                                            {Number(provider.net) > 0
+                                                ? "+"
+                                                : ""}
+                                            {formatCurrency(
+                                                provider.net
+                                            )}
+                                        </span>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </section>
+                )}
+
+
                 {/* TRANSACTIONS */}
 
                 {transactions.length > 0 && (
                     <section className="mt-10">
 
                         <div>
-
                             <h2 className="
                                 text-xl
                                 font-bold
@@ -1071,14 +1364,12 @@ function RegisterReport() {
                             ">
                                 Detalle de todos los movimientos de esta caja.
                             </p>
-
                         </div>
 
 
                         <div className="
                             mt-4
                             overflow-hidden
-                            rounded-xl
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
@@ -1187,12 +1478,8 @@ function RegisterReport() {
                                                                 : "text-[var(--success)]"
                                                         }
                                                     `}>
-                                                        {isOutgoing
-                                                            ? "-"
-                                                            : "+"}
-                                                        {formatCurrency(
-                                                            amount
-                                                        )}
+                                                        {isOutgoing ? "-" : "+"}
+                                                        {formatCurrency(amount)}
                                                     </p>
 
                                                 </div>
@@ -1226,7 +1513,7 @@ function RegisterReport() {
                         }
                         className="
                             w-full
-                            rounded-xl
+                            rounded-md
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]

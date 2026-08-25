@@ -117,6 +117,7 @@ class Transaction(models.Model):
         EXCHANGE = "exchange", "Cambio"
         SALE_EXCHANGE = "sale_exchange", "Venta + Cambio"
         PROVIDER = "provider", "Proveedor"
+        PROVIDER_PAYMENT = "provider_payment", "Pago a proveedor"
         EXPENSE = "expense", "Gasto"
         LOSS = "loss", "Pérdida"
         PAYMENT = "payment", "Pago de fiado"

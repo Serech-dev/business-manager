@@ -117,7 +117,7 @@ function RegisterHistory() {
                 ) : registers.length === 0 ? (
                     <div className="
                         mt-8
-                        rounded-2xl
+                        rounded-0
                         border
                         border-[var(--border)]
                         bg-[var(--surface)]
@@ -169,7 +169,7 @@ function RegisterHistory() {
                                     }
                                     className="
                                         w-full
-                                        rounded-2xl
+                                        rounded-0
                                         border
                                         border-[var(--border)]
                                         bg-[var(--surface)]
