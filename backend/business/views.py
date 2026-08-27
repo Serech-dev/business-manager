@@ -1,38 +1,30 @@
 from django.db import transaction as db_transaction
 from django.utils import timezone
-
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import (
-    Q,
-    Sum,
-    Case,
-    When,
-    DecimalField,
-)
 
-from .models import Provider, Register, Transaction, TransactionAmount
-from .serializers import (
-    ProviderSerializer,
-    RegisterSerializer,
-    TransactionAmountReceivedSerializer,
-    TransactionSerializer,
-)
-
-from .models import Client
-from .serializers import ClientSerializer
+from .models import (Client, Provider, Register, Transaction,
+                     TransactionOperationAmount)
+from .serializers import (ClientSerializer, ProviderSerializer,
+                          RegisterSerializer,
+                          TransactionAmountReceivedSerializer,
+                          TransactionSerializer)
 
 
-class ClientListCreateView(generics.ListCreateAPIView):
+class ClientListCreateView(
+    generics.ListCreateAPIView
+):
     serializer_class = ClientSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = (
             Client.objects
-            .filter(user=self.request.user)
+            .filter(
+                user=self.request.user
+            )
             .order_by("name")
         )
 
@@ -63,7 +55,8 @@ class ClientDetailView(
         return Client.objects.filter(
             user=self.request.user
         )
-    
+
+
 class TransactionListCreateView(
     generics.ListCreateAPIView
 ):
@@ -76,8 +69,12 @@ class TransactionListCreateView(
             .filter(
                 user=self.request.user
             )
-            .prefetch_related("amounts")
-            .select_related("register")
+            .prefetch_related(
+                "operations__amounts"
+            )
+            .select_related(
+                "register"
+            )
             .order_by("-created_at")
         )
 
@@ -95,25 +92,32 @@ class TransactionListCreateView(
 class TransactionAmountReceivedView(
     generics.UpdateAPIView
 ):
-    serializer_class = TransactionAmountReceivedSerializer
+    serializer_class = (
+        TransactionAmountReceivedSerializer
+    )
+
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return (
-            TransactionAmount.objects
+            TransactionOperationAmount.objects
             .filter(
-                transaction__user=self.request.user
+                operation__transaction__user=self.request.user
             )
             .select_related(
-                "transaction",
-                "transaction__register",
+                "operation",
+                "operation__transaction",
+                "operation__transaction__register",
             )
         )
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        if instance.method != TransactionAmount.Method.TRANSFER:
+        if (
+            instance.method
+            != TransactionOperationAmount.Method.TRANSFER
+        ):
             return Response(
                 {
                     "detail":
@@ -127,7 +131,7 @@ class TransactionAmountReceivedView(
             *args,
             **kwargs,
         )
-    
+
 
 class TransactionDetailView(
     generics.RetrieveUpdateDestroyAPIView
@@ -141,11 +145,20 @@ class TransactionDetailView(
             .filter(
                 user=self.request.user
             )
-            .prefetch_related("amounts")
-            .select_related("register")
+            .prefetch_related(
+                "operations__amounts"
+            )
+            .select_related(
+                "register"
+            )
         )
 
-    def update(self, request, *args, **kwargs):
+    def update(
+        self,
+        request,
+        *args,
+        **kwargs
+    ):
         instance = self.get_object()
 
         if not instance.register.is_open:
@@ -163,7 +176,12 @@ class TransactionDetailView(
             **kwargs,
         )
 
-    def destroy(self, request, *args, **kwargs):
+    def destroy(
+        self,
+        request,
+        *args,
+        **kwargs
+    ):
         instance = self.get_object()
 
         if not instance.register.is_open:
@@ -181,6 +199,7 @@ class TransactionDetailView(
             **kwargs,
         )
 
+
 class CurrentTransactionListView(
     generics.ListAPIView
 ):
@@ -194,10 +213,15 @@ class CurrentTransactionListView(
                 user=self.request.user,
                 register__closed_at__isnull=True,
             )
-            .prefetch_related("amounts")
-            .select_related("register")
+            .prefetch_related(
+                "operations__amounts"
+            )
+            .select_related(
+                "register"
+            )
             .order_by("-created_at")
         )
+
 
 class CurrentRegisterView(APIView):
     permission_classes = [IsAuthenticated]
@@ -210,7 +234,7 @@ class CurrentRegisterView(APIView):
                 closed_at__isnull=True,
             )
             .prefetch_related(
-                "transactions__amounts"
+                "transactions__operations__amounts"
             )
             .first()
         )
@@ -283,6 +307,7 @@ class CloseRegisterView(APIView):
             )
 
         register.closed_at = timezone.now()
+
         register.save(
             update_fields=["closed_at"]
         )
@@ -291,6 +316,7 @@ class CloseRegisterView(APIView):
             RegisterSerializer(register).data,
             status=status.HTTP_200_OK,
         )
+
 
 class RegisterListView(
     generics.ListAPIView
@@ -306,7 +332,7 @@ class RegisterListView(
                 closed_at__isnull=False,
             )
             .prefetch_related(
-                "transactions__amounts"
+                "transactions__operations__amounts"
             )
             .order_by("-closed_at")
         )
@@ -326,9 +352,10 @@ class RegisterDetailView(
                 closed_at__isnull=False,
             )
             .prefetch_related(
-                "transactions__amounts"
+                "transactions__operations__amounts"
             )
         )
+
 
 class ProviderListCreateView(
     generics.ListCreateAPIView
@@ -343,7 +370,7 @@ class ProviderListCreateView(
                 user=self.request.user
             )
             .prefetch_related(
-                "transactions__amounts"
+                "transaction_operations__amounts"
             )
             .order_by("name")
         )
@@ -367,6 +394,6 @@ class ProviderDetailView(
                 user=self.request.user
             )
             .prefetch_related(
-                "transactions__amounts"
+                "transaction_operations__amounts"
             )
         )

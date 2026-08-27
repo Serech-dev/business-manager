@@ -110,23 +110,6 @@ class Provider(models.Model):
         return self.name
 
 class Transaction(models.Model):
-    class Type(models.TextChoices):
-        SALE = "sale", "Venta"
-        SUBE = "sube", "Carga SUBE"
-        PHONE = "phone", "Carga de celular"
-        EXCHANGE = "exchange", "Cambio"
-        SALE_EXCHANGE = "sale_exchange", "Venta + Cambio"
-        PROVIDER = "provider", "Proveedor"
-        PROVIDER_PAYMENT = "provider_payment", "Pago a proveedor"
-        EXPENSE = "expense", "Gasto"
-        LOSS = "loss", "Pérdida"
-        PAYMENT = "payment", "Pago de fiado"
-
-    class ServiceType(models.TextChoices):
-        SUBE = "sube", "SUBE"
-        PHONE = "phone", "Carga de celular"
-        VIRTUAL_CASH = "virtual_cash", "Cambio virtual/cash"
-
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -139,6 +122,42 @@ class Transaction(models.Model):
         related_name="transactions",
     )
 
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    def __str__(self):
+        return f"Operación #{self.id}"
+
+
+class TransactionOperation(models.Model):
+    class Type(models.TextChoices):
+        SALE = "sale", "Venta"
+        SUBE = "sube", "Carga SUBE"
+        PHONE = "phone", "Carga de celular"
+        EXCHANGE = "exchange", "Cambio"
+        PAYMENT = "payment", "Pago de fiado"
+        PROVIDER = "provider", "Proveedor"
+        PROVIDER_PAYMENT = "provider_payment", "Pago a proveedor"
+        EXPENSE = "expense", "Gasto"
+        LOSS = "loss", "Pérdida"
+
+    class ServiceType(models.TextChoices):
+        SUBE = "sube", "SUBE"
+        PHONE = "phone", "Carga de celular"
+        VIRTUAL_CASH = "virtual_cash", "Cambio virtual/cash"
+
+    transaction = models.ForeignKey(
+        Transaction,
+        on_delete=models.CASCADE,
+        related_name="operations",
+    )
+
     type = models.CharField(
         max_length=30,
         choices=Type.choices,
@@ -148,15 +167,6 @@ class Transaction(models.Model):
         max_length=30,
         choices=ServiceType.choices,
         null=True,
-        blank=True,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    description = models.CharField(
-        max_length=255,
         blank=True,
     )
 
@@ -179,7 +189,7 @@ class Transaction(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="transactions",
+        related_name="transaction_operations",
     )
 
     provider = models.ForeignKey(
@@ -187,69 +197,76 @@ class Transaction(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="transactions",
+        related_name="transaction_operations",
     )
 
     def get_display_description(self):
-        if self.description:
-            return self.description
-
         if self.type == self.Type.SALE:
             if self.client:
-                return f"Venta a {self.client.name}"
-            return "Venta"
+                description = f"Venta a {self.client.name}"
+            else:
+                description = "Venta"
 
-        if self.type == self.Type.SUBE:
+        elif self.type == self.Type.SUBE:
             if self.client:
-                return f"Carga SUBE a {self.client.name}"
-            return "Carga SUBE"
+                description = f"Carga SUBE a {self.client.name}"
+            else:
+                description = "Carga SUBE"
 
-        if self.type == self.Type.PHONE:
+        elif self.type == self.Type.PHONE:
             if self.client:
-                return f"Carga de celular a {self.client.name}"
-            return "Carga de celular"
+                description = f"Carga de celular a {self.client.name}"
+            else:
+                description = "Carga de celular"
 
-        if self.type == self.Type.EXCHANGE:
+        elif self.type == self.Type.EXCHANGE:
             if self.client:
-                return f"Cambio para {self.client.name}"
-            return "Cambio"
+                description = f"Cambio para {self.client.name}"
+            else:
+                description = "Cambio"
 
-        if self.type == self.Type.SALE_EXCHANGE:
+        elif self.type == self.Type.PAYMENT:
             if self.client:
-                return f"Venta + cambio a {self.client.name}"
-            return "Venta + cambio"
+                description = f"A cuenta de {self.client.name}"
+            else:
+                description = "A cuenta"
 
-        if self.type == self.Type.PAYMENT:
-            if self.client:
-                return f"A cuenta de {self.client.name}"
-            return "A cuenta"
-
-        if self.type == self.Type.PROVIDER:
+        elif self.type == self.Type.PROVIDER:
             if self.provider:
-                return f"Pago a proveedor {self.provider.name}"
-            return "Pago a proveedor"
+                description = f"Pago a proveedor {self.provider.name}"
+            else:
+                description = "Pago a proveedor"
 
-        if self.type == self.Type.EXPENSE:
-            return "Gasto"
+        elif self.type == self.Type.PROVIDER_PAYMENT:
+            if self.provider:
+                description = f"Pago a proveedor {self.provider.name}"
+            else:
+                description = "Pago a proveedor"
 
-        if self.type == self.Type.LOSS:
-            return "Pérdida"
+        elif self.type == self.Type.EXPENSE:
+            description = "Gasto"
 
-        return self.get_type_display()
+        elif self.type == self.Type.LOSS:
+            description = "Pérdida"
 
-    def __str__(self):
-        return f"{self.get_type_display()} #{self.id}"
+        else:
+            description = self.get_type_display()
+
+        if self.transaction.description:
+            return f"{description} - {self.transaction.description}"
+
+        return description
 
 
-class TransactionAmount(models.Model):
+class TransactionOperationAmount(models.Model):
     class Method(models.TextChoices):
         CASH = "cash", "Efectivo"
         TRANSFER = "transfer", "Transferencia"
         CARD = "card", "Tarjeta"
         DEBT = "debt", "Fiado"
 
-    transaction = models.ForeignKey(
-        Transaction,
+    operation = models.ForeignKey(
+        TransactionOperation,
         on_delete=models.CASCADE,
         related_name="amounts",
     )

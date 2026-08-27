@@ -1,21 +1,11 @@
 from django.urls import path
 
-from .views import (
-    ClientDetailView,
-    ClientListCreateView,
-    ProviderDetailView,
-    ProviderListCreateView,
-    TransactionAmountReceivedView,
-    TransactionListCreateView,
-    CurrentTransactionListView,
-    TransactionDetailView,
-    CurrentRegisterView,
-    OpenRegisterView,
-    CloseRegisterView,
-    RegisterListView,
-    RegisterDetailView,
-)
-
+from .views import (ClientDetailView, ClientListCreateView, CloseRegisterView,
+                    CurrentRegisterView, CurrentTransactionListView,
+                    OpenRegisterView, ProviderDetailView,
+                    ProviderListCreateView, RegisterDetailView,
+                    RegisterListView, TransactionAmountReceivedView,
+                    TransactionDetailView, TransactionListCreateView)
 
 urlpatterns = [
     path(

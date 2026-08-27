@@ -3,13 +3,8 @@ from decimal import Decimal
 from django.db import transaction as db_transaction
 from rest_framework import serializers
 
-from .models import (
-    Provider,
-    Register,
-    Transaction,
-    TransactionAmount,
-)
-from .models import Client
+from .models import (Client, Provider, Register, Transaction,
+                     TransactionOperation, TransactionOperationAmount)
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -36,65 +31,62 @@ class ClientSerializer(serializers.ModelSerializer):
     def get_debt(self, obj):
         debt = Decimal("0")
 
-        for transaction in obj.transactions.prefetch_related(
+        for operation in obj.transaction_operations.prefetch_related(
             "amounts"
         ):
-            if transaction.type == Transaction.Type.PAYMENT:
+            if operation.type == TransactionOperation.Type.PAYMENT:
                 debt -= sum(
                     amount.amount
-                    for amount in transaction.amounts.all()
+                    for amount in operation.amounts.all()
                 )
 
             else:
                 debt += sum(
                     amount.amount
-                    for amount in transaction.amounts.all()
+                    for amount in operation.amounts.all()
                     if amount.method
-                    == TransactionAmount.Method.DEBT
+                    == TransactionOperationAmount.Method.DEBT
                 )
 
         return max(debt, Decimal("0"))
 
-class TransactionAmountSerializer(
+
+class TransactionOperationAmountSerializer(
     serializers.ModelSerializer
 ):
     class Meta:
-        model = TransactionAmount
+        model = TransactionOperationAmount
+
         fields = [
             "id",
             "method",
             "amount",
             "received",
         ]
+
         read_only_fields = [
             "id",
         ]
 
 
-class TransactionSerializer(
+class TransactionOperationSerializer(
     serializers.ModelSerializer
 ):
-    amounts = TransactionAmountSerializer(
+    amounts = TransactionOperationAmountSerializer(
         many=True
     )
 
     total = serializers.SerializerMethodField()
 
-    register = serializers.PrimaryKeyRelatedField(
-        read_only=True,
-    )
-
     class Meta:
-        model = Transaction
+        model = TransactionOperation
 
         fields = [
             "id",
-            "register",
             "type",
+            "service_type",
             "client",
             "provider",
-            "created_at",
-            "description",
             "exchange_amount",
             "exchange_fee",
             "amounts",
@@ -103,8 +95,6 @@ class TransactionSerializer(
 
         read_only_fields = [
             "id",
-            "register",
-            "created_at",
             "exchange_fee",
             "total",
         ]
@@ -116,16 +106,7 @@ class TransactionSerializer(
         )
 
     def validate(self, attrs):
-        if (
-            self.instance
-            and not self.instance.register.is_open
-        ):
-            raise serializers.ValidationError({
-                "register":
-                    "No se puede modificar una operación de una caja cerrada."
-            })
-
-        transaction_type = attrs.get(
+        operation_type = attrs.get(
             "type",
             getattr(
                 self.instance,
@@ -156,7 +137,7 @@ class TransactionSerializer(
 
         # CLIENT PAYMENTS
 
-        if transaction_type == Transaction.Type.PAYMENT:
+        if operation_type == TransactionOperation.Type.PAYMENT:
             if client is None:
                 raise serializers.ValidationError({
                     "client":
@@ -165,7 +146,7 @@ class TransactionSerializer(
 
             if amounts and any(
                 amount["method"]
-                == TransactionAmount.Method.DEBT
+                == TransactionOperationAmount.Method.DEBT
                 for amount in amounts
             ):
                 raise serializers.ValidationError({
@@ -173,13 +154,9 @@ class TransactionSerializer(
                         "Un pago de fiado no puede registrarse como fiado."
                 })
 
-
         # EXCHANGE
 
-        if transaction_type in [
-            Transaction.Type.EXCHANGE,
-            Transaction.Type.SALE_EXCHANGE,
-        ]:
+        if operation_type == TransactionOperation.Type.EXCHANGE:
             exchange_amount = attrs.get(
                 "exchange_amount",
                 getattr(
@@ -198,12 +175,11 @@ class TransactionSerializer(
                         "El monto de cambio es obligatorio."
                 })
 
-
         # PROVIDER OPERATIONS
 
-        if transaction_type in [
-            Transaction.Type.PROVIDER,
-            Transaction.Type.PROVIDER_PAYMENT,
+        if operation_type in [
+            TransactionOperation.Type.PROVIDER,
+            TransactionOperation.Type.PROVIDER_PAYMENT,
         ]:
             if provider is None:
                 raise serializers.ValidationError({
@@ -217,13 +193,12 @@ class TransactionSerializer(
                         "Una operación de proveedor no puede tener un cliente."
                 })
 
-
         # PROVIDER PAYMENTS
 
-        if transaction_type == Transaction.Type.PROVIDER_PAYMENT:
+        if operation_type == TransactionOperation.Type.PROVIDER_PAYMENT:
             if amounts and any(
                 amount["method"]
-                == TransactionAmount.Method.DEBT
+                == TransactionOperationAmount.Method.DEBT
                 for amount in amounts
             ):
                 raise serializers.ValidationError({
@@ -235,40 +210,31 @@ class TransactionSerializer(
 
     def _calculate_exchange_fee(
         self,
-        transaction,
+        operation,
         amounts,
     ):
-        if transaction.type not in [
-            Transaction.Type.EXCHANGE,
-            Transaction.Type.SALE_EXCHANGE,
-        ]:
+        if operation.type != TransactionOperation.Type.EXCHANGE:
             return None
 
-        if not transaction.exchange_amount:
+        if not operation.exchange_amount:
             return None
 
         paid_amount = sum(
             amount["amount"]
             for amount in amounts
             if amount["method"]
-            != TransactionAmount.Method.DEBT
+            != TransactionOperationAmount.Method.DEBT
         )
 
         fee = (
             paid_amount
-            - transaction.exchange_amount
+            - operation.exchange_amount
         )
 
         return max(
             fee,
             Decimal("0")
         )
-    
-    def _get_open_register(self):
-        return Register.objects.filter(
-            user=self.context["request"].user,
-            closed_at__isnull=True,
-        ).first()
 
     @db_transaction.atomic
     def create(self, validated_data):
@@ -276,40 +242,30 @@ class TransactionSerializer(
             "amounts"
         )
 
-        register = self._get_open_register()
-
-        if register is None:
-            raise serializers.ValidationError({
-                "register":
-                    "No hay una caja abierta."
-            })
-
-        transaction = Transaction.objects.create(
-            user=self.context["request"].user,
-            register=register,
-            **validated_data,
+        operation = TransactionOperation.objects.create(
+            **validated_data
         )
 
-        transaction.exchange_fee = (
+        operation.exchange_fee = (
             self._calculate_exchange_fee(
-                transaction,
+                operation,
                 amounts,
             )
         )
 
-        transaction.save(
+        operation.save(
             update_fields=["exchange_fee"]
         )
 
-        TransactionAmount.objects.bulk_create([
-            TransactionAmount(
-                transaction=transaction,
+        TransactionOperationAmount.objects.bulk_create([
+            TransactionOperationAmount(
+                operation=operation,
                 **amount,
             )
             for amount in amounts
         ])
 
-        return transaction
+        return operation
 
     @db_transaction.atomic
     def update(
@@ -339,9 +295,9 @@ class TransactionSerializer(
 
             instance.amounts.all().delete()
 
-            TransactionAmount.objects.bulk_create([
-                TransactionAmount(
-                    transaction=instance,
+            TransactionOperationAmount.objects.bulk_create([
+                TransactionOperationAmount(
+                    operation=instance,
                     **amount,
                 )
                 for amount in amounts
@@ -365,13 +321,165 @@ class TransactionSerializer(
 
         return instance
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
 
-        if not instance.description:
-            representation["description"] = (
-                instance.get_display_description()
+class TransactionSerializer(
+    serializers.ModelSerializer
+):
+    operations = TransactionOperationSerializer(
+        many=True
+    )
+
+    class Meta:
+        model = Transaction
+
+        fields = [
+            "id",
+            "register",
+            "created_at",
+            "description",
+            "operations",
+        ]
+
+        read_only_fields = [
+            "id",
+            "register",
+            "created_at",
+        ]
+
+    def validate(self, attrs):
+        if (
+            self.instance
+            and not self.instance.register.is_open
+        ):
+            raise serializers.ValidationError({
+                "register":
+                    "No se puede modificar una operación de una caja cerrada."
+            })
+
+        return attrs
+
+    def _get_open_register(self):
+        return Register.objects.filter(
+            user=self.context["request"].user,
+            closed_at__isnull=True,
+        ).first()
+
+    @db_transaction.atomic
+    def create(self, validated_data):
+        operations = validated_data.pop(
+            "operations"
+        )
+
+        register = self._get_open_register()
+
+        if register is None:
+            raise serializers.ValidationError({
+                "register":
+                    "No hay una caja abierta."
+            })
+
+        transaction = Transaction.objects.create(
+            user=self.context["request"].user,
+            register=register,
+            **validated_data,
+        )
+
+        for operation_data in operations:
+            amounts = operation_data.pop(
+                "amounts"
             )
+
+            operation = TransactionOperation.objects.create(
+                transaction=transaction,
+                **operation_data,
+            )
+
+            operation.exchange_fee = (
+                TransactionOperationSerializer()
+                ._calculate_exchange_fee(
+                    operation,
+                    amounts,
+                )
+            )
+
+            operation.save(
+                update_fields=["exchange_fee"]
+            )
+
+            TransactionOperationAmount.objects.bulk_create([
+                TransactionOperationAmount(
+                    operation=operation,
+                    **amount,
+                )
+                for amount in amounts
+            ])
+
+        return transaction
+
+    @db_transaction.atomic
+    def update(
+        self,
+        instance,
+        validated_data,
+    ):
+        operations = validated_data.pop(
+            "operations",
+            None,
+        )
+
+        for attr, value in validated_data.items():
+            setattr(
+                instance,
+                attr,
+                value,
+            )
+
+        if operations is not None:
+            instance.operations.all().delete()
+
+            for operation_data in operations:
+                amounts = operation_data.pop(
+                    "amounts"
+                )
+
+                operation = TransactionOperation.objects.create(
+                    transaction=instance,
+                    **operation_data,
+                )
+
+                operation.exchange_fee = (
+                    TransactionOperationSerializer()
+                    ._calculate_exchange_fee(
+                        operation,
+                        amounts,
+                    )
+                )
+
+                operation.save(
+                    update_fields=["exchange_fee"]
+                )
+
+                TransactionOperationAmount.objects.bulk_create([
+                    TransactionOperationAmount(
+                        operation=operation,
+                        **amount,
+                    )
+                    for amount in amounts
+                ])
+
+        instance.save()
+
+        return instance
+
+    def to_representation(self, instance):
+        representation = super().to_representation(
+            instance
+        )
+
+        for operation in instance.operations.all():
+            # Force the operation serializer to expose
+            # the generated title/description.
+            pass
 
         return representation
 
@@ -430,24 +538,20 @@ class RegisterSerializer(
 
         read_only_fields = fields
 
-
     def _get_transactions(self, obj):
         return (
             obj.transactions
-            .select_related(
-                "client",
-                "provider",
-            )
             .prefetch_related(
-                "amounts"
+                "operations__amounts",
+                "operations__client",
+                "operations__provider",
             )
             .all()
         )
 
-
     def _is_money_movement(self, amount):
         """
-        Determines whether a transaction amount
+        Determines whether an operation amount
         represents money that actually moved through
         the register.
         """
@@ -455,7 +559,7 @@ class RegisterSerializer(
         # Fiado is debt, not money.
         if (
             amount.method
-            == TransactionAmount.Method.DEBT
+            == TransactionOperationAmount.Method.DEBT
         ):
             return False
 
@@ -463,90 +567,101 @@ class RegisterSerializer(
         # explicitly confirmed.
         if (
             amount.method
-            == TransactionAmount.Method.TRANSFER
+            == TransactionOperationAmount.Method.TRANSFER
             and not amount.received
         ):
             return False
 
         return True
 
+    def _get_operation_money_amount(self, operation):
+        """
+        Returns the actual money movement represented
+        by an operation.
 
-    def _get_money_amount(self, transaction):
+        For exchanges, the amount being exchanged is
+        removed from the register movement, leaving
+        only the exchange fee.
+        """
+
         money_amount = sum(
             amount.amount
-            for amount in transaction.amounts.all()
+            for amount in operation.amounts.all()
             if self._is_money_movement(amount)
         )
 
-        if transaction.type in [
-            Transaction.Type.EXCHANGE,
-            Transaction.Type.SALE_EXCHANGE,
-        ]:
-            money_amount -= transaction.exchange_amount or Decimal("0")
+        if operation.type == TransactionOperation.Type.EXCHANGE:
+            money_amount -= (
+                operation.exchange_amount
+                or Decimal("0")
+            )
 
         return money_amount
 
-
-    def _is_outgoing(self, transaction):
-        return transaction.type in [
-            Transaction.Type.PROVIDER,
-            Transaction.Type.EXPENSE,
-            Transaction.Type.LOSS,
+    def _is_outgoing(self, operation):
+        return operation.type in [
+            TransactionOperation.Type.PROVIDER,
+            TransactionOperation.Type.EXPENSE,
+            TransactionOperation.Type.LOSS,
         ]
-
 
     def get_transaction_count(self, obj):
         return obj.transactions.count()
-
 
     def get_total(self, obj):
         total = Decimal("0")
 
         for transaction in self._get_transactions(obj):
 
-            # Exchange income is only the commission.
-            if transaction.type in [
-                Transaction.Type.EXCHANGE,
-                Transaction.Type.SALE_EXCHANGE,
-            ]:
-                total += transaction.exchange_fee or Decimal("0")
-                continue
+            for operation in transaction.operations.all():
 
-            for amount in transaction.amounts.all():
-                total += amount.amount
+                # Exchange income is only the commission.
+                if (
+                    operation.type
+                    == TransactionOperation.Type.EXCHANGE
+                ):
+                    total += (
+                        operation.exchange_fee
+                        or Decimal("0")
+                    )
+                    continue
+
+                for amount in operation.amounts.all():
+                    total += amount.amount
 
         return total
-
 
     def get_money_in(self, obj):
-        total = 0
+        total = Decimal("0")
 
         for transaction in self._get_transactions(obj):
 
-            if self._is_outgoing(transaction):
-                continue
+            for operation in transaction.operations.all():
 
-            total += self._get_money_amount(
-                transaction
-            )
+                if self._is_outgoing(operation):
+                    continue
+
+                total += self._get_operation_money_amount(
+                    operation
+                )
 
         return total
-
 
     def get_money_out(self, obj):
-        total = 0
+        total = Decimal("0")
 
         for transaction in self._get_transactions(obj):
 
-            if not self._is_outgoing(transaction):
-                continue
+            for operation in transaction.operations.all():
 
-            total += self._get_money_amount(
-                transaction
-            )
+                if not self._is_outgoing(operation):
+                    continue
+
+                total += self._get_operation_money_amount(
+                    operation
+                )
 
         return total
-
 
     def get_net_movement(self, obj):
         return (
@@ -554,193 +669,215 @@ class RegisterSerializer(
             - self.get_money_out(obj)
         )
 
-
     def get_totals_by_method(self, obj):
         totals = {}
 
         for transaction in self._get_transactions(obj):
 
-            if transaction.type in [
-                Transaction.Type.EXCHANGE,
-                Transaction.Type.SALE_EXCHANGE,
-            ]:
-                money_amount = self._get_money_amount(
-                    transaction
-                )
+            for operation in transaction.operations.all():
 
-                if money_amount <= 0:
+                if (
+                    operation.type
+                    == TransactionOperation.Type.EXCHANGE
+                ):
+                    money_amount = (
+                        self._get_operation_money_amount(
+                            operation
+                        )
+                    )
+
+                    if money_amount <= 0:
+                        continue
+
+                    # Assign the exchange's net movement
+                    # to the first actual payment method.
+                    for amount in operation.amounts.all():
+
+                        if not self._is_money_movement(
+                            amount
+                        ):
+                            continue
+
+                        totals[amount.method] = (
+                            totals.get(
+                                amount.method,
+                                Decimal("0")
+                            )
+                            + money_amount
+                        )
+
+                        break
+
                     continue
 
-                # For now, the exchange payment method
-                # receives the net movement.
-                for amount in transaction.amounts.all():
-                    if not self._is_money_movement(amount):
+                for amount in operation.amounts.all():
+
+                    if not self._is_money_movement(
+                        amount
+                    ):
                         continue
 
                     totals[amount.method] = (
-                        totals.get(amount.method, 0)
-                        + money_amount
+                        totals.get(
+                            amount.method,
+                            Decimal("0")
+                        )
+                        + amount.amount
                     )
-
-                    break
-
-                continue
-
-            for amount in transaction.amounts.all():
-
-                if not self._is_money_movement(amount):
-                    continue
-
-                totals[amount.method] = (
-                    totals.get(
-                        amount.method,
-                        0
-                    )
-                    + amount.amount
-                )
 
         return totals
-
 
     def get_totals_by_type(self, obj):
         totals = {}
 
         for transaction in self._get_transactions(obj):
 
-            transaction_total = (
-                self._get_money_amount(
-                    transaction
-                )
-            )
+            for operation in transaction.operations.all():
 
-            if transaction_total <= 0:
-                continue
-
-            totals[transaction.type] = (
-                totals.get(
-                    transaction.type,
-                    0
+                operation_total = (
+                    self._get_operation_money_amount(
+                        operation
+                    )
                 )
-                + transaction_total
-            )
+
+                if operation_total <= 0:
+                    continue
+
+                totals[operation.type] = (
+                    totals.get(
+                        operation.type,
+                        Decimal("0")
+                    )
+                    + operation_total
+                )
 
         return totals
 
-
     def get_exchange_income(self, obj):
         return sum(
-            transaction.exchange_fee or 0
+            operation.exchange_fee or Decimal("0")
             for transaction in self._get_transactions(obj)
-            if transaction.type in [
-                Transaction.Type.EXCHANGE,
-                Transaction.Type.SALE_EXCHANGE,
-            ]
+            for operation in transaction.operations.all()
+            if (
+                operation.type
+                == TransactionOperation.Type.EXCHANGE
+            )
         )
-
 
     def get_pending_transfers(self, obj):
         transfers = []
 
         for transaction in self._get_transactions(obj):
 
-            for amount in transaction.amounts.all():
+            for operation in transaction.operations.all():
 
-                if (
-                    amount.method
-                    == TransactionAmount.Method.TRANSFER
-                    and not amount.received
-                ):
-                    transfers.append({
-                        "transaction_id": transaction.id,
-                        "amount_id": amount.id,
-                        "amount": amount.amount,
-                        "description": (
-                            transaction.description
-                        ),
-                        "client_name": (
-                            transaction.client.name
-                            if transaction.client
-                            else None
-                        ),
-                        "created_at": (
-                            transaction.created_at
-                        ),
-                    })
+                for amount in operation.amounts.all():
+
+                    if (
+                        amount.method
+                        == TransactionOperationAmount.Method.TRANSFER
+                        and not amount.received
+                    ):
+                        transfers.append({
+                            "transaction_id": transaction.id,
+                            "operation_id": operation.id,
+                            "amount_id": amount.id,
+                            "amount": amount.amount,
+                            "description": (
+                                transaction.description
+                            ),
+                            "client_name": (
+                                operation.client.name
+                                if operation.client
+                                else None
+                            ),
+                            "created_at": (
+                                transaction.created_at
+                            ),
+                        })
 
         return transfers
 
-
     def get_fiado(self, obj):
-        new_debt = 0
-        payments = 0
+        new_debt = Decimal("0")
+        payments = Decimal("0")
         clients = {}
 
         for transaction in self._get_transactions(obj):
 
-            # Client payment against existing debt.
-            if transaction.type == Transaction.Type.PAYMENT:
+            for operation in transaction.operations.all():
 
-                amount = sum(
+                # Client payment against existing debt.
+                if (
+                    operation.type
+                    == TransactionOperation.Type.PAYMENT
+                ):
+                    amount = sum(
+                        item.amount
+                        for item in operation.amounts.all()
+                    )
+
+                    payments += amount
+
+                    if operation.client:
+
+                        client_id = operation.client.id
+
+                        if client_id not in clients:
+                            clients[client_id] = {
+                                "client_id": client_id,
+                                "client_name": (
+                                    operation.client.name
+                                ),
+                                "debt": Decimal("0"),
+                                "payments": Decimal("0"),
+                                "net": Decimal("0"),
+                            }
+
+                        clients[client_id]["payments"] += amount
+                        clients[client_id]["net"] -= amount
+
+                    continue
+
+                # Provider operations cannot generate
+                # client fiado.
+                if operation.type in [
+                    TransactionOperation.Type.PROVIDER,
+                    TransactionOperation.Type.PROVIDER_PAYMENT,
+                ]:
+                    continue
+
+                debt_amount = sum(
                     item.amount
-                    for item in transaction.amounts.all()
+                    for item in operation.amounts.all()
+                    if (
+                        item.method
+                        == TransactionOperationAmount.Method.DEBT
+                    )
                 )
 
-                payments += amount
+                if debt_amount <= 0:
+                    continue
 
-                if transaction.client:
+                new_debt += debt_amount
 
-                    client_id = transaction.client.id
+                if operation.client:
+
+                    client_id = operation.client.id
 
                     if client_id not in clients:
                         clients[client_id] = {
                             "client_id": client_id,
-                            "client_name": transaction.client.name,
-                            "debt": 0,
-                            "payments": 0,
-                            "net": 0,
+                            "client_name": (
+                                operation.client.name
+                            ),
+                            "debt": Decimal("0"),
+                            "payments": Decimal("0"),
+                            "net": Decimal("0"),
                         }
 
-                    clients[client_id]["payments"] += amount
-                    clients[client_id]["net"] -= amount
-
-                continue
-
-
-            # Only client transactions can generate
-            # client fiado.
-            if transaction.type in [
-                Transaction.Type.PROVIDER,
-                Transaction.Type.PROVIDER_PAYMENT,
-            ]:
-                continue
-
-
-            debt_amount = sum(
-                item.amount
-                for item in transaction.amounts.all()
-                if item.method == TransactionAmount.Method.DEBT
-            )
-
-            if debt_amount <= 0:
-                continue
-
-            new_debt += debt_amount
-
-            if transaction.client:
-
-                client_id = transaction.client.id
-
-                if client_id not in clients:
-                    clients[client_id] = {
-                        "client_id": client_id,
-                        "client_name": transaction.client.name,
-                        "debt": 0,
-                        "payments": 0,
-                        "net": 0,
-                    }
-
-                clients[client_id]["debt"] += debt_amount
-                clients[client_id]["net"] += debt_amount
+                    clients[client_id]["debt"] += debt_amount
+                    clients[client_id]["net"] += debt_amount
 
         return {
             "new_debt": new_debt,
@@ -750,51 +887,63 @@ class RegisterSerializer(
         }
 
     def get_provider(self, obj):
-        new_debt = 0
-        payments = 0
+        new_debt = Decimal("0")
+        payments = Decimal("0")
         providers = {}
 
         for transaction in self._get_transactions(obj):
 
-            if (
-                transaction.type != Transaction.Type.PROVIDER
-                or not transaction.provider
-            ):
-                continue
+            for operation in transaction.operations.all():
 
-            provider_id = transaction.provider.id
+                if (
+                    operation.type
+                    != TransactionOperation.Type.PROVIDER
+                    or not operation.provider
+                ):
+                    continue
 
-            if provider_id not in providers:
-                providers[provider_id] = {
-                    "provider_id": provider_id,
-                    "provider_name": transaction.provider.name,
-                    "debt": 0,
-                    "payments": 0,
-                    "net": 0,
-                }
+                provider_id = operation.provider.id
 
-            provider_debt = sum(
-                item.amount
-                for item in transaction.amounts.all()
-                if item.method == TransactionAmount.Method.DEBT
-            )
+                if provider_id not in providers:
+                    providers[provider_id] = {
+                        "provider_id": provider_id,
+                        "provider_name": (
+                            operation.provider.name
+                        ),
+                        "debt": Decimal("0"),
+                        "payments": Decimal("0"),
+                        "net": Decimal("0"),
+                    }
 
-            provider_payment = sum(
-                item.amount
-                for item in transaction.amounts.all()
-                if self._is_money_movement(item)
-                and item.method != TransactionAmount.Method.DEBT
-            )
+                provider_debt = sum(
+                    item.amount
+                    for item in operation.amounts.all()
+                    if (
+                        item.method
+                        == TransactionOperationAmount.Method.DEBT
+                    )
+                )
 
-            new_debt += provider_debt
-            payments += provider_payment
+                provider_payment = sum(
+                    item.amount
+                    for item in operation.amounts.all()
+                    if (
+                        self._is_money_movement(item)
+                        and item.method
+                        != TransactionOperationAmount.Method.DEBT
+                    )
+                )
 
-            providers[provider_id]["debt"] += provider_debt
-            providers[provider_id]["payments"] += provider_payment
+                new_debt += provider_debt
+                payments += provider_payment
 
-            providers[provider_id]["net"] += (
-                provider_debt - provider_payment
-            )
+                providers[provider_id]["debt"] += provider_debt
+                providers[provider_id]["payments"] += provider_payment
+
+                providers[provider_id]["net"] += (
+                    provider_debt
+                    - provider_payment
+                )
 
         return {
             "new_debt": new_debt,
@@ -810,18 +959,21 @@ class TransactionAmountReceivedSerializer(
     serializers.ModelSerializer
 ):
     class Meta:
-        model = TransactionAmount
+        model = TransactionOperationAmount
+
         fields = [
             "id",
             "method",
             "amount",
             "received",
         ]
+
         read_only_fields = [
             "id",
             "method",
             "amount",
         ]
+
 
 class ProviderSerializer(
     serializers.ModelSerializer
@@ -866,16 +1018,27 @@ class ProviderSerializer(
         if register is None:
             return obj.transactions.none()
 
-        return obj.transactions.filter(
-            register=register,
-        ).prefetch_related("amounts")
+        return (
+            obj.transactions
+            .filter(register=register)
+            .prefetch_related(
+                "operations__amounts"
+            )
+        )
 
     def get_current_register_total(self, obj):
         return sum(
             amount.amount
-            for transaction in self.get_provider_transactions(obj)
-            for amount in transaction.amounts.all()
-            if amount.method != TransactionAmount.Method.DEBT
+            for transaction
+            in self.get_provider_transactions(obj)
+            for operation
+            in transaction.operations.all()
+            for amount
+            in operation.amounts.all()
+            if (
+                amount.method
+                != TransactionOperationAmount.Method.DEBT
+            )
         )
 
     def get_current_register_transactions(self, obj):
@@ -884,21 +1047,49 @@ class ProviderSerializer(
     def get_outstanding_debt(self, obj):
         debt_created = sum(
             amount.amount
-            for transaction in obj.transactions.prefetch_related("amounts").all()
-            if transaction.type == Transaction.Type.PROVIDER
-            for amount in transaction.amounts.all()
-            if amount.method == TransactionAmount.Method.DEBT
+            for transaction
+            in obj.transactions
+            .prefetch_related(
+                "operations__amounts"
+            )
+            .all()
+            for operation
+            in transaction.operations.all()
+            if (
+                operation.type
+                == TransactionOperation.Type.PROVIDER
+            )
+            for amount
+            in operation.amounts.all()
+            if (
+                amount.method
+                == TransactionOperationAmount.Method.DEBT
+            )
         )
 
         debt_paid = sum(
             amount.amount
-            for transaction in obj.transactions.prefetch_related("amounts").all()
-            if transaction.type == Transaction.Type.PROVIDER_PAYMENT
-            for amount in transaction.amounts.all()
-            if amount.method != TransactionAmount.Method.DEBT
+            for transaction
+            in obj.transactions
+            .prefetch_related(
+                "operations__amounts"
+            )
+            .all()
+            for operation
+            in transaction.operations.all()
+            if (
+                operation.type
+                == TransactionOperation.Type.PROVIDER_PAYMENT
+            )
+            for amount
+            in operation.amounts.all()
+            if (
+                amount.method
+                != TransactionOperationAmount.Method.DEBT
+            )
         )
 
         return max(
             debt_created - debt_paid,
-            0,
+            Decimal("0"),
         )
