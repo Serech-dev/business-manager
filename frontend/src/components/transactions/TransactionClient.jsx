@@ -198,7 +198,8 @@ function TransactionClient({
                                             <button
                                                 key={client.id}
                                                 type="button"
-                                                onClick={() => {
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
                                                     onSelectClient(client);
                                                     setClientSearch(client.name);
                                                     setClientResults([]);
@@ -242,7 +243,8 @@ function TransactionClient({
 
                                         <button
                                             type="button"
-                                            onClick={() => {
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
                                                 onSelectClient({
                                                     id: null,
                                                     name: clientSearch.trim(),

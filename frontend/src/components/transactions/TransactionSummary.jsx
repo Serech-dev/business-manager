@@ -2,6 +2,7 @@ import { getMethodLabel, getTransactionLabel } from "../../services/business";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 function TransactionSummary({
+    client,
     operations,
     isSubmitting,
     onCancel,
@@ -73,6 +74,25 @@ function TransactionSummary({
                     </p>
                 </div>
 
+                {/* CLIENT INFO IF SELECTED */}
+                {client && (
+                    <div className="
+                        border-b
+                        border-[var(--border)]
+                        bg-[var(--surface-accent)]/30
+                        px-6
+                        py-3
+                        text-xs
+                    ">
+                        <span className="font-semibold text-[var(--text-secondary)]">
+                            Cliente:{" "}
+                        </span>
+                        <span className="font-medium text-[var(--text-primary)]">
+                            {client.name}
+                        </span>
+                    </div>
+                )}
+
                 {/* OPERATIONS LIST BREAKDOWN */}
                 <div className="
                     divide-y
@@ -99,10 +119,10 @@ function TransactionSummary({
                             0
                         );
 
-                        const participant =
+                        const providerName =
                             op.type === "provider" || op.type === "provider_payment"
                                 ? op.provider?.name
-                                : op.client?.name;
+                                : null;
 
                         return (
                             <div
@@ -127,12 +147,12 @@ function TransactionSummary({
                                         )}
                                         {getTransactionLabel(op.type)}
                                     </p>
-                                    {participant && (
+                                    {providerName && (
                                         <p className="
                                             truncate
                                             text-[var(--text-secondary)]
                                         ">
-                                            {participant}
+                                            {providerName}
                                         </p>
                                     )}
                                 </div>

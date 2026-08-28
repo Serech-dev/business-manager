@@ -135,6 +135,11 @@ function TransactionCard({
                             <span>{formatDate(transaction.created_at)}</span>
                         )}
                         <span>#{transaction.id}</span>
+                        {transaction.client && (
+                            <span className="font-medium text-[var(--text-primary)]">
+                                · Cliente: {transaction.client.name}
+                            </span>
+                        )}
                         {operations.length > 1 && (
                             <span className="
                                 rounded
@@ -181,10 +186,10 @@ function TransactionCard({
                                 0
                             );
 
-                    const participant =
+                    const providerName =
                         op.type === "provider" || op.type === "provider_payment"
                             ? op.provider?.name
-                            : op.client?.name;
+                            : null;
 
                     const isOpOutgoing =
                         op.type === "provider" ||
@@ -230,15 +235,15 @@ function TransactionCard({
                                         {getTransactionLabel(op.type)}
                                     </span>
 
-                                    {participant && (
+                                    {providerName && (
                                         <span className="
                                             text-xs
                                             font-medium
                                             text-[var(--text-secondary)]
                                         ">
-                                            {op.type === "provider" || op.type === "provider_payment" ? "Proveedor: " : "Cliente: "}
+                                            Proveedor:{" "}
                                             <strong className="text-[var(--text-primary)] font-semibold">
-                                                {participant}
+                                                {providerName}
                                             </strong>
                                         </span>
                                     )}

@@ -20,7 +20,6 @@ function createNewOperation() {
     return {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: "sale",
-        client: null,
         provider: null,
         exchangeAmount: "",
         amounts: [
@@ -35,9 +34,12 @@ function createNewOperation() {
 function NewTransaction() {
     const navigate = useNavigate();
 
+    const [client, setClient] = useState(null);
     const [description, setDescription] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const hasPaymentOperation = operations.some((op) => op.type === "payment");
 
     function handleAddOperation() {
         setOperations((current) => [...current, createNewOperation()]);
@@ -63,12 +65,7 @@ function NewTransaction() {
                 // If type changed, reset inapplicable relationships / exchange fields
                 if (field === "type") {
                     const newType = value;
-                    if (newType === "provider" || newType === "provider_payment") {
-                        updated.client = null;
-                    } else if (newType === "loss" || newType === "expense") {
-                        updated.client = null;
-                        updated.provider = null;
-                    } else {
+                    if (newType !== "provider" && newType !== "provider_payment") {
                         updated.provider = null;
                     }
 
@@ -96,6 +93,13 @@ function NewTransaction() {
         event.preventDefault();
 
         // VALIDATION
+        if (hasPaymentOperation && !client) {
+            toast.error(
+                "El pago de fiado requiere seleccionar un cliente para la transacción."
+            );
+            return;
+        }
+
         for (let i = 0; i < operations.length; i++) {
             const op = operations[i];
             const opLabel =
@@ -120,13 +124,6 @@ function NewTransaction() {
                 return;
             }
 
-            if (op.type === "payment" && !op.client) {
-                toast.error(
-                    `${opLabel}El pago de fiado requiere seleccionar un cliente.`
-                );
-                return;
-            }
-
             if (
                 (op.type === "provider" || op.type === "provider_payment") &&
                 !op.provider
@@ -139,18 +136,19 @@ function NewTransaction() {
         setIsSubmitting(true);
 
         try {
-            // Auto-create any new clients or providers
+            // Auto-create client if needed
+            let clientId = client?.id || null;
+            if (client && !client.id && client.name) {
+                const newClient = await createClient({
+                    name: client.name,
+                });
+                clientId = newClient.id;
+            }
+
+            // Auto-create any new providers and format operations
             const resolvedOperations = [];
 
             for (const op of operations) {
-                let clientId = op.client?.id || null;
-                if (op.client && !op.client.id && op.client.name) {
-                    const newClient = await createClient({
-                        name: op.client.name,
-                    });
-                    clientId = newClient.id;
-                }
-
                 let providerId = op.provider?.id || null;
                 if (op.provider && !op.provider.id && op.provider.name) {
                     const newProvider = await createProvider({
@@ -175,7 +173,6 @@ function NewTransaction() {
 
                 resolvedOperations.push({
                     type: op.type,
-                    client: clientId,
                     provider: providerId,
                     exchange_amount: isExchange ? exchangeClientAmount : null,
                     amounts: validAmounts,
@@ -183,6 +180,7 @@ function NewTransaction() {
             }
 
             const payload = {
+                client: clientId,
                 description: description.trim(),
                 operations: resolvedOperations,
             };
@@ -200,6 +198,7 @@ function NewTransaction() {
             console.error(error);
             const message =
                 error.response?.data?.register ||
+                error.response?.data?.client ||
                 error.response?.data?.non_field_errors?.[0] ||
                 "No se pudo registrar la transacción.";
             toast.error(message);
@@ -268,24 +267,40 @@ function NewTransaction() {
                         lg:grid-cols-[minmax(0,1fr)_340px]
                         lg:items-start
                     ">
-                        {/* LEFT COLUMN: OPERATIONS */}
+                        {/* LEFT COLUMN: GENERAL INFO & OPERATIONS */}
                         <div className="space-y-6">
-                            {/* GENERAL TRANSACTION NOTE */}
-                            <TransactionBasicInfo
-                                description={description}
-                                onChangeDescription={setDescription}
-                            />
+                            {/* GENERAL TRANSACTION INFO & CLIENT */}
+                            <section className="
+                                border
+                                border-[var(--border)]
+                                bg-[var(--surface)]
+                                p-5
+                                shadow-sm
+                                space-y-4
+                            ">
+                                <h2 className="
+                                    text-base
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                ">
+                                    Datos de la transacción
+                                </h2>
+
+                                <TransactionClient
+                                    selectedClient={client}
+                                    onSelectClient={setClient}
+                                    required={hasPaymentOperation}
+                                />
+
+                                <TransactionBasicInfo
+                                    description={description}
+                                    onChangeDescription={setDescription}
+                                />
+                            </section>
 
                             {/* OPERATIONS LIST */}
                             <div className="space-y-6">
                                 {operations.map((op, index) => {
-                                    const needsClient =
-                                        op.type === "sale" ||
-                                        op.type === "sube" ||
-                                        op.type === "phone" ||
-                                        op.type === "exchange" ||
-                                        op.type === "payment";
-
                                     const isProvider =
                                         op.type === "provider" ||
                                         op.type === "provider_payment";
@@ -328,12 +343,12 @@ function NewTransaction() {
                                                     ">
                                                         {index + 1}
                                                     </span>
-                                                    <h2 className="
+                                                    <h3 className="
                                                         font-semibold
                                                         text-[var(--text-primary)]
                                                     ">
                                                         Operación #{index + 1}
-                                                    </h2>
+                                                    </h3>
                                                 </div>
 
                                                 {operations.length > 1 && (
@@ -427,23 +442,6 @@ function NewTransaction() {
                                                     </select>
                                                 </div>
 
-                                                {/* CLIENT */}
-                                                {needsClient && (
-                                                    <TransactionClient
-                                                        selectedClient={op.client}
-                                                        onSelectClient={(client) =>
-                                                            handleUpdateOperation(
-                                                                index,
-                                                                "client",
-                                                                client
-                                                            )
-                                                        }
-                                                        required={
-                                                            op.type === "payment"
-                                                        }
-                                                    />
-                                                )}
-
                                                 {/* PROVIDER */}
                                                 {isProvider && (
                                                     <TransactionProvider
@@ -530,6 +528,7 @@ function NewTransaction() {
 
                         {/* RIGHT COLUMN: SUMMARY */}
                         <TransactionSummary
+                            client={client}
                             operations={operations}
                             isSubmitting={isSubmitting}
                             onCancel={() => navigate("/")}

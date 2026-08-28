@@ -70,10 +70,12 @@ class TransactionListCreateView(
                 user=self.request.user
             )
             .prefetch_related(
-                "operations__amounts"
+                "operations__amounts",
+                "operations__provider",
             )
             .select_related(
-                "register"
+                "register",
+                "client",
             )
             .order_by("-created_at")
         )
@@ -146,10 +148,12 @@ class TransactionDetailView(
                 user=self.request.user
             )
             .prefetch_related(
-                "operations__amounts"
+                "operations__amounts",
+                "operations__provider",
             )
             .select_related(
-                "register"
+                "register",
+                "client",
             )
         )
 
@@ -214,10 +218,12 @@ class CurrentTransactionListView(
                 register__closed_at__isnull=True,
             )
             .prefetch_related(
-                "operations__amounts"
+                "operations__amounts",
+                "operations__provider",
             )
             .select_related(
-                "register"
+                "register",
+                "client",
             )
             .order_by("-created_at")
         )

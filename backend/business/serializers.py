@@ -36,11 +36,11 @@ class ClientSerializer(serializers.ModelSerializer):
             .prefetch_related(
                 "operations__amounts"
             )
+            .all()
         )
 
         for transaction in transactions:
             for operation in transaction.operations.all():
-
                 if (
                     operation.type
                     == TransactionOperation.Type.PAYMENT
@@ -100,7 +100,6 @@ class TransactionOperationSerializer(
             "id",
             "type",
             "service_type",
-            "client",
             "provider",
             "exchange_amount",
             "exchange_fee",
@@ -130,15 +129,6 @@ class TransactionOperationSerializer(
             ),
         )
 
-        client = attrs.get(
-            "client",
-            getattr(
-                self.instance,
-                "client",
-                None,
-            ),
-        )
-
         provider = attrs.get(
             "provider",
             getattr(
@@ -153,12 +143,6 @@ class TransactionOperationSerializer(
         # CLIENT PAYMENTS
 
         if operation_type == TransactionOperation.Type.PAYMENT:
-            if client is None:
-                raise serializers.ValidationError({
-                    "client":
-                        "El pago de fiado requiere un cliente."
-                })
-
             if amounts and any(
                 amount["method"]
                 == TransactionOperationAmount.Method.DEBT
@@ -200,12 +184,6 @@ class TransactionOperationSerializer(
                 raise serializers.ValidationError({
                     "provider":
                         "Esta operación requiere un proveedor."
-                })
-
-            if client is not None:
-                raise serializers.ValidationError({
-                    "client":
-                        "Una operación de proveedor no puede tener un cliente."
                 })
 
         # PROVIDER PAYMENTS
@@ -338,12 +316,6 @@ class TransactionOperationSerializer(
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        if instance.client:
-            representation["client"] = {
-                "id": instance.client.id,
-                "name": instance.client.name,
-                "phone": instance.client.phone,
-            }
         if instance.provider:
             representation["provider"] = {
                 "id": instance.provider.id,
@@ -367,6 +339,7 @@ class TransactionSerializer(
         fields = [
             "id",
             "register",
+            "client",
             "created_at",
             "description",
             "operations",
@@ -387,6 +360,27 @@ class TransactionSerializer(
                 "register":
                     "No se puede modificar una operación de una caja cerrada."
             })
+
+        client = attrs.get(
+            "client",
+            getattr(
+                self.instance,
+                "client",
+                None,
+            ),
+        )
+
+        operations = attrs.get("operations", [])
+        for op in operations:
+            if (
+                op.get("type")
+                == TransactionOperation.Type.PAYMENT
+                and client is None
+            ):
+                raise serializers.ValidationError({
+                    "client":
+                        "El pago de fiado requiere un cliente en la transacción."
+                })
 
         return attrs
 
@@ -508,6 +502,22 @@ class TransactionSerializer(
             instance
         )
 
+        if instance.client:
+            representation["client"] = {
+                "id": instance.client.id,
+                "name": instance.client.name,
+                "phone": instance.client.phone,
+            }
+            for op_rep, op in zip(
+                representation.get("operations", []),
+                instance.operations.all(),
+            ):
+                op_rep["display_description"] = (
+                    op.get_display_description(
+                        client=instance.client
+                    )
+                )
+
         total = sum(
             amount.amount
             for operation in instance.operations.all()
@@ -581,9 +591,11 @@ class RegisterSerializer(
     def _get_transactions(self, obj):
         return (
             obj.transactions
+            .select_related(
+                "client"
+            )
             .prefetch_related(
                 "operations__amounts",
-                "operations__client",
                 "operations__provider",
             )
             .all()
@@ -827,8 +839,8 @@ class RegisterSerializer(
                                 transaction.description
                             ),
                             "client_name": (
-                                operation.client.name
-                                if operation.client
+                                transaction.client.name
+                                if transaction.client
                                 else None
                             ),
                             "created_at": (
@@ -859,15 +871,15 @@ class RegisterSerializer(
 
                     payments += amount
 
-                    if operation.client:
+                    if transaction.client:
 
-                        client_id = operation.client.id
+                        client_id = transaction.client.id
 
                         if client_id not in clients:
                             clients[client_id] = {
                                 "client_id": client_id,
                                 "client_name": (
-                                    operation.client.name
+                                    transaction.client.name
                                 ),
                                 "debt": Decimal("0"),
                                 "payments": Decimal("0"),
@@ -901,15 +913,15 @@ class RegisterSerializer(
 
                 new_debt += debt_amount
 
-                if operation.client:
+                if transaction.client:
 
-                    client_id = operation.client.id
+                    client_id = transaction.client.id
 
                     if client_id not in clients:
                         clients[client_id] = {
                             "client_id": client_id,
                             "client_name": (
-                                operation.client.name
+                                transaction.client.name
                             ),
                             "debt": Decimal("0"),
                             "payments": Decimal("0"),
@@ -1052,29 +1064,27 @@ class ProviderSerializer(
             closed_at__isnull=True,
         ).first()
 
-    def get_provider_transactions(self, obj):
+    def get_provider_operations(self, obj):
         register = self._get_current_register()
 
         if register is None:
-            return obj.transactions.none()
+            return obj.transaction_operations.none()
 
         return (
-            obj.transactions
-            .filter(register=register)
+            obj.transaction_operations
+            .filter(
+                transaction__register=register
+            )
             .prefetch_related(
-                "operations__amounts"
+                "amounts"
             )
         )
 
     def get_current_register_total(self, obj):
         return sum(
             amount.amount
-            for transaction
-            in self.get_provider_transactions(obj)
-            for operation
-            in transaction.operations.all()
-            for amount
-            in operation.amounts.all()
+            for operation in self.get_provider_operations(obj)
+            for amount in operation.amounts.all()
             if (
                 amount.method
                 != TransactionOperationAmount.Method.DEBT
@@ -1082,25 +1092,30 @@ class ProviderSerializer(
         )
 
     def get_current_register_transactions(self, obj):
-        return self.get_provider_transactions(obj).count()
+        return (
+            self.get_provider_operations(obj)
+            .values("transaction")
+            .distinct()
+            .count()
+        )
 
     def get_outstanding_debt(self, obj):
-        debt_created = sum(
-            amount.amount
-            for transaction
-            in obj.transactions
+        operations = (
+            obj.transaction_operations
             .prefetch_related(
-                "operations__amounts"
+                "amounts"
             )
             .all()
-            for operation
-            in transaction.operations.all()
+        )
+
+        debt_created = sum(
+            amount.amount
+            for operation in operations
             if (
                 operation.type
                 == TransactionOperation.Type.PROVIDER
             )
-            for amount
-            in operation.amounts.all()
+            for amount in operation.amounts.all()
             if (
                 amount.method
                 == TransactionOperationAmount.Method.DEBT
@@ -1109,20 +1124,12 @@ class ProviderSerializer(
 
         debt_paid = sum(
             amount.amount
-            for transaction
-            in obj.transactions
-            .prefetch_related(
-                "operations__amounts"
-            )
-            .all()
-            for operation
-            in transaction.operations.all()
+            for operation in operations
             if (
                 operation.type
                 == TransactionOperation.Type.PROVIDER_PAYMENT
             )
-            for amount
-            in operation.amounts.all()
+            for amount in operation.amounts.all()
             if (
                 amount.method
                 != TransactionOperationAmount.Method.DEBT

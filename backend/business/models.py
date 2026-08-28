@@ -122,6 +122,14 @@ class Transaction(models.Model):
         related_name="transactions",
     )
 
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -184,14 +192,6 @@ class TransactionOperation(models.Model):
         blank=True,
     )
 
-    client = models.ForeignKey(
-        Client,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="transaction_operations",
-    )
-
     provider = models.ForeignKey(
         Provider,
         on_delete=models.SET_NULL,
@@ -200,34 +200,37 @@ class TransactionOperation(models.Model):
         related_name="transaction_operations",
     )
 
-    def get_display_description(self):
+    def get_display_description(self, client=None):
+        if client is None and hasattr(self, "transaction") and self.transaction:
+            client = getattr(self.transaction, "client", None)
+
         if self.type == self.Type.SALE:
-            if self.client:
-                description = f"Venta a {self.client.name}"
+            if client:
+                description = f"Venta a {client.name}"
             else:
                 description = "Venta"
 
         elif self.type == self.Type.SUBE:
-            if self.client:
-                description = f"Carga SUBE a {self.client.name}"
+            if client:
+                description = f"Carga SUBE a {client.name}"
             else:
                 description = "Carga SUBE"
 
         elif self.type == self.Type.PHONE:
-            if self.client:
-                description = f"Carga de celular a {self.client.name}"
+            if client:
+                description = f"Carga de celular a {client.name}"
             else:
                 description = "Carga de celular"
 
         elif self.type == self.Type.EXCHANGE:
-            if self.client:
-                description = f"Cambio para {self.client.name}"
+            if client:
+                description = f"Cambio para {client.name}"
             else:
                 description = "Cambio"
 
         elif self.type == self.Type.PAYMENT:
-            if self.client:
-                description = f"A cuenta de {self.client.name}"
+            if client:
+                description = f"A cuenta de {client.name}"
             else:
                 description = "A cuenta"
 
@@ -252,7 +255,7 @@ class TransactionOperation(models.Model):
         else:
             description = self.get_type_display()
 
-        if self.transaction.description:
+        if hasattr(self, "transaction") and self.transaction and self.transaction.description:
             return f"{description} - {self.transaction.description}"
 
         return description

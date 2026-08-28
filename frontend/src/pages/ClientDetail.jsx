@@ -57,11 +57,8 @@ function ClientDetail({ isNewClient = false }) {
                 setTransactions(
                     transactionData.filter(
                         (transaction) =>
-                            (transaction.operations || []).some(
-                                (op) =>
-                                    op.client === Number(id) ||
-                                    op.client?.id === Number(id)
-                            )
+                            transaction.client === Number(id) ||
+                            transaction.client?.id === Number(id)
                     )
                 );
 
@@ -177,35 +174,14 @@ function ClientDetail({ isNewClient = false }) {
 
 
     const clientOperations = transactions.flatMap((tx) =>
-        (tx.operations || [])
-            .filter(
-                (op) =>
-                    op.client === Number(id) ||
-                    op.client?.id === Number(id)
-            )
-            .map((op) => ({
-                ...op,
-                transactionId: tx.id,
-                created_at: tx.created_at,
-            }))
+        (tx.operations || []).map((op) => ({
+            ...op,
+            transactionId: tx.id,
+            created_at: tx.created_at,
+        }))
     );
 
     const debtTotal =
-        debtTransactions.reduce(
-            (total, transaction) =>
-                total +
-                transaction.amounts.reduce(
-                    (amountTotal, amount) =>
-                        amountTotal +
-                        (
-                            amount.method === "debt"
-                                ? Number(amount.amount) || 0
-                                : 0
-                        ),
-                    0
-                ),
-            0
-        );
         client.debt !== undefined
             ? Number(client.debt)
             : clientOperations.reduce((total, op) => {
