@@ -57,7 +57,11 @@ function ProviderDetail({ isNewProvider = false }) {
                 setTransactions(
                     transactionData.filter(
                         (transaction) =>
-                            transaction.provider === Number(id)
+                            (transaction.operations || []).some(
+                                (op) =>
+                                    op.provider === Number(id) ||
+                                    op.provider?.id === Number(id)
+                            )
                     )
                 );
 
@@ -171,18 +175,30 @@ function ProviderDetail({ isNewProvider = false }) {
     }
 
 
-    const sortedTransactions = [
-        ...transactions,
-    ].sort(
-        (a, b) =>
-            new Date(b.created_at) -
-            new Date(a.created_at)
-    );
+    const providerOperations = transactions
+        .flatMap((tx) =>
+            (tx.operations || [])
+                .filter(
+                    (op) =>
+                        op.provider === Number(id) ||
+                        op.provider?.id === Number(id)
+                )
+                .map((op) => ({
+                    ...op,
+                    transactionId: tx.id,
+                    created_at: tx.created_at,
+                }))
+        )
+        .sort(
+            (a, b) =>
+                new Date(b.created_at) -
+                new Date(a.created_at)
+        );
 
 
-    function getProviderMovement(transaction) {
+    function getProviderMovement(op) {
         const debtAmount = (
-            transaction.amounts || []
+            op.amounts || []
         ).reduce(
             (total, amount) =>
                 total +
@@ -195,7 +211,7 @@ function ProviderDetail({ isNewProvider = false }) {
         );
 
         const paidAmount = (
-            transaction.amounts || []
+            op.amounts || []
         ).reduce(
             (total, amount) =>
                 total +
@@ -217,7 +233,10 @@ function ProviderDetail({ isNewProvider = false }) {
         }
 
         return {
-            label: "Pago a Proveedor",
+            label:
+                op.type === "provider_payment"
+                    ? "Pago a proveedor"
+                    : "Compra a proveedor",
             amount: paidAmount,
             sign: "",
             className: "text-[var(--text-primary)]",
@@ -519,148 +538,148 @@ function ProviderDetail({ isNewProvider = false }) {
                     </div>
 
 
-                    {sortedTransactions.length === 0 ? (
+                {providerOperations.length === 0 ? (
+
+                    <div className="
+                        mt-5
+                        border
+                        border-dashed
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-8
+                        text-center
+                    ">
+                        <p className="
+                            font-semibold
+                            text-[var(--text-primary)]
+                        ">
+                            Sin movimientos
+                        </p>
+
+                        <p className="
+                            mt-1
+                            text-sm
+                            text-[var(--text-secondary)]
+                        ">
+                            Este proveedor todavía no tiene movimientos registrados.
+                        </p>
+                    </div>
+
+                ) : (
+
+                    <div className="
+                        mt-5
+                        overflow-hidden
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                    ">
 
                         <div className="
-                            mt-5
-                            border
-                            border-dashed
-                            border-[var(--border)]
-                            bg-[var(--surface)]
-                            p-10
-                            text-center
-                        ">
-                            <p className="
-                                font-semibold
-                                text-[var(--text-primary)]
-                            ">
-                                Sin movimientos
-                            </p>
-
-                            <p className="
-                                mt-1
-                                text-sm
-                                text-[var(--text-secondary)]
-                            ">
-                                Este proveedor todavía no tiene movimientos registrados.
-                            </p>
-                        </div>
-
-                    ) : (
-
-                        <div className="
-                            mt-5
-                            overflow-hidden
-                            border
-                            border-[var(--border)]
-                            bg-[var(--surface)]
+                            divide-y
+                            divide-[var(--border)]
                         ">
 
-                            <div className="
-                                divide-y
-                                divide-[var(--border)]
-                            ">
+                            {providerOperations.map(
+                                (op) => {
+                                    const movement =
+                                        getProviderMovement(
+                                            op
+                                        );
 
-                                {sortedTransactions.map(
-                                    (transaction) => {
-                                        const movement =
-                                            getProviderMovement(
-                                                transaction
-                                            );
+                                    return (
+                                        <div
+                                            key={op.id}
+                                            className="
+                                                flex
+                                                items-center
+                                                justify-between
+                                                gap-6
+                                                px-6
+                                                py-5
+                                            "
+                                        >
 
-                                        return (
-                                            <div
-                                                key={transaction.id}
-                                                className="
-                                                    flex
-                                                    items-center
-                                                    justify-between
-                                                    gap-6
-                                                    px-6
-                                                    py-5
-                                                "
-                                            >
+                                            <div className="
+                                                min-w-0
+                                                flex-1
+                                            ">
 
-                                                <div className="
-                                                    min-w-0
-                                                    flex-1
+                                                <p className="
+                                                    font-semibold
+                                                    text-[var(--text-primary)]
                                                 ">
+                                                    {movement.label}
+                                                </p>
 
-                                                    <p className="
-                                                        font-semibold
-                                                        text-[var(--text-primary)]
-                                                    ">
-                                                        {movement.label}
-                                                    </p>
-
-                                                    <p className="
-                                                        mt-1
-                                                        text-sm
-                                                        text-[var(--text-secondary)]
-                                                    ">
-                                                        {new Date(
-                                                            transaction.created_at
-                                                        ).toLocaleString(
-                                                            "es-AR"
-                                                        )}
-                                                    </p>
-
-                                                    <p className="
-                                                        mt-1
-                                                        text-xs
-                                                        text-[var(--text-secondary)]
-                                                    ">
-                                                        {transaction.amounts
-                                                            ?.map(
-                                                                (amount) =>
-                                                                    getMethodLabel(
-                                                                        amount.method
-                                                                    )
-                                                            )
-                                                            .join(" · ")}
-                                                    </p>
-
-                                                </div>
-
-
-                                                <div className="
-                                                    shrink-0
-                                                    text-right
+                                                <p className="
+                                                    mt-1
+                                                    text-sm
+                                                    text-[var(--text-secondary)]
                                                 ">
+                                                    {new Date(
+                                                        op.created_at
+                                                    ).toLocaleString(
+                                                        "es-AR"
+                                                    )}
+                                                </p>
 
-                                                    <p className={`
-                                                        text-lg
-                                                        font-bold
-                                                        ${movement.className}
-                                                    `}>
-                                                        {movement.sign}
-                                                        {formatCurrency(
-                                                            movement.amount
-                                                        )}
-                                                    </p>
-
-                                                    <p className="
-                                                        mt-1
-                                                        text-xs
-                                                        text-[var(--text-secondary)]
-                                                    ">
-                                                        {getTransactionLabel(
-                                                            transaction.type
-                                                        )}
-                                                    </p>
-
-                                                </div>
+                                                <p className="
+                                                    mt-1
+                                                    text-xs
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    {op.amounts
+                                                        ?.map(
+                                                            (amount) =>
+                                                                getMethodLabel(
+                                                                    amount.method
+                                                                )
+                                                        )
+                                                        .join(" · ")}
+                                                </p>
 
                                             </div>
-                                        );
-                                    }
-                                )}
 
-                            </div>
+
+                                            <div className="
+                                                shrink-0
+                                                text-right
+                                            ">
+
+                                                <p className={`
+                                                    text-lg
+                                                    font-bold
+                                                    ${movement.className}
+                                                `}>
+                                                    {movement.sign}
+                                                    {formatCurrency(
+                                                        movement.amount
+                                                    )}
+                                                </p>
+
+                                                <p className="
+                                                    mt-1
+                                                    text-xs
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    {getTransactionLabel(
+                                                        op.type
+                                                    )}
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+                                    );
+                                }
+                            )}
 
                         </div>
 
-                    )}
+                    </div>
+
+                )}
 
                 </section>
             )}

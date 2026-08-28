@@ -10,7 +10,7 @@ import {
     getCurrentRegister,
 } from "../services/business";
 
-import TransactionCard from "../components/TransactionCard";
+import TransactionCard from "../components/transactions/TransactionCard";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 

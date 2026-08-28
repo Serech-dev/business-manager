@@ -31,24 +31,39 @@ class ClientSerializer(serializers.ModelSerializer):
     def get_debt(self, obj):
         debt = Decimal("0")
 
-        for operation in obj.transaction_operations.prefetch_related(
-            "amounts"
-        ):
-            if operation.type == TransactionOperation.Type.PAYMENT:
-                debt -= sum(
-                    amount.amount
-                    for amount in operation.amounts.all()
-                )
+        transactions = (
+            obj.transactions
+            .prefetch_related(
+                "operations__amounts"
+            )
+        )
 
-            else:
-                debt += sum(
-                    amount.amount
-                    for amount in operation.amounts.all()
-                    if amount.method
-                    == TransactionOperationAmount.Method.DEBT
-                )
+        for transaction in transactions:
+            for operation in transaction.operations.all():
 
-        return max(debt, Decimal("0"))
+                if (
+                    operation.type
+                    == TransactionOperation.Type.PAYMENT
+                ):
+                    debt -= sum(
+                        amount.amount
+                        for amount in operation.amounts.all()
+                    )
+
+                else:
+                    debt += sum(
+                        amount.amount
+                        for amount in operation.amounts.all()
+                        if (
+                            amount.method
+                            == TransactionOperationAmount.Method.DEBT
+                        )
+                    )
+
+        return max(
+            debt,
+            Decimal("0")
+        )
 
 
 class TransactionOperationAmountSerializer(
@@ -321,6 +336,23 @@ class TransactionOperationSerializer(
 
         return instance
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.client:
+            representation["client"] = {
+                "id": instance.client.id,
+                "name": instance.client.name,
+                "phone": instance.client.phone,
+            }
+        if instance.provider:
+            representation["provider"] = {
+                "id": instance.provider.id,
+                "name": instance.provider.name,
+                "phone": instance.provider.phone,
+            }
+        representation["display_description"] = instance.get_display_description()
+        return representation
+
 
 class TransactionSerializer(
     serializers.ModelSerializer
@@ -476,10 +508,12 @@ class TransactionSerializer(
             instance
         )
 
-        for operation in instance.operations.all():
-            # Force the operation serializer to expose
-            # the generated title/description.
-            pass
+        total = sum(
+            amount.amount
+            for operation in instance.operations.all()
+            for amount in operation.amounts.all()
+        )
+        representation["total"] = total
 
         return representation
 
@@ -509,6 +543,11 @@ class RegisterSerializer(
 
     fiado = serializers.SerializerMethodField()
 
+    transactions = TransactionSerializer(
+        many=True,
+        read_only=True,
+    )
+
     class Meta:
         model = Register
 
@@ -534,6 +573,7 @@ class RegisterSerializer(
 
             "fiado",
             "provider",
+            "transactions",
         ]
 
         read_only_fields = fields

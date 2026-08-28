@@ -57,7 +57,11 @@ function ClientDetail({ isNewClient = false }) {
                 setTransactions(
                     transactionData.filter(
                         (transaction) =>
-                            transaction.client === Number(id)
+                            (transaction.operations || []).some(
+                                (op) =>
+                                    op.client === Number(id) ||
+                                    op.client?.id === Number(id)
+                            )
                     )
                 );
 
@@ -172,15 +176,19 @@ function ClientDetail({ isNewClient = false }) {
     }
 
 
-    const debtTransactions =
-        transactions.filter(
-            (transaction) =>
-                transaction.amounts?.some(
-                    (amount) =>
-                        amount.method === "debt"
-                )
-        );
-
+    const clientOperations = transactions.flatMap((tx) =>
+        (tx.operations || [])
+            .filter(
+                (op) =>
+                    op.client === Number(id) ||
+                    op.client?.id === Number(id)
+            )
+            .map((op) => ({
+                ...op,
+                transactionId: tx.id,
+                created_at: tx.created_at,
+            }))
+    );
 
     const debtTotal =
         debtTransactions.reduce(
@@ -198,6 +206,30 @@ function ClientDetail({ isNewClient = false }) {
                 ),
             0
         );
+        client.debt !== undefined
+            ? Number(client.debt)
+            : clientOperations.reduce((total, op) => {
+                if (op.type === "payment") {
+                    return (
+                        total -
+                        (op.amounts || []).reduce(
+                            (sum, a) => sum + (Number(a.amount) || 0),
+                            0
+                        )
+                    );
+                }
+                return (
+                    total +
+                    (op.amounts || []).reduce(
+                        (sum, a) =>
+                            sum +
+                            (a.method === "debt"
+                                ? Number(a.amount) || 0
+                                : 0),
+                        0
+                    )
+                );
+            }, 0);
 
 
     return (
@@ -532,7 +564,7 @@ function ClientDetail({ isNewClient = false }) {
                 </div>
 
 
-                {transactions.length === 0 ? (
+                {clientOperations.length === 0 ? (
 
                     <div className="
                         mt-4
@@ -611,10 +643,10 @@ function ClientDetail({ isNewClient = false }) {
                             divide-[var(--border)]
                         ">
 
-                            {transactions.map(
-                                (transaction) => (
+                            {clientOperations.map(
+                                (op) => (
                                     <div
-                                        key={transaction.id}
+                                        key={op.id}
                                         className="
                                             grid
                                             gap-3
@@ -635,7 +667,7 @@ function ClientDetail({ isNewClient = false }) {
                                                 text-[var(--text-primary)]
                                             ">
                                                 {getTransactionLabel(
-                                                    transaction.type
+                                                    op.type
                                                 )}
                                             </p>
 
@@ -645,7 +677,7 @@ function ClientDetail({ isNewClient = false }) {
                                                 text-[var(--text-secondary)]
                                             ">
                                                 {new Date(
-                                                    transaction.created_at
+                                                    op.created_at
                                                 ).toLocaleString(
                                                     "es-AR"
                                                 )}
@@ -660,7 +692,7 @@ function ClientDetail({ isNewClient = false }) {
                                             text-xs
                                             text-[var(--text-secondary)]
                                         ">
-                                            {transaction.amounts
+                                            {op.amounts
                                                 ?.map(
                                                     (amount) =>
                                                         getMethodLabel(
@@ -680,7 +712,15 @@ function ClientDetail({ isNewClient = false }) {
                                             sm:text-right
                                         ">
                                             {formatCurrency(
-                                                transaction.total
+                                                op.total !== undefined
+                                                    ? op.total
+                                                    : (op.amounts || []).reduce(
+                                                        (sum, a) =>
+                                                            sum +
+                                                            (Number(a.amount) ||
+                                                                0),
+                                                        0
+                                                    )
                                             )}
                                         </p>
 

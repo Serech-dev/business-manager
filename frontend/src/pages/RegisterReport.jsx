@@ -1392,19 +1392,32 @@ function RegisterReport() {
 
                                 {transactions.map(
                                     (transaction) => {
+                                        const operations =
+                                            transaction.operations || [];
 
-                                        const amount =
-                                            Number(
-                                                transaction.total ??
-                                                transaction.amount ??
-                                                0
-                                            );
+                                        const grandTotal =
+                                            transaction.total !== undefined
+                                                ? transaction.total
+                                                : operations.reduce(
+                                                    (total, op) =>
+                                                        total +
+                                                        (op.amounts || []).reduce(
+                                                            (sum, a) =>
+                                                                sum +
+                                                                (Number(a.amount) ||
+                                                                    0),
+                                                            0
+                                                        ),
+                                                    0
+                                                );
 
-                                        const isOutgoing =
-                                            transaction.type === "loss" ||
-                                            transaction.type === "provider" ||
-                                            transaction.type === "expense";
-
+                                        const isOutgoing = operations.some(
+                                            (op) =>
+                                                op.type === "loss" ||
+                                                op.type === "provider" ||
+                                                op.type === "provider_payment" ||
+                                                op.type === "expense"
+                                        );
 
                                         return (
                                             <div
@@ -1414,74 +1427,69 @@ function RegisterReport() {
                                                     py-4
                                                 "
                                             >
-
                                                 <div className="
                                                     flex
                                                     flex-col
-                                                    gap-2
+                                                    gap-3
                                                     sm:flex-row
-                                                    sm:items-center
+                                                    sm:items-start
                                                     sm:justify-between
                                                 ">
-
-                                                    <div>
-
-                                                        <p className="
-                                                            font-medium
-                                                            text-[var(--text-primary)]
-                                                        ">
-                                                            {getTransactionLabel(
-                                                                transaction.type
-                                                            )}
-                                                        </p>
-
-
-                                                        <div className="
-                                                            mt-1
-                                                            flex
-                                                            flex-wrap
-                                                            gap-x-3
-                                                            gap-y-1
-                                                            text-xs
-                                                            text-[var(--text-secondary)]
-                                                        ">
-
-                                                            {transaction.client_name && (
-                                                                <span>
-                                                                    Cliente:{" "}
-                                                                    {transaction.client_name}
-                                                                </span>
-                                                            )}
-
-                                                            {transaction.provider_name && (
-                                                                <span>
-                                                                    Proveedor:{" "}
-                                                                    {transaction.provider_name}
-                                                                </span>
-                                                            )}
-
-                                                            {transaction.description && (
-                                                                <span>
-                                                                    {transaction.description}
-                                                                </span>
-                                                            )}
+                                                    <div className="space-y-1.5 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold text-sm text-[var(--text-primary)]">
+                                                                {transaction.description || (
+                                                                    operations.length > 1
+                                                                        ? `${operations.length} operaciones`
+                                                                        : operations[0]
+                                                                            ? getTransactionLabel(operations[0].type)
+                                                                            : `Transacción #${transaction.id}`
+                                                                )}
+                                                            </span>
 
                                                             {transaction.created_at && (
-                                                                <span>
-                                                                    {formatDate(
-                                                                        transaction.created_at
-                                                                    )}
+                                                                <span className="text-xs text-[var(--text-secondary)]">
+                                                                    · {formatDate(transaction.created_at)}
                                                                 </span>
                                                             )}
-
                                                         </div>
 
-                                                    </div>
+                                                        {/* OPERATIONS DETAILS */}
+                                                        <div className="space-y-1">
+                                                            {operations.map((op, opIdx) => {
+                                                                const participant =
+                                                                    op.type === "provider" || op.type === "provider_payment"
+                                                                        ? op.provider?.name
+                                                                        : op.client?.name;
 
+                                                                const methodsStr = (op.amounts || [])
+                                                                    .map((a) => `${getMethodLabel(a.method)} ($${Number(a.amount || 0).toLocaleString("es-AR")})`)
+                                                                    .join(", ");
+
+                                                                return (
+                                                                    <div
+                                                                        key={op.id || opIdx}
+                                                                        className="flex flex-wrap items-center gap-x-2 text-xs text-[var(--text-secondary)]"
+                                                                    >
+                                                                        <span className="font-medium text-[var(--text-primary)]">
+                                                                            {getTransactionLabel(op.type)}
+                                                                        </span>
+                                                                        {participant && (
+                                                                            <span>· {participant}</span>
+                                                                        )}
+                                                                        {methodsStr && (
+                                                                            <span className="text-[var(--text-secondary)]/80">({methodsStr})</span>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
 
                                                     <p className={`
                                                         text-lg
                                                         font-semibold
+                                                        shrink-0
                                                         ${
                                                             isOutgoing
                                                                 ? "text-[var(--danger)]"
@@ -1489,11 +1497,9 @@ function RegisterReport() {
                                                         }
                                                     `}>
                                                         {isOutgoing ? "-" : "+"}
-                                                        {formatCurrency(amount)}
+                                                        {formatCurrency(grandTotal)}
                                                     </p>
-
                                                 </div>
-
                                             </div>
                                         );
                                     }
