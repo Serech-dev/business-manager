@@ -346,7 +346,7 @@ function TransactionCard({
                                                         ? "..."
                                                         : amount.received
                                                             ? "✓ Recibida"
-                                                            : "Pendiente"}
+                                                            : "Pendiente · Marcar recibida"}
                                                 </button>
                                             )}
                                         </div>

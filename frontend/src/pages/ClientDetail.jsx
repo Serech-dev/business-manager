@@ -296,7 +296,90 @@ function ClientDetail({ isNewClient = false }) {
 
             <div className="
                 mt-8
+                space-y-6
             ">
+
+                {!isNewClient && (
+                    <div className="
+                        grid
+                        gap-4
+                        sm:grid-cols-2
+                    ">
+                        <div className="
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            p-5
+                        ">
+                            <p className="
+                                text-xs
+                                font-semibold
+                                uppercase
+                                tracking-wider
+                                text-[var(--text-secondary)]
+                            ">
+                                Fiado acumulado
+                            </p>
+
+                            <p className={`
+                                mt-2
+                                text-2xl
+                                font-bold
+                                ${
+                                    debtTotal > 0
+                                        ? "text-[var(--warning)]"
+                                        : "text-[var(--text-primary)]"
+                                }
+                            `}>
+                                {formatCurrency(debtTotal)}
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                {debtTotal > 0
+                                    ? "Saldo pendiente de cobro"
+                                    : "Sin deuda pendiente"}
+                            </p>
+                        </div>
+
+                        <div className="
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            p-5
+                        ">
+                            <p className="
+                                text-xs
+                                font-semibold
+                                uppercase
+                                tracking-wider
+                                text-[var(--text-secondary)]
+                            ">
+                                Operaciones registradas
+                            </p>
+
+                            <p className="
+                                mt-2
+                                text-2xl
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                {clientOperations.length}
+                            </p>
+
+                            <p className="
+                                mt-1
+                                text-xs
+                                text-[var(--text-secondary)]
+                            ">
+                                Movimientos asociados al cliente
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* INFORMATION */}
 
@@ -620,88 +703,126 @@ function ClientDetail({ isNewClient = false }) {
                         ">
 
                             {clientOperations.map(
-                                (op) => (
-                                    <div
-                                        key={op.id}
-                                        className="
-                                            grid
-                                            gap-3
-                                            px-5
-                                            py-4
-                                            sm:grid-cols-[1fr_auto_auto]
-                                            sm:items-center
-                                            sm:gap-6
-                                        "
-                                    >
+                                (op) => {
+                                    const hasDebt = (op.amounts || []).some(
+                                        (a) => a.method === "debt"
+                                    );
+                                    const isPayment = op.type === "payment";
 
-                                        {/* OPERATION */}
+                                    const opTotal =
+                                        op.total !== undefined
+                                            ? op.total
+                                            : (op.amounts || []).reduce(
+                                                (sum, a) =>
+                                                    sum +
+                                                    (Number(a.amount) || 0),
+                                                0
+                                            );
 
-                                        <div>
+                                    return (
+                                        <div
+                                            key={op.id}
+                                            className="
+                                                grid
+                                                gap-3
+                                                px-5
+                                                py-4
+                                                sm:grid-cols-[1fr_auto_auto]
+                                                sm:items-center
+                                                sm:gap-6
+                                            "
+                                        >
 
-                                            <p className="
-                                                font-medium
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {getTransactionLabel(
-                                                    op.type
-                                                )}
-                                            </p>
+                                            {/* OPERATION */}
 
-                                            <p className="
-                                                mt-1
+                                            <div>
+
+                                                <p className={`
+                                                    font-medium
+                                                    ${
+                                                        isPayment
+                                                            ? "text-[var(--success)]"
+                                                            : "text-[var(--text-primary)]"
+                                                    }
+                                                `}>
+                                                    {getTransactionLabel(
+                                                        op.type
+                                                    )}
+                                                </p>
+
+                                                <p className="
+                                                    mt-1
+                                                    text-xs
+                                                    text-[var(--text-secondary)]
+                                                ">
+                                                    {new Date(
+                                                        op.created_at
+                                                    ).toLocaleString(
+                                                        "es-AR"
+                                                    )}
+                                                </p>
+
+                                            </div>
+
+
+                                            {/* METHODS */}
+
+                                            <div className="
+                                                flex
+                                                flex-wrap
+                                                items-center
+                                                gap-1.5
                                                 text-xs
                                                 text-[var(--text-secondary)]
                                             ">
-                                                {new Date(
-                                                    op.created_at
-                                                ).toLocaleString(
-                                                    "es-AR"
+                                                {op.amounts?.map(
+                                                    (amount, aIdx) => {
+                                                        const isDebtMethod =
+                                                            amount.method === "debt";
+                                                        return (
+                                                            <span
+                                                                key={aIdx}
+                                                                className={
+                                                                    isDebtMethod
+                                                                        ? "rounded bg-[var(--warning)]/10 px-1.5 py-0.5 font-semibold text-[var(--warning)]"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {getMethodLabel(
+                                                                    amount.method
+                                                                )}
+                                                                {op.amounts.length > 1 &&
+                                                                    ` ($${Number(
+                                                                        amount.amount || 0
+                                                                    ).toLocaleString("es-AR")})`}
+                                                            </span>
+                                                        );
+                                                    }
                                                 )}
+                                            </div>
+
+
+                                            {/* TOTAL */}
+
+                                            <p className={`
+                                                text-sm
+                                                font-semibold
+                                                sm:text-right
+                                                ${
+                                                    hasDebt
+                                                        ? "text-[var(--warning)]"
+                                                        : isPayment
+                                                            ? "text-[var(--success)]"
+                                                            : "text-[var(--text-primary)]"
+                                                }
+                                            `}>
+                                                {isPayment ? "-" : ""}
+                                                {formatCurrency(opTotal)}
                                             </p>
 
                                         </div>
-
-
-                                        {/* METHODS */}
-
-                                        <p className="
-                                            text-xs
-                                            text-[var(--text-secondary)]
-                                        ">
-                                            {op.amounts
-                                                ?.map(
-                                                    (amount) =>
-                                                        getMethodLabel(
-                                                            amount.method
-                                                        )
-                                                )
-                                                .join(" · ")}
-                                        </p>
-
-
-                                        {/* TOTAL */}
-
-                                        <p className="
-                                            text-sm
-                                            font-semibold
-                                            text-[var(--text-primary)]
-                                            sm:text-right
-                                        ">
-                                            {formatCurrency(
-                                                op.total !== undefined
-                                                    ? op.total
-                                                    : (op.amounts || []).reduce(
-                                                        (sum, a) =>
-                                                            sum +
-                                                            (Number(a.amount) ||
-                                                                0),
-                                                        0
-                                                    )
-                                            )}
-                                        </p>
-
-                                    </div>
-                                )
+                                    );
+                                }
                             )}
 
                         </div>

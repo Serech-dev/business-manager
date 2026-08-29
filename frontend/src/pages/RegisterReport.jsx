@@ -141,8 +141,9 @@ function RegisterReport() {
     const pendingTransfers =
         register.pending_transfers || [];
 
-    const transactions =
-        register.transactions || [];
+    const transactions = (register.transactions || [])
+        .slice()
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     const moneyIn =
         Number(register.money_in || 0);
@@ -466,8 +467,21 @@ function RegisterReport() {
                             divide-[var(--border)]
                         ">
 
-                            {pendingTransfers.map(
-                                (transfer) => (
+                            {pendingTransfers.map((transfer) => {
+                                const title =
+                                    transfer.display_description ||
+                                    (transfer.client_name
+                                        ? `Transferencia de ${transfer.client_name}`
+                                        : `Transferencia #${transfer.transaction_id}`);
+
+                                const timeFormatted = transfer.created_at
+                                    ? new Intl.DateTimeFormat("es-AR", {
+                                        dateStyle: "short",
+                                        timeStyle: "short",
+                                    }).format(new Date(transfer.created_at))
+                                    : null;
+
+                                return (
                                     <div
                                         key={transfer.amount_id}
                                         className="
@@ -482,44 +496,43 @@ function RegisterReport() {
                                         "
                                     >
 
-                                        <div>
+                                        <div className="space-y-1 min-w-0">
 
-                                            <p className="
-                                                font-medium
-                                                text-[var(--text-primary)]
-                                            ">
-                                                Transferencia #
-                                                {transfer.transaction_id}
-                                            </p>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="
+                                                    font-semibold
+                                                    text-sm
+                                                    text-[var(--text-primary)]
+                                                ">
+                                                    {title}
+                                                </p>
+                                            </div>
 
                                             <div className="
-                                                mt-1
                                                 flex
                                                 flex-wrap
+                                                items-center
                                                 gap-x-3
                                                 gap-y-1
                                                 text-xs
                                                 text-[var(--text-secondary)]
                                             ">
 
-                                                {transfer.client_name && (
+                                                {timeFormatted && (
                                                     <span>
-                                                        Cliente:{" "}
-                                                        {transfer.client_name}
+                                                        Hora: {timeFormatted}
+                                                    </span>
+                                                )}
+
+                                                {transfer.client_name && (
+                                                    <span className="font-medium text-[var(--text-primary)]">
+                                                        Cliente: {transfer.client_name}
                                                     </span>
                                                 )}
 
                                                 {transfer.description && (
                                                     <span>
-                                                        {transfer.description}
-                                                    </span>
-                                                )}
-
-                                                {transfer.created_at && (
-                                                    <span>
-                                                        {formatDate(
-                                                            transfer.created_at
-                                                        )}
+                                                        · {transfer.description}
                                                     </span>
                                                 )}
 
@@ -532,9 +545,11 @@ function RegisterReport() {
                                             flex
                                             items-center
                                             gap-3
+                                            shrink-0
                                         ">
 
                                             <p className="
+                                                text-base
                                                 font-semibold
                                                 text-[var(--warning)]
                                             ">
@@ -551,15 +566,17 @@ function RegisterReport() {
                                                     )
                                                 }
                                                 className="
+                                                    rounded
                                                     border
                                                     border-[var(--warning)]
+                                                    bg-[var(--warning)]/5
                                                     px-3
                                                     py-1.5
                                                     text-xs
                                                     font-semibold
                                                     text-[var(--warning)]
                                                     transition
-                                                    hover:bg-[var(--surface-accent)]
+                                                    hover:bg-[var(--warning)]/15
                                                 "
                                             >
                                                 Marcar recibida
@@ -568,8 +585,8 @@ function RegisterReport() {
                                         </div>
 
                                     </div>
-                                )
-                            )}
+                                );
+                            })}
 
                         </div>
 

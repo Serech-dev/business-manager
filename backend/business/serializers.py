@@ -598,6 +598,7 @@ class RegisterSerializer(
                 "operations__amounts",
                 "operations__provider",
             )
+            .order_by("-created_at", "-id")
             .all()
         )
 
@@ -833,6 +834,12 @@ class RegisterSerializer(
                         transfers.append({
                             "transaction_id": transaction.id,
                             "operation_id": operation.id,
+                            "operation_type": operation.type,
+                            "display_description": (
+                                operation.get_display_description(
+                                    client=transaction.client
+                                )
+                            ),
                             "amount_id": amount.id,
                             "amount": amount.amount,
                             "description": (

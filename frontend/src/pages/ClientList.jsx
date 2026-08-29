@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
     getClients,
 } from "../services/business";
+import { formatCurrency } from "../utils/formatCurrency";
 
 
 function ClientList() {
@@ -281,13 +282,27 @@ function ClientList() {
                                         )}
                                     </div>
 
-                                    <span className="
-                                        shrink-0
-                                        text-lg
-                                        text-[var(--text-secondary)]
-                                    ">
-                                        →
-                                    </span>
+                                    <div className="flex items-center gap-4 shrink-0">
+                                        {Number(client.debt || 0) > 0 && (
+                                            <span className="
+                                                rounded
+                                                bg-[var(--warning)]/10
+                                                px-2.5
+                                                py-1
+                                                text-xs
+                                                font-semibold
+                                                text-[var(--warning)]
+                                            ">
+                                                Fiado: {formatCurrency(client.debt)}
+                                            </span>
+                                        )}
+                                        <span className="
+                                            text-lg
+                                            text-[var(--text-secondary)]
+                                        ">
+                                            →
+                                        </span>
+                                    </div>
 
                                 </button>
                             )
