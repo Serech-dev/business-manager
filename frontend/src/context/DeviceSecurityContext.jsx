@@ -88,10 +88,12 @@ export function DeviceSecurityProvider({ children }) {
                 setIsUnlocked(true);
                 setIsPinModalOpen(false);
                 if (pendingAction) {
-                    pendingAction();
+                    const action = pendingAction;
                     setPendingAction(null);
+                    action();
+                } else {
+                    toast.success("Modo Dueño desbloqueado.");
                 }
-                toast.success("Modo Dueño desbloqueado.");
                 return true;
             } else {
                 toast.error("PIN incorrecto.");

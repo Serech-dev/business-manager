@@ -77,13 +77,18 @@ function ChangePinModal({ isOpen, onClose }) {
                     Ingresá el PIN actual (por defecto 1234) para autorizar la creación de tu nuevo PIN.
                 </p>
 
-                <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+                <form onSubmit={handleSubmit} autoComplete="off" className="mt-4 space-y-3">
                     <div>
                         <label className="block text-xs font-semibold text-[var(--text-secondary)]">
                             PIN Actual
                         </label>
                         <input
+                            name="bm_current_pin"
                             type="password"
+                            autoComplete="one-time-code"
+                            data-1p-ignore="true"
+                            data-lpignore="true"
+                            data-form-type="other"
                             inputMode="numeric"
                             pattern="[0-9]*"
                             value={currentPin}
@@ -117,7 +122,12 @@ function ChangePinModal({ isOpen, onClose }) {
                             Nuevo PIN
                         </label>
                         <input
+                            name="bm_new_pin"
                             type="password"
+                            autoComplete="one-time-code"
+                            data-1p-ignore="true"
+                            data-lpignore="true"
+                            data-form-type="other"
                             inputMode="numeric"
                             pattern="[0-9]*"
                             value={newPin}
@@ -150,7 +160,12 @@ function ChangePinModal({ isOpen, onClose }) {
                             Confirmar nuevo PIN
                         </label>
                         <input
+                            name="bm_confirm_pin"
                             type="password"
+                            autoComplete="one-time-code"
+                            data-1p-ignore="true"
+                            data-lpignore="true"
+                            data-form-type="other"
                             inputMode="numeric"
                             pattern="[0-9]*"
                             value={confirmPin}

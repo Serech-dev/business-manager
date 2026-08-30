@@ -83,12 +83,17 @@ function PinModal() {
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-5">
+                <form onSubmit={handleSubmit} autoComplete="off" className="mt-5">
                     {/* PIN DISPLAY / INPUT */}
                     <div className="relative">
                         <input
                             ref={inputRef}
+                            name="bm_pin_security"
                             type="password"
+                            autoComplete="one-time-code"
+                            data-1p-ignore="true"
+                            data-lpignore="true"
+                            data-form-type="other"
                             inputMode="numeric"
                             pattern="[0-9]*"
                             value={pin}
