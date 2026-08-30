@@ -10,6 +10,7 @@ import {
 
 import AccountMenu from "./AccountMenu";
 import ConfirmDialog from "./ConfirmDialog";
+import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 
 function Sidebar({
@@ -19,11 +20,16 @@ function Sidebar({
     const navigate = useNavigate();
     const location = useLocation();
 
-    const [showCloseDialog, setShowCloseDialog] =
-    useState(false);
+    const {
+        isKioskDevice,
+        isUnlocked,
+        requireOwnerAccess,
+        lock,
+        toggleKioskDevice,
+    } = useDeviceSecurity();
 
-    const [isClosing, setIsClosing] =
-    useState(false);
+    const [showCloseDialog, setShowCloseDialog] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
 
     async function handleCloseRegister() {
         setIsClosing(true);
@@ -72,14 +78,18 @@ function Sidebar({
 
 
     function isActive(path) {
-        return location.pathname === path;
+        if (path === "/") {
+            return location.pathname === "/";
+        }
+
+        return location.pathname.startsWith(path);
     }
 
 
     function handleNewTransaction() {
-        if (!register) {
+        if (!register || !register.is_open) {
             toast.error(
-                "Abrí la caja primero."
+                "Tenés que abrir la caja para registrar operaciones."
             );
 
             return;
@@ -96,9 +106,9 @@ function Sidebar({
             left-0
             z-30
             flex
+            h-screen
             w-64
             flex-col
-            overflow-y-auto
             border-r
             border-[var(--border)]
             bg-[var(--surface)]
@@ -112,22 +122,25 @@ function Sidebar({
                 px-6
                 py-5
             ">
+                <p className="
+                    text-xs
+                    font-medium
+                    uppercase
+                    tracking-wider
+                    text-[var(--primary)]
+                ">
+                    Administrador
+                </p>
+
                 <h1 className="
-                    text-xl
+                    mt-1
+                    text-lg
                     font-bold
                     tracking-tight
                     text-[var(--text-primary)]
                 ">
-                    Business Manager
+                    Mi Negocio
                 </h1>
-
-                <p className="
-                    mt-1
-                    text-xs
-                    text-[var(--text-secondary)]
-                ">
-                    Gestión del negocio
-                </p>
             </div>
 
 
@@ -136,8 +149,8 @@ function Sidebar({
             <nav className="
                 flex-1
                 space-y-1
-                px-3
-                py-5
+                overflow-y-auto
+                p-4
             ">
 
                 <button
@@ -155,7 +168,8 @@ function Sidebar({
                         text-sm
                         transition
                         ${
-                            isActive("/")
+                            isActive("/") &&
+                            location.pathname === "/"
                                 ? `
                                     border-[var(--primary)]
                                     bg-[var(--surface-accent)]
@@ -172,7 +186,7 @@ function Sidebar({
                         }
                     `}
                 >
-                    Dashboard
+                    Inicio
                 </button>
 
 
@@ -208,19 +222,20 @@ function Sidebar({
                         }
                     `}
                 >
-                    Nueva operación
+                    Nueva venta
                 </button>
 
 
                 <button
                     type="button"
-                    onClick={() =>
-                        navigate("/registers")
-                    }
+                    onClick={() => {
+                        requireOwnerAccess(() => navigate("/registers"));
+                    }}
                     className={`
                         flex
                         w-full
                         items-center
+                        justify-between
                         rounded-lg
                         border-l-2
                         px-4
@@ -246,7 +261,12 @@ function Sidebar({
                         }
                     `}
                 >
-                    Historial de cierres
+                    <span>Historial de cierres</span>
+                    {isKioskDevice && !isUnlocked && (
+                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                            PIN
+                        </span>
+                    )}
                 </button>
 
                 <button
@@ -322,7 +342,7 @@ function Sidebar({
             </nav>
 
 
-            {/* REGISTER STATUS */}
+            {/* CURRENT REGISTER STATUS */}
 
             <div className="
                 border-t
@@ -330,65 +350,71 @@ function Sidebar({
                 p-4
             ">
                 <div className="
+                    rounded-lg
                     border
                     border-[var(--border)]
-                    bg-[var(--surface-muted)]
+                    bg-[var(--background)]
                     p-4
                 ">
+                    <p className="
+                        text-xs
+                        font-medium
+                        uppercase
+                        tracking-wider
+                        text-[var(--text-secondary)]
+                    ">
+                        Caja actual
+                    </p>
+
                     <div className="
+                        mt-2
                         flex
                         items-center
-                        justify-between
-                        gap-3
+                        gap-2
                     ">
-                        <span className="
-                            text-xs
-                            font-medium
-                            uppercase
-                            tracking-wide
-                            text-[var(--text-secondary)]
-                        ">
-                            Caja
-                        </span>
-
                         <span className={`
-                            h-2
-                            w-2
+                            h-2.5
+                            w-2.5
                             rounded-full
                             ${
-                                register
+                                register && register.is_open
                                     ? "bg-[var(--success)]"
                                     : "bg-[var(--danger)]"
                             }
                         `} />
+
+                        <span className="
+                            text-sm
+                            font-semibold
+                            text-[var(--text-primary)]
+                        ">
+                            {register && register.is_open
+                                ? "Abierta"
+                                : "Cerrada"}
+                        </span>
                     </div>
 
 
-                    <p className="
-                        mt-2
-                        text-sm
-                        font-semibold
-                        text-[var(--text-primary)]
-                    ">
-                        {register
-                            ? "Abierta"
-                            : "Cerrada"}
-                    </p>
-
-
-                    {register && (
+                    {register && register.is_open && (
                         <button
                             type="button"
-                            onClick={() => setShowCloseDialog(true)}
+                            onClick={() => {
+                                requireOwnerAccess(() => setShowCloseDialog(true));
+                            }}
                             disabled={isClosing}
                             className="
                                 mt-4
+                                flex
                                 w-full
+                                items-center
+                                justify-center
+                                gap-1.5
+                                rounded-md
                                 border
                                 border-[var(--danger-border)]
                                 px-3
                                 py-2
-                                text-sm
+                                text-xs
                                 font-semibold
                                 text-[var(--danger)]
                                 transition
@@ -397,14 +423,95 @@ function Sidebar({
                                 disabled:opacity-50
                             "
                         >
-                            {isClosing
-                                ? "Cerrando..."
-                                : "Cerrar caja"}
+                            <span>Cerrar caja</span>
+                            {isKioskDevice && !isUnlocked && (
+                                <span className="rounded bg-[var(--danger-bg)] px-1.5 py-0.2 text-[10px] font-semibold text-[var(--danger)]">
+                                    PIN
+                                </span>
+                            )}
                         </button>
                     )}
                 </div>
             </div>
 
+            {/* DEVICE MODE / SECURITY STATUS */}
+            <div className="
+                border-t
+                border-[var(--border)]
+                px-4
+                py-3
+            ">
+                <div className="
+                    flex
+                    items-center
+                    justify-between
+                    text-xs
+                ">
+                    <div>
+                        {isKioskDevice ? (
+                            isUnlocked ? (
+                                <span className="font-semibold text-[var(--success)]">
+                                    Modo Dueño (Desbloqueado)
+                                </span>
+                            ) : (
+                                <span className="font-semibold text-[var(--warning)]">
+                                    Modo Caja
+                                </span>
+                            )
+                        ) : (
+                            <span className="font-semibold text-[var(--text-primary)]">
+                                Equipo Dueño
+                            </span>
+                        )}
+                    </div>
+
+                    <div>
+                        {isKioskDevice ? (
+                            isUnlocked ? (
+                                <button
+                                    type="button"
+                                    onClick={lock}
+                                    className="font-medium text-[var(--danger)] hover:underline"
+                                >
+                                    Bloquear
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => requireOwnerAccess(() => {})}
+                                    className="font-semibold text-[var(--primary)] hover:underline"
+                                >
+                                    Desbloquear
+                                </button>
+                            )
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => toggleKioskDevice(true)}
+                                title="Activar Modo Caja en este terminal"
+                                className="font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                                Activar Modo Caja
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {isKioskDevice && (
+                    <div className="mt-1 flex justify-between text-[10px] text-[var(--text-secondary)]">
+                        <span>Terminal protegida</span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                requireOwnerAccess(() => toggleKioskDevice(false));
+                            }}
+                            className="hover:underline"
+                        >
+                            Cambiar a Dueño
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {/* ACCOUNT */}
 

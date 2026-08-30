@@ -5,22 +5,18 @@ import toast from "react-hot-toast";
 import {
     createTransaction,
     createClient,
-    createProvider,
     getTransactionLabel,
 } from "../services/business";
+import { formatCurrency } from "../utils/formatCurrency";
 
-import TransactionBasicInfo from "../components/transactions/TransactionBasicInfo";
 import TransactionClient from "../components/transactions/TransactionClient";
-import TransactionProvider from "../components/transactions/TransactionProvider";
 import TransactionExchange from "../components/transactions/TransactionExchange";
 import TransactionAmounts from "../components/transactions/TransactionAmounts";
-import TransactionSummary from "../components/transactions/TransactionSummary";
 
 function createNewOperation() {
     return {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: "sale",
-        provider: null,
         exchangeAmount: "",
         amounts: [
             {
@@ -37,6 +33,7 @@ function NewTransaction() {
     const [client, setClient] = useState(null);
     const [description, setDescription] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
+    const [showExtraDetails, setShowExtraDetails] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const hasPaymentOperation = operations.some((op) => op.type === "payment");
@@ -62,15 +59,13 @@ function NewTransaction() {
                     [field]: value,
                 };
 
-                // If type changed, reset inapplicable relationships / exchange fields
+                // If type changed, reset inapplicable exchange fields
                 if (field === "type") {
-                    const newType = value;
-                    if (newType !== "provider" && newType !== "provider_payment") {
-                        updated.provider = null;
-                    }
-
-                    if (newType !== "exchange") {
+                    if (value !== "exchange") {
                         updated.exchangeAmount = "";
+                    }
+                    if (value === "payment") {
+                        setShowExtraDetails(true);
                     }
                 }
 
@@ -89,14 +84,31 @@ function NewTransaction() {
         );
     }
 
+    const grandTotal = operations.reduce((total, op) => {
+        return (
+            total +
+            (op.amounts || []).reduce(
+                (sum, a) => sum + (Number(a.amount) || 0),
+                0
+            )
+        );
+    }, 0);
+
     async function handleSubmit(event) {
         event.preventDefault();
 
         // VALIDATION
-        if (hasPaymentOperation && !client) {
+        const hasDebtAmount = operations.some((op) =>
+            op.amounts.some((a) => a.method === "debt" && Number(a.amount) > 0)
+        );
+
+        if ((hasPaymentOperation || hasDebtAmount) && !client) {
             toast.error(
-                "El pago de fiado requiere seleccionar un cliente para la transacción."
+                hasPaymentOperation
+                    ? "El pago de fiado requiere seleccionar un cliente."
+                    : "Para registrar un fiado tenés que seleccionar o crear un cliente."
             );
+            setShowExtraDetails(true);
             return;
         }
 
@@ -123,14 +135,6 @@ function NewTransaction() {
                 toast.error(`${opLabel}Ingresá el monto de cambio.`);
                 return;
             }
-
-            if (
-                (op.type === "provider" || op.type === "provider_payment") &&
-                !op.provider
-            ) {
-                toast.error(`${opLabel}Seleccioná un proveedor.`);
-                return;
-            }
         }
 
         setIsSubmitting(true);
@@ -145,18 +149,9 @@ function NewTransaction() {
                 clientId = newClient.id;
             }
 
-            // Auto-create any new providers and format operations
             const resolvedOperations = [];
 
             for (const op of operations) {
-                let providerId = op.provider?.id || null;
-                if (op.provider && !op.provider.id && op.provider.name) {
-                    const newProvider = await createProvider({
-                        name: op.provider.name,
-                    });
-                    providerId = newProvider.id;
-                }
-
                 const validAmounts = op.amounts
                     .filter(
                         (item) => item.amount !== "" && Number(item.amount) > 0
@@ -173,7 +168,6 @@ function NewTransaction() {
 
                 resolvedOperations.push({
                     type: op.type,
-                    provider: providerId,
                     exchange_amount: isExchange ? exchangeClientAmount : null,
                     amounts: validAmounts,
                 });
@@ -189,8 +183,8 @@ function NewTransaction() {
 
             toast.success(
                 operations.length > 1
-                    ? "Operaciones registradas con éxito."
-                    : "Operación registrada con éxito."
+                    ? "Venta registrada con éxito."
+                    : "Venta registrada con éxito."
             );
 
             navigate("/");
@@ -200,7 +194,7 @@ function NewTransaction() {
                 error.response?.data?.register ||
                 error.response?.data?.client ||
                 error.response?.data?.non_field_errors?.[0] ||
-                "No se pudo registrar la transacción.";
+                "No se pudo registrar la venta.";
             toast.error(message);
         } finally {
             setIsSubmitting(false);
@@ -211,24 +205,28 @@ function NewTransaction() {
         <div className="
             min-h-screen
             bg-[var(--background)]
-            px-6
-            py-5
-            lg:px-10
+            px-4
+            py-6
+            sm:px-8
+            lg:px-12
         ">
             <div className="
                 mx-auto
-                max-w-6xl
+                max-w-3xl
             ">
                 {/* PAGE HEADER */}
                 <header className="
+                    flex
+                    items-center
+                    justify-between
                     border-b
                     border-[var(--border)]
                     pb-4
                 ">
                     <div>
                         <p className="
-                            text-sm
-                            font-medium
+                            text-xs
+                            font-semibold
                             uppercase
                             tracking-wider
                             text-[var(--primary)]
@@ -237,302 +235,413 @@ function NewTransaction() {
                         </p>
 
                         <h1 className="
-                            mt-1
-                            text-3xl
+                            mt-0.5
+                            text-2xl
                             font-bold
                             tracking-tight
                             text-[var(--text-primary)]
                         ">
-                            Nueva operación
+                            Nueva venta
                         </h1>
-
-                        <p className="
-                            mt-2
-                            max-w-2xl
-                            text-sm
-                            text-[var(--text-secondary)]
-                        ">
-                            Registrá uno o varios movimientos dentro de la caja actual.
-                        </p>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={() => navigate("/")}
+                        className="
+                            rounded-md
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            px-3.5
+                            py-1.5
+                            text-xs
+                            font-medium
+                            text-[var(--text-secondary)]
+                            transition
+                            hover:bg-[var(--surface-accent)]
+                            hover:text-[var(--text-primary)]
+                        "
+                    >
+                        Volver
+                    </button>
                 </header>
 
                 <form
                     onSubmit={handleSubmit}
-                    className="mt-6"
+                    className="mt-6 space-y-6"
                 >
+                    {/* OPERATIONS LIST (FRONT AND CENTER) */}
+                    <div className="space-y-5">
+                        {operations.map((op, index) => {
+                            const isExchange = op.type === "exchange";
+
+                            return (
+                                <article
+                                    key={op.id}
+                                    className="
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--surface)]
+                                        shadow-xs
+                                    "
+                                >
+                                    {/* OPERATION CARD HEADER */}
+                                    <div className="
+                                        flex
+                                        items-center
+                                        justify-between
+                                        border-b
+                                        border-[var(--border)]
+                                        bg-[var(--surface-accent)]/60
+                                        px-5
+                                        py-3
+                                    ">
+                                        <div className="flex items-center gap-2">
+                                            <span className="
+                                                flex
+                                                h-5
+                                                w-5
+                                                items-center
+                                                justify-center
+                                                rounded-full
+                                                bg-[var(--primary)]
+                                                text-xs
+                                                font-bold
+                                                text-white
+                                            ">
+                                                {index + 1}
+                                            </span>
+                                            <h3 className="
+                                                text-sm
+                                                font-bold
+                                                text-[var(--text-primary)]
+                                            ">
+                                                {operations.length > 1
+                                                    ? `Operación #${index + 1}`
+                                                    : "Detalle de la venta"}
+                                            </h3>
+                                        </div>
+
+                                        {operations.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleRemoveOperation(index)
+                                                }
+                                                className="
+                                                    text-xs
+                                                    font-medium
+                                                    text-[var(--danger)]
+                                                    transition
+                                                    hover:underline
+                                                "
+                                            >
+                                                Eliminar
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-4 p-5">
+                                        {/* TYPE SELECTOR PILLS */}
+                                        <div>
+                                            <label className="
+                                                block
+                                                text-xs
+                                                font-semibold
+                                                uppercase
+                                                tracking-wider
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                Tipo de venta / servicio
+                                            </label>
+
+                                            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                                                {[
+                                                    { value: "sale", label: "Venta" },
+                                                    { value: "sube", label: "Carga SUBE" },
+                                                    { value: "phone", label: "Celular" },
+                                                    { value: "exchange", label: "Cambio" },
+                                                    { value: "payment", label: "Pago fiado" },
+                                                ].map((t) => {
+                                                    const isSelected = op.type === t.value;
+                                                    return (
+                                                        <button
+                                                            key={t.value}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleUpdateOperation(
+                                                                    index,
+                                                                    "type",
+                                                                    t.value
+                                                                )
+                                                            }
+                                                            className={`
+                                                                rounded-md
+                                                                border
+                                                                py-2
+                                                                px-2.5
+                                                                text-xs
+                                                                font-semibold
+                                                                transition
+                                                                text-center
+                                                                ${
+                                                                    isSelected
+                                                                        ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
+                                                                        : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                                                                }
+                                                            `}
+                                                        >
+                                                            {t.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* EXCHANGE DETAILS (IF APPLICABLE) */}
+                                        {isExchange && (
+                                            <TransactionExchange
+                                                exchangeAmount={op.exchangeAmount}
+                                                onChangeExchangeAmount={(val) =>
+                                                    handleUpdateOperation(
+                                                        index,
+                                                        "exchangeAmount",
+                                                        val
+                                                    )
+                                                }
+                                            />
+                                        )}
+
+                                        {/* AMOUNTS & PAYMENT METHODS */}
+                                        <TransactionAmounts
+                                            amounts={op.amounts}
+                                            onAmountsChange={(amounts) =>
+                                                handleUpdateOperation(
+                                                    index,
+                                                    "amounts",
+                                                    amounts
+                                                )
+                                            }
+                                            disableDebt={op.type === "payment"}
+                                            hasClient={Boolean(client)}
+                                            onRequireClient={() => setShowExtraDetails(true)}
+                                        />
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+
+                    {/* ADD ANOTHER OPERATION BUTTON */}
+                    <button
+                        type="button"
+                        onClick={handleAddOperation}
+                        className="
+                            flex
+                            w-full
+                            items-center
+                            justify-center
+                            gap-2
+                            rounded-md
+                            border
+                            border-dashed
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            py-3
+                            text-xs
+                            font-semibold
+                            text-[var(--text-secondary)]
+                            transition
+                            hover:border-[var(--primary)]
+                            hover:text-[var(--primary)]
+                            hover:bg-[var(--surface-accent)]
+                        "
+                    >
+                        <span>+</span>
+                        Agregar otra operación a esta venta
+                    </button>
+
+                    {/* OPTIONAL CLIENT & NOTE (COMPACT & UNCONGESTED) */}
                     <div className="
-                        grid
-                        gap-6
-                        lg:grid-cols-[minmax(0,1fr)_340px]
-                        lg:items-start
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
                     ">
-                        {/* LEFT COLUMN: GENERAL INFO & OPERATIONS */}
-                        <div className="space-y-6">
-                            {/* GENERAL TRANSACTION INFO & CLIENT */}
-                            <section className="
-                                border
+                        <button
+                            type="button"
+                            onClick={() => setShowExtraDetails(!showExtraDetails)}
+                            className="
+                                flex
+                                w-full
+                                items-center
+                                justify-between
+                                px-5
+                                py-3.5
+                                text-left
+                                transition
+                                hover:bg-[var(--surface-accent)]/50
+                            "
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Cliente y notas
+                                </span>
+                                {client && (
+                                    <span className="
+                                        rounded
+                                        bg-[var(--primary)]/10
+                                        px-2
+                                        py-0.5
+                                        text-xs
+                                        font-semibold
+                                        text-[var(--primary)]
+                                    ">
+                                        {client.name}
+                                    </span>
+                                )}
+                                {hasPaymentOperation && (
+                                    <span className="text-xs font-semibold text-[var(--danger)]">
+                                        (Obligatorio para pago de fiado)
+                                    </span>
+                                )}
+                            </div>
+
+                            <span className="text-xs text-[var(--text-secondary)]">
+                                {showExtraDetails || hasPaymentOperation ? "▲ Ocultar" : "▼ Modificar"}
+                            </span>
+                        </button>
+
+                        {(showExtraDetails || hasPaymentOperation || client || description) && (
+                            <div className="
+                                border-t
                                 border-[var(--border)]
-                                bg-[var(--surface)]
                                 p-5
-                                shadow-sm
                                 space-y-4
                             ">
-                                <h2 className="
-                                    text-base
-                                    font-semibold
-                                    text-[var(--text-primary)]
-                                ">
-                                    Datos de la transacción
-                                </h2>
-
                                 <TransactionClient
                                     selectedClient={client}
                                     onSelectClient={setClient}
                                     required={hasPaymentOperation}
                                 />
 
-                                <TransactionBasicInfo
-                                    description={description}
-                                    onChangeDescription={setDescription}
-                                />
-                            </section>
-
-                            {/* OPERATIONS LIST */}
-                            <div className="space-y-6">
-                                {operations.map((op, index) => {
-                                    const isProvider =
-                                        op.type === "provider" ||
-                                        op.type === "provider_payment";
-
-                                    const isExchange = op.type === "exchange";
-
-                                    return (
-                                        <article
-                                            key={op.id}
-                                            className="
-                                                border
-                                                border-[var(--border)]
-                                                bg-[var(--surface)]
-                                                shadow-sm
-                                            "
-                                        >
-                                            {/* OPERATION CARD HEADER */}
-                                            <div className="
-                                                flex
-                                                items-center
-                                                justify-between
-                                                border-b
-                                                border-[var(--border)]
-                                                bg-[var(--surface-accent)]/50
-                                                px-6
-                                                py-3.5
-                                            ">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="
-                                                        flex
-                                                        h-6
-                                                        w-6
-                                                        items-center
-                                                        justify-center
-                                                        rounded-full
-                                                        bg-[var(--primary)]
-                                                        text-xs
-                                                        font-bold
-                                                        text-white
-                                                    ">
-                                                        {index + 1}
-                                                    </span>
-                                                    <h3 className="
-                                                        font-semibold
-                                                        text-[var(--text-primary)]
-                                                    ">
-                                                        Operación #{index + 1}
-                                                    </h3>
-                                                </div>
-
-                                                {operations.length > 1 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleRemoveOperation(index)
-                                                        }
-                                                        className="
-                                                            text-xs
-                                                            font-medium
-                                                            text-[var(--danger)]
-                                                            transition
-                                                            hover:underline
-                                                        "
-                                                    >
-                                                        Eliminar operación
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            <div className="space-y-4 p-5">
-                                                {/* TYPE SELECTOR */}
-                                                <div>
-                                                    <label
-                                                        htmlFor={`type-${op.id}`}
-                                                        className="
-                                                            text-sm
-                                                            font-medium
-                                                            text-[var(--text-primary)]
-                                                        "
-                                                    >
-                                                        Tipo de operación
-                                                    </label>
-
-                                                    <select
-                                                        id={`type-${op.id}`}
-                                                        value={op.type}
-                                                        onChange={(event) =>
-                                                            handleUpdateOperation(
-                                                                index,
-                                                                "type",
-                                                                event.target.value
-                                                            )
-                                                        }
-                                                        className="
-                                                            mt-2
-                                                            w-full
-                                                            rounded-md
-                                                            border
-                                                            border-[var(--border)]
-                                                            bg-[var(--background)]
-                                                            px-3
-                                                            py-2.5
-                                                            text-sm
-                                                            text-[var(--text-primary)]
-                                                            outline-none
-                                                            transition
-                                                            focus:border-[var(--primary)]
-                                                            focus:ring-2
-                                                            focus:ring-[var(--primary)]/20
-                                                        "
-                                                    >
-                                                        <option value="sale">
-                                                            Venta
-                                                        </option>
-                                                        <option value="sube">
-                                                            Carga SUBE
-                                                        </option>
-                                                        <option value="phone">
-                                                            Carga de celular
-                                                        </option>
-                                                        <option value="exchange">
-                                                            Cambio
-                                                        </option>
-                                                        <option value="payment">
-                                                            Pago de fiado
-                                                        </option>
-                                                        <option value="provider">
-                                                            Proveedor
-                                                        </option>
-                                                        <option value="provider_payment">
-                                                            Pago a proveedor
-                                                        </option>
-                                                        <option value="expense">
-                                                            Gasto
-                                                        </option>
-                                                        <option value="loss">
-                                                            Pérdida
-                                                        </option>
-                                                    </select>
-                                                </div>
-
-                                                {/* PROVIDER */}
-                                                {isProvider && (
-                                                    <TransactionProvider
-                                                        selectedProvider={op.provider}
-                                                        onSelectProvider={(provider) =>
-                                                            handleUpdateOperation(
-                                                                index,
-                                                                "provider",
-                                                                provider
-                                                            )
-                                                        }
-                                                        required={true}
-                                                    />
-                                                )}
-
-                                                {/* EXCHANGE DETAILS */}
-                                                {isExchange && (
-                                                    <TransactionExchange
-                                                        exchangeAmount={
-                                                            op.exchangeAmount
-                                                        }
-                                                        onChangeExchangeAmount={(
-                                                            val
-                                                        ) =>
-                                                            handleUpdateOperation(
-                                                                index,
-                                                                "exchangeAmount",
-                                                                val
-                                                            )
-                                                        }
-                                                    />
-                                                )}
-
-                                                {/* AMOUNTS & METHODS */}
-                                                <TransactionAmounts
-                                                    amounts={op.amounts}
-                                                    onAmountsChange={(amounts) =>
-                                                        handleUpdateOperation(
-                                                            index,
-                                                            "amounts",
-                                                            amounts
-                                                        )
-                                                    }
-                                                    disableDebt={
-                                                        op.type === "payment" ||
-                                                        op.type ===
-                                                            "provider_payment"
-                                                    }
-                                                />
-                                            </div>
-                                        </article>
-                                    );
-                                })}
+                                <div>
+                                    <label
+                                        htmlFor="tx-description"
+                                        className="
+                                            block
+                                            text-xs
+                                            font-semibold
+                                            uppercase
+                                            tracking-wider
+                                            text-[var(--text-secondary)]
+                                        "
+                                    >
+                                        Nota o detalle general (opcional)
+                                    </label>
+                                    <input
+                                        id="tx-description"
+                                        type="text"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Ej: Descuento aplicado, Entrega de paquete, etc."
+                                        className="
+                                            mt-1.5
+                                            w-full
+                                            rounded-md
+                                            border
+                                            border-[var(--border)]
+                                            bg-[var(--background)]
+                                            px-3
+                                            py-2
+                                            text-sm
+                                            text-[var(--text-primary)]
+                                            outline-none
+                                            transition
+                                            placeholder:text-[var(--text-secondary)]/60
+                                            focus:border-[var(--primary)]
+                                            focus:ring-2
+                                            focus:ring-[var(--primary)]/20
+                                        "
+                                    />
+                                </div>
                             </div>
+                        )}
+                    </div>
 
-                            {/* ADD OPERATION BUTTON */}
-                            <button
-                                type="button"
-                                onClick={handleAddOperation}
-                                className="
-                                    flex
-                                    w-full
-                                    items-center
-                                    justify-center
-                                    gap-2
-                                    rounded-lg
-                                    border-2
-                                    border-dashed
-                                    border-[var(--border)]
-                                    bg-[var(--surface)]
-                                    py-4
-                                    text-sm
-                                    font-semibold
-                                    text-[var(--primary)]
-                                    transition
-                                    hover:border-[var(--primary)]
-                                    hover:bg-[var(--surface-accent)]
-                                "
-                            >
-                                <span className="text-lg leading-none">+</span>
-                                Agregar otra operación a esta transacción
-                            </button>
+                    {/* BOTTOM CHECKOUT ACTION BAR */}
+                    <div className="
+                        sticky
+                        bottom-4
+                        z-20
+                        flex
+                        flex-col
+                        gap-3
+                        rounded-lg
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-4
+                        shadow-xl
+                        sm:flex-row
+                        sm:items-center
+                        sm:justify-between
+                    ">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                Total a cobrar
+                            </p>
+                            <p className="mt-0.5 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                                {formatCurrency(grandTotal)}
+                            </p>
                         </div>
 
-                        {/* RIGHT COLUMN: SUMMARY */}
-                        <TransactionSummary
-                            client={client}
-                            operations={operations}
-                            isSubmitting={isSubmitting}
-                            onCancel={() => navigate("/")}
-                        />
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => navigate("/")}
+                                disabled={isSubmitting}
+                                className="
+                                    rounded-md
+                                    border
+                                    border-[var(--border)]
+                                    px-4
+                                    py-2.5
+                                    text-sm
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                    transition
+                                    hover:bg-[var(--surface-accent)]
+                                    hover:text-[var(--text-primary)]
+                                    disabled:opacity-50
+                                "
+                            >
+                                Cancelar
+                            </button>
+
+                            <button
+                                type="submit"
+                                disabled={isSubmitting || grandTotal <= 0}
+                                className="
+                                    rounded-md
+                                    bg-[var(--primary)]
+                                    px-6
+                                    py-2.5
+                                    text-sm
+                                    font-bold
+                                    text-white
+                                    shadow-sm
+                                    transition
+                                    hover:bg-[var(--primary-hover)]
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+                            >
+                                {isSubmitting
+                                    ? "Registrando..."
+                                    : `Registrar venta (${formatCurrency(grandTotal)})`}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

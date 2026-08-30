@@ -5,7 +5,8 @@ from .views import (ClientDetailView, ClientListCreateView, CloseRegisterView,
                     OpenRegisterView, ProviderDetailView,
                     ProviderListCreateView, RegisterDetailView,
                     RegisterListView, TransactionAmountReceivedView,
-                    TransactionDetailView, TransactionListCreateView)
+                    ResolveTransferView, TransactionDetailView,
+                    TransactionListCreateView)
 
 urlpatterns = [
     path(
@@ -24,6 +25,12 @@ urlpatterns = [
         "transactions/<int:pk>/",
         TransactionDetailView.as_view(),
         name="transaction-detail",
+    ),
+
+    path(
+        "transfers/<int:pk>/resolve/",
+        ResolveTransferView.as_view(),
+        name="transfer-resolve",
     ),
 
     path(

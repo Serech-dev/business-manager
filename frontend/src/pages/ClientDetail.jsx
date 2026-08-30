@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -14,6 +14,8 @@ import {
 
 import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
+import MoneyInput from "../components/MoneyInput";
+import ClientPaymentModal from "../components/clients/ClientPaymentModal";
 
 
 function ClientDetail({ isNewClient = false }) {
@@ -29,55 +31,61 @@ function ClientDetail({ isNewClient = false }) {
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [notes, setNotes] = useState("");
+    const [initialDebt, setInitialDebt] = useState("");
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
 
-    useEffect(() => {
-        async function loadClient() {
-            if (isNewClient) {
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                const [
-                    clientData,
-                    transactionData,
-                ] = await Promise.all([
-                    getClient(id),
-                    getTransactions(),
-                ]);
-
-                setClient(clientData);
-
-                setTransactions(
-                    transactionData.filter(
-                        (transaction) =>
-                            transaction.client === Number(id) ||
-                            transaction.client?.id === Number(id)
-                    )
-                );
-
-                setName(clientData.name);
-                setPhone(clientData.phone || "");
-                setNotes(clientData.notes || "");
-            } catch (error) {
-                console.error(error);
-
-                toast.error(
-                    "No se pudo cargar el cliente."
-                );
-            } finally {
-                setIsLoading(false);
-            }
+    const loadClient = useCallback(async () => {
+        if (isNewClient) {
+            setIsLoading(false);
+            return;
         }
 
-        loadClient();
+        try {
+            const [
+                clientData,
+                transactionData,
+            ] = await Promise.all([
+                getClient(id),
+                getTransactions(),
+            ]);
+
+            setClient(clientData);
+
+            setTransactions(
+                transactionData.filter(
+                    (transaction) =>
+                        transaction.client === Number(id) ||
+                        transaction.client?.id === Number(id)
+                )
+            );
+
+            setName(clientData.name);
+            setPhone(clientData.phone || "");
+            setNotes(clientData.notes || "");
+            const rawDebt = clientData.initial_debt !== undefined && clientData.initial_debt !== null
+                ? Math.round(Number(clientData.initial_debt))
+                : 0;
+            setInitialDebt(rawDebt > 0 ? String(rawDebt) : "");
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                "No se pudo cargar el cliente."
+            );
+        } finally {
+            setIsLoading(false);
+        }
     }, [id, isNewClient]);
+
+    useEffect(() => {
+        loadClient();
+    }, [loadClient]);
 
 
     async function handleSave(event) {
@@ -98,6 +106,7 @@ function ClientDetail({ isNewClient = false }) {
                 name: name.trim(),
                 phone: phone.trim(),
                 notes: notes.trim(),
+                initial_debt: initialDebt ? Number(initialDebt) : 0,
             };
 
             const savedClient = isNewClient
@@ -261,30 +270,53 @@ function ClientDetail({ isNewClient = false }) {
 
 
                     {!isNewClient && (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setShowDeleteDialog(true)
-                            }
-                            disabled={isDeleting}
-                            className="
-                                border
-                                border-[var(--danger-border)]
-                                px-4
-                                py-2
-                                text-sm
-                                font-semibold
-                                text-[var(--danger)]
-                                transition
-                                hover:bg-[var(--danger-bg)]
-                                disabled:cursor-not-allowed
-                                disabled:opacity-50
-                            "
-                        >
-                            {isDeleting
-                                ? "Eliminando..."
-                                : "Eliminar cliente"}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {debtTotal > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPaymentModalOpen(true)}
+                                    className="
+                                        rounded-md
+                                        bg-[var(--primary)]
+                                        px-4
+                                        py-2
+                                        text-sm
+                                        font-bold
+                                        text-white
+                                        transition
+                                        hover:bg-[var(--primary-hover)]
+                                    "
+                                >
+                                    + Registrar cobro
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setShowDeleteDialog(true)
+                                }
+                                disabled={isDeleting}
+                                className="
+                                    rounded-md
+                                    border
+                                    border-[var(--danger-border)]
+                                    px-4
+                                    py-2
+                                    text-sm
+                                    font-semibold
+                                    text-[var(--danger)]
+                                    transition
+                                    hover:bg-[var(--danger-bg)]
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+                            >
+                                {isDeleting
+                                    ? "Eliminando..."
+                                    : "Eliminar cliente"}
+                            </button>
+                        </div>
                     )}
 
                 </div>
@@ -306,43 +338,70 @@ function ClientDetail({ isNewClient = false }) {
                         sm:grid-cols-2
                     ">
                         <div className="
+                            flex
+                            flex-col
+                            justify-between
                             border
                             border-[var(--border)]
                             bg-[var(--surface)]
                             p-5
                         ">
-                            <p className="
-                                text-xs
-                                font-semibold
-                                uppercase
-                                tracking-wider
-                                text-[var(--text-secondary)]
-                            ">
-                                Fiado acumulado
-                            </p>
+                            <div>
+                                <p className="
+                                    text-xs
+                                    font-semibold
+                                    uppercase
+                                    tracking-wider
+                                    text-[var(--text-secondary)]
+                                ">
+                                    Fiado acumulado
+                                </p>
 
-                            <p className={`
-                                mt-2
-                                text-2xl
-                                font-bold
-                                ${
-                                    debtTotal > 0
-                                        ? "text-[var(--warning)]"
-                                        : "text-[var(--text-primary)]"
-                                }
-                            `}>
-                                {formatCurrency(debtTotal)}
-                            </p>
+                                <p className={`
+                                    mt-2
+                                    text-2xl
+                                    font-bold
+                                    ${
+                                        debtTotal > 0
+                                            ? "text-[var(--warning)]"
+                                            : "text-[var(--text-primary)]"
+                                    }
+                                `}>
+                                    {formatCurrency(debtTotal)}
+                                </p>
 
-                            <p className="
-                                mt-1
-                                text-xs
-                                text-[var(--text-secondary)]
-                            ">
-                                {debtTotal > 0
-                                    ? "Saldo pendiente de cobro"
-                                    : "Sin deuda pendiente"}
-                            </p>
+                                <p className="
+                                    mt-1
+                                    text-xs
+                                    text-[var(--text-secondary)]
+                                ">
+                                    {debtTotal > 0
+                                        ? "Saldo pendiente de cobro"
+                                        : "Sin deuda pendiente"}
+                                </p>
+                            </div>
+
+                            {debtTotal > 0 && (
+                                <div className="mt-4 border-t border-[var(--border)] pt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPaymentModalOpen(true)}
+                                        className="
+                                            w-full
+                                            rounded-md
+                                            bg-[var(--primary)]
+                                            py-2
+                                            text-xs
+                                            font-bold
+                                            text-white
+                                            transition
+                                            hover:bg-[var(--primary-hover)]
+                                        "
+                                    >
+                                        Cobrar fiado
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="
@@ -502,6 +561,68 @@ function ClientDetail({ isNewClient = false }) {
                                     focus:ring-[var(--primary)]/20
                                 "
                             />
+
+                        </div>
+
+
+                        {/* SALDO INICIAL / LIBRETA */}
+
+                        <div className="sm:col-span-2">
+
+                            <label
+                                htmlFor="initialDebt"
+                                className="
+                                    text-sm
+                                    font-medium
+                                    text-[var(--text-primary)]
+                                "
+                            >
+                                Saldo inicial / Deuda previa en libreta
+                            </label>
+
+                            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+                                Registrá la deuda acumulada si venís migrando de anotaciones en papel.
+                            </p>
+
+                            <div className="relative mt-2">
+                                <span className="
+                                    pointer-events-none
+                                    absolute
+                                    left-3
+                                    top-1/2
+                                    -translate-y-1/2
+                                    text-sm
+                                    text-[var(--text-secondary)]
+                                ">
+                                    $
+                                </span>
+
+                                <MoneyInput
+                                    id="initialDebt"
+                                    value={initialDebt}
+                                    onChange={(event) =>
+                                        setInitialDebt(event.target.value)
+                                    }
+                                    placeholder="0"
+                                    className="
+                                        w-full
+                                        rounded-md
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--background)]
+                                        py-2.5
+                                        pl-8
+                                        pr-3
+                                        text-sm
+                                        tabular-nums
+                                        text-[var(--text-primary)]
+                                        outline-none
+                                        focus:border-[var(--primary)]
+                                        focus:ring-2
+                                        focus:ring-[var(--primary)]/20
+                                    "
+                                />
+                            </div>
 
                         </div>
 
@@ -861,6 +982,17 @@ function ClientDetail({ isNewClient = false }) {
                         setShowDeleteDialog(false)
                     }
                     isLoading={isDeleting}
+                />
+            )}
+
+            {/* PAYMENT MODAL */}
+            {!isNewClient && client && (
+                <ClientPaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    client={client}
+                    currentDebt={debtTotal}
+                    onSuccess={loadClient}
                 />
             )}
 

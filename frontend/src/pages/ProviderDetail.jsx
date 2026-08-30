@@ -4,15 +4,16 @@ import { useParams, useNavigate } from "react-router-dom";
 
 import {
     getProvider,
-    getTransactions,
     updateProvider,
     createProvider,
     deleteProvider,
-    getTransactionLabel,
+    getTransactions,
     getMethodLabel,
+    getTransactionLabel,
 } from "../services/business";
 
 import ConfirmDialog from "../components/ConfirmDialog";
+import ProviderMovementModal from "../components/providers/ProviderMovementModal";
 import { formatCurrency } from "../utils/formatCurrency";
 
 
@@ -35,50 +36,51 @@ function ProviderDetail({ isNewProvider = false }) {
 
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
-    useEffect(() => {
-        async function loadProvider() {
-            if (isNewProvider) {
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                const [
-                    providerData,
-                    transactionData,
-                ] = await Promise.all([
-                    getProvider(id),
-                    getTransactions(),
-                ]);
-
-                setProvider(providerData);
-
-                setTransactions(
-                    transactionData.filter(
-                        (transaction) =>
-                            (transaction.operations || []).some(
-                                (op) =>
-                                    op.provider === Number(id) ||
-                                    op.provider?.id === Number(id)
-                            )
-                    )
-                );
-
-                setName(providerData.name);
-                setPhone(providerData.phone || "");
-                setNotes(providerData.notes || "");
-            } catch (error) {
-                console.error(error);
-
-                toast.error(
-                    "No se pudo cargar el proveedor."
-                );
-            } finally {
-                setIsLoading(false);
-            }
+    async function loadProvider() {
+        if (isNewProvider) {
+            setIsLoading(false);
+            return;
         }
 
+        try {
+            const [
+                providerData,
+                transactionData,
+            ] = await Promise.all([
+                getProvider(id),
+                getTransactions(),
+            ]);
+
+            setProvider(providerData);
+
+            setTransactions(
+                transactionData.filter(
+                    (transaction) =>
+                        (transaction.operations || []).some(
+                            (op) =>
+                                op.provider === Number(id) ||
+                                op.provider?.id === Number(id)
+                        )
+                )
+            );
+
+            setName(providerData.name);
+            setPhone(providerData.phone || "");
+            setNotes(providerData.notes || "");
+        } catch (error) {
+            console.error(error);
+
+            toast.error(
+                "No se pudo cargar el proveedor."
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    useEffect(() => {
         loadProvider();
     }, [id, isNewProvider]);
 
@@ -255,38 +257,218 @@ function ProviderDetail({ isNewProvider = false }) {
             {/* HEADER */}
 
             <header className="
+                flex
+                flex-col
+                gap-4
                 border-b
                 border-[var(--border)]
                 pb-6
+                sm:flex-row
+                sm:items-end
+                sm:justify-between
             ">
 
-                <p className="
-                    text-xs
-                    font-semibold
-                    uppercase
-                    tracking-wider
-                    text-[var(--primary)]
-                ">
-                    Proveedor
-                </p>
+                <div>
+                    <p className="
+                        text-xs
+                        font-semibold
+                        uppercase
+                        tracking-wider
+                        text-[var(--primary)]
+                    ">
+                        Proveedor
+                    </p>
 
-                <h1 className="
-                    mt-1
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                    text-[var(--text-primary)]
-                ">
-                    {isNewProvider
-                        ? "Nuevo proveedor"
-                        : provider.name}
-                </h1>
+                    <h1 className="
+                        mt-1
+                        text-3xl
+                        font-bold
+                        tracking-tight
+                        text-[var(--text-primary)]
+                    ">
+                        {isNewProvider
+                            ? "Nuevo proveedor"
+                            : provider.name}
+                    </h1>
+                </div>
+
+                {!isNewProvider && (
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsMovementModalOpen(true)}
+                            className="
+                                rounded-lg
+                                bg-[var(--primary)]
+                                px-5
+                                py-2.5
+                                text-sm
+                                font-semibold
+                                text-white
+                                transition
+                                hover:bg-[var(--primary-hover)]
+                            "
+                        >
+                            + Registrar compra / pago
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setShowDeleteDialog(true)
+                            }
+                            disabled={isDeleting}
+                            className="
+                                border
+                                border-[var(--danger-border)]
+                                px-4
+                                py-2.5
+                                text-sm
+                                font-semibold
+                                text-[var(--danger)]
+                                transition
+                                hover:bg-[var(--danger-bg)]
+                                disabled:cursor-not-allowed
+                                disabled:opacity-50
+                            "
+                        >
+                            {isDeleting
+                                ? "Eliminando..."
+                                : "Eliminar"}
+                        </button>
+                    </div>
+                )}
 
             </header>
 
+            {/* OVERVIEW CARDS */}
+            {!isNewProvider && (
+                <section className="
+                    mt-6
+                    grid
+                    gap-4
+                    sm:grid-cols-3
+                ">
+                    <div className="
+                        rounded-md
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-5
+                    ">
+                        <p className="
+                            text-xs
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[var(--text-secondary)]
+                        ">
+                            Saldo adeudado (Debo)
+                        </p>
+
+                        <p className={`
+                            mt-2
+                            text-2xl
+                            font-bold
+                            tabular-nums
+                            ${
+                                Number(provider.outstanding_debt || 0) > 0
+                                    ? "text-[var(--warning)]"
+                                    : "text-[var(--text-primary)]"
+                            }
+                        `}>
+                            {formatCurrency(provider.outstanding_debt || 0)}
+                        </p>
+
+                        <p className="
+                            mt-1.5
+                            text-xs
+                            text-[var(--text-secondary)]
+                        ">
+                            {Number(provider.outstanding_debt || 0) > 0
+                                ? "Saldo acumulado pendiente de pago."
+                                : "No tenés saldo pendiente con este proveedor."}
+                        </p>
+                    </div>
+
+                    <div className="
+                        rounded-md
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-5
+                    ">
+                        <p className="
+                            text-xs
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[var(--text-secondary)]
+                        ">
+                            En caja actual
+                        </p>
+
+                        <p className="
+                            mt-2
+                            text-2xl
+                            font-bold
+                            tabular-nums
+                            text-[var(--text-primary)]
+                        ">
+                            {formatCurrency(provider.current_register_total || 0)}
+                        </p>
+
+                        <p className="
+                            mt-1.5
+                            text-xs
+                            text-[var(--text-secondary)]
+                        ">
+                            {provider.current_register_transactions || 0}{" "}
+                            {(provider.current_register_transactions || 0) === 1
+                                ? "movimiento en esta caja"
+                                : "movimientos en esta caja"}
+                        </p>
+                    </div>
+
+                    <div className="
+                        rounded-md
+                        border
+                        border-[var(--border)]
+                        bg-[var(--surface)]
+                        p-5
+                    ">
+                        <p className="
+                            text-xs
+                            font-semibold
+                            uppercase
+                            tracking-wider
+                            text-[var(--text-secondary)]
+                        ">
+                            Historial total
+                        </p>
+
+                        <p className="
+                            mt-2
+                            text-2xl
+                            font-bold
+                            tabular-nums
+                            text-[var(--text-primary)]
+                        ">
+                            {providerOperations.length}
+                        </p>
+
+                        <p className="
+                            mt-1.5
+                            text-xs
+                            text-[var(--text-secondary)]
+                        ">
+                            Movimientos históricos registrados
+                        </p>
+                    </div>
+                </section>
+            )}
 
             {/* INFORMATION */}
-
             <section className="
                 mt-6
                 border
@@ -709,6 +891,13 @@ function ProviderDetail({ isNewProvider = false }) {
                     isLoading={isDeleting}
                 />
             )}
+
+            <ProviderMovementModal
+                isOpen={isMovementModalOpen}
+                onClose={() => setIsMovementModalOpen(false)}
+                initialProvider={provider}
+                onSuccess={loadProvider}
+            />
 
         </div>
     );

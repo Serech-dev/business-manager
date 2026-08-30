@@ -16,6 +16,54 @@ function formatDate(value) {
     }).format(new Date(value));
 }
 
+function getTransactionTitle(transaction) {
+    const operations = transaction.operations || [];
+    const clientName = transaction.client?.name;
+    let baseTitle = "";
+
+    if (operations.length === 0) {
+        baseTitle = `Transacción #${transaction.id}`;
+    } else if (operations.length === 1) {
+        const op = operations[0];
+        const label = getTransactionLabel(op.type);
+        const providerName = op.provider?.name;
+
+        if (providerName) {
+            baseTitle = `${label} - ${providerName}`;
+        } else if (clientName) {
+            baseTitle = `${label} - ${clientName}`;
+        } else {
+            baseTitle = label;
+        }
+    } else {
+        const distinctLabels = [
+            ...new Set(operations.map((op) => getTransactionLabel(op.type))),
+        ];
+        const opsSummary = distinctLabels.join(" + ");
+        if (clientName) {
+            baseTitle = `${opsSummary} - ${clientName}`;
+        } else {
+            baseTitle = opsSummary;
+        }
+    }
+
+    if (transaction.description && transaction.description.trim()) {
+        const cleanDesc = transaction.description.trim();
+        const normBase = baseTitle.toLowerCase().replace(/[\s\-_]/g, "");
+        const normDesc = cleanDesc.toLowerCase().replace(/[\s\-_]/g, "");
+
+        if (
+            normBase !== normDesc &&
+            !normBase.includes(normDesc) &&
+            !normDesc.includes(normBase)
+        ) {
+            return `${baseTitle} · ${cleanDesc}`;
+        }
+    }
+
+    return baseTitle;
+}
+
 function TransactionCard({
     transaction,
     onDelete,
@@ -112,13 +160,7 @@ function TransactionCard({
                         font-semibold
                         text-[var(--text-primary)]
                     ">
-                        {transaction.description || (
-                            operations.length > 1
-                                ? `${operations.length} operaciones`
-                                : operations[0]
-                                    ? getTransactionLabel(operations[0].type)
-                                    : `Transacción #${transaction.id}`
-                        )}
+                        {getTransactionTitle(transaction)}
                     </h4>
 
                     <div className="
@@ -157,7 +199,8 @@ function TransactionCard({
                 <div className="shrink-0 text-right">
                     <strong className={`
                         text-lg
-                        font-semibold
+                        font-bold
+                        tabular-nums
                         ${
                             hasOutgoing
                                 ? "text-[var(--danger)]"
@@ -261,6 +304,7 @@ function TransactionCard({
                                 <span className={`
                                     text-sm
                                     font-semibold
+                                    tabular-nums
                                     ${
                                         isOpOutgoing
                                             ? "text-[var(--danger)]"

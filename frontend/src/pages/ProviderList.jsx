@@ -6,6 +6,7 @@ import {
     getProviders,
 } from "../services/business";
 
+import ProviderMovementModal from "../components/providers/ProviderMovementModal";
 import { formatCurrency } from "../utils/formatCurrency";
 
 
@@ -15,25 +16,21 @@ function ProviderList() {
     const [providers, setProviders] = useState([]);
     const [search, setSearch] = useState("");
     const [isLoading, setIsLoading] = useState(true);
+    const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
+    async function loadProviders() {
+        try {
+            const data = await getProviders();
+            setProviders(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("No se pudieron cargar los proveedores.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     useEffect(() => {
-        async function loadProviders() {
-            try {
-                const data = await getProviders();
-
-                setProviders(data);
-            } catch (error) {
-                console.error(error);
-
-                toast.error(
-                    "No se pudieron cargar los proveedores."
-                );
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
         loadProviders();
     }, []);
 
@@ -111,26 +108,48 @@ function ProviderList() {
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() =>
-                        navigate("/providers/new")
-                    }
-                    className="
-                        shrink-0
-                        rounded-lg
-                        bg-[var(--primary)]
-                        px-5
-                        py-3
-                        text-sm
-                        font-semibold
-                        text-white
-                        transition
-                        hover:bg-[var(--primary-hover)]
-                    "
-                >
-                    + Nuevo proveedor
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            navigate("/providers/new")
+                        }
+                        className="
+                            rounded-lg
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface-accent)]
+                            px-4
+                            py-3
+                            text-sm
+                            font-semibold
+                            text-[var(--text-primary)]
+                            transition
+                            hover:bg-[var(--surface-muted)]
+                        "
+                    >
+                        + Nuevo proveedor
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setIsMovementModalOpen(true)}
+                        className="
+                            rounded-lg
+                            bg-[var(--primary)]
+                            px-5
+                            py-3
+                            text-sm
+                            font-semibold
+                            text-white
+                            shadow-sm
+                            transition
+                            hover:bg-[var(--primary-hover)]
+                        "
+                    >
+                        + Registrar compra / pago
+                    </button>
+                </div>
             </header>
 
 
@@ -268,13 +287,34 @@ function ProviderList() {
                                             min-w-0
                                             flex-1
                                         ">
-                                            <p className="
-                                                truncate
-                                                font-semibold
-                                                text-[var(--text-primary)]
-                                            ">
-                                                {provider.name}
-                                            </p>
+                                            <div className="flex items-center gap-2.5 flex-wrap">
+                                                <p className="
+                                                    truncate
+                                                    font-bold
+                                                    text-[var(--text-primary)]
+                                                ">
+                                                    {provider.name}
+                                                </p>
+
+                                                {Number(provider.outstanding_debt) > 0 && (
+                                                    <span className="
+                                                        inline-flex
+                                                        items-center
+                                                        rounded
+                                                        border
+                                                        border-[var(--warning)]/40
+                                                        bg-[var(--warning)]/10
+                                                        px-2
+                                                        py-0.5
+                                                        text-xs
+                                                        font-bold
+                                                        tabular-nums
+                                                        text-[var(--warning)]
+                                                    ">
+                                                        Debo: {formatCurrency(provider.outstanding_debt)}
+                                                    </span>
+                                                )}
+                                            </div>
 
                                             {provider.phone && (
                                                 <p className="
@@ -338,9 +378,14 @@ function ProviderList() {
 
             )}
 
+            <ProviderMovementModal
+                isOpen={isMovementModalOpen}
+                onClose={() => setIsMovementModalOpen(false)}
+                onSuccess={loadProviders}
+            />
+
         </div>
     );
 }
-
 
 export default ProviderList;

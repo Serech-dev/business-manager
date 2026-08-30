@@ -135,6 +135,91 @@ class TransactionAmountReceivedView(
         )
 
 
+class ResolveTransferView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @db_transaction.atomic
+    def post(self, request, pk):
+        amount = (
+            TransactionOperationAmount.objects
+            .filter(
+                id=pk,
+                operation__transaction__user=request.user,
+                method=TransactionOperationAmount.Method.TRANSFER,
+            )
+            .select_related(
+                "operation__transaction__client",
+                "operation__transaction",
+            )
+            .first()
+        )
+
+        if not amount:
+            return Response(
+                {"detail": "Transferencia no encontrada."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        action = request.data.get("action")
+        client_id = request.data.get("client_id")
+        transaction = amount.operation.transaction
+
+        if action == "confirm":
+            amount.received = True
+            amount.save(update_fields=["received"])
+            return Response({
+                "status": "confirmed",
+                "detail": "Transferencia confirmada como recibida.",
+            })
+
+        elif action == "convert_to_debt":
+            if client_id:
+                client = Client.objects.filter(id=client_id, user=request.user).first()
+                if not client:
+                    return Response(
+                        {"detail": "Cliente no encontrado."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                transaction.client = client
+                transaction.save(update_fields=["client"])
+
+            if not transaction.client:
+                return Response(
+                    {"detail": "Se requiere asociar un cliente para pasar la transferencia a fiado."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            amount.method = TransactionOperationAmount.Method.DEBT
+            amount.received = True
+            amount.save(update_fields=["method", "received"])
+
+            return Response({
+                "status": "converted_to_debt",
+                "client_name": transaction.client.name,
+                "detail": f"Monto pasado a la cuenta de {transaction.client.name}.",
+            })
+
+        elif action == "void":
+            operation = amount.operation
+            if operation.amounts.count() > 1:
+                amount.delete()
+            else:
+                if transaction.operations.count() > 1:
+                    operation.delete()
+                else:
+                    transaction.delete()
+
+            return Response({
+                "status": "voided",
+                "detail": "Transferencia anulada.",
+            })
+
+        return Response(
+            {"detail": "Acción no válida. Usá confirm, convert_to_debt o void."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
 class TransactionDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):

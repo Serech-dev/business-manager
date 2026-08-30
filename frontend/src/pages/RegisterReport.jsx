@@ -9,9 +9,13 @@ import {
     getMethodLabel,
     getClosedRegister,
     getTransactionLabel,
-    updateTransactionAmountReceived
+    updateTransactionAmountReceived,
+    resolveTransfer,
+    getClients,
+    createClient,
 } from "../services/business";
 
+import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
 
 
@@ -43,6 +47,12 @@ function RegisterReport() {
     const [register, setRegister] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [transferToVoid, setTransferToVoid] = useState(null);
+    const [transferToDebt, setTransferToDebt] = useState(null);
+    const [clientSearch, setClientSearch] = useState("");
+    const [clientResults, setClientResults] = useState([]);
+    const [isResolving, setIsResolving] = useState(false);
+
 
     async function loadRegister() {
         try {
@@ -65,25 +75,40 @@ function RegisterReport() {
     }, [id]);
 
 
-    async function handleConfirmTransfer(transfer) {
+    async function handleResolveTransfer(transfer, action, clientId = null) {
+        setIsResolving(true);
         try {
-            await updateTransactionAmountReceived(
-                transfer.amount_id,
-                true
-            );
+            const res = await resolveTransfer(transfer.amount_id, {
+                action,
+                clientId,
+            });
 
-            toast.success(
-                "Transferencia marcada como recibida."
-            );
-
+            toast.success(res.detail || "Transferencia actualizada.");
+            setTransferToVoid(null);
+            setTransferToDebt(null);
             await loadRegister();
-
         } catch (error) {
             console.error(error);
-
             toast.error(
-                "No se pudo confirmar la transferencia."
+                error.response?.data?.detail || "No se pudo actualizar la transferencia."
             );
+        } finally {
+            setIsResolving(false);
+        }
+    }
+
+
+    async function handleSearchClients(query) {
+        setClientSearch(query);
+        if (!query.trim()) {
+            setClientResults([]);
+            return;
+        }
+        try {
+            const results = await getClients(query.trim());
+            setClientResults(results);
+        } catch (error) {
+            console.error(error);
         }
     }
 
@@ -339,6 +364,7 @@ function RegisterReport() {
                             mt-2
                             text-2xl
                             font-bold
+                            tabular-nums
                             text-[var(--success)]
                         ">
                             +{formatCurrency(moneyIn)}
@@ -372,6 +398,7 @@ function RegisterReport() {
                             mt-2
                             text-2xl
                             font-bold
+                            tabular-nums
                             text-[var(--danger)]
                         ">
                             -{formatCurrency(moneyOut)}
@@ -405,6 +432,7 @@ function RegisterReport() {
                             mt-2
                             text-2xl
                             font-bold
+                            tabular-nums
                             ${
                                 netMovement >= 0
                                     ? "text-[var(--success)]"
@@ -543,14 +571,17 @@ function RegisterReport() {
 
                                         <div className="
                                             flex
+                                            flex-wrap
                                             items-center
-                                            gap-3
+                                            gap-2
                                             shrink-0
                                         ">
 
                                             <p className="
+                                                mr-2
                                                 text-base
-                                                font-semibold
+                                                font-bold
+                                                tabular-nums
                                                 text-[var(--warning)]
                                             ">
                                                 {formatCurrency(
@@ -561,25 +592,85 @@ function RegisterReport() {
                                             <button
                                                 type="button"
                                                 onClick={() =>
-                                                    handleConfirmTransfer(
-                                                        transfer
+                                                    handleResolveTransfer(
+                                                        transfer,
+                                                        "confirm"
                                                     )
                                                 }
+                                                disabled={isResolving}
                                                 className="
                                                     rounded
                                                     border
-                                                    border-[var(--warning)]
-                                                    bg-[var(--warning)]/5
-                                                    px-3
+                                                    border-[var(--success-border)]
+                                                    bg-[var(--success)]/10
+                                                    px-2.5
+                                                    py-1.5
+                                                    text-xs
+                                                    font-semibold
+                                                    text-[var(--success)]
+                                                    transition
+                                                    hover:bg-[var(--success)]/20
+                                                    disabled:opacity-50
+                                                "
+                                            >
+                                                Confirmar recibida
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (transfer.client_name) {
+                                                        handleResolveTransfer(
+                                                            transfer,
+                                                            "convert_to_debt"
+                                                        );
+                                                    } else {
+                                                        setTransferToDebt(transfer);
+                                                        setClientSearch("");
+                                                        setClientResults([]);
+                                                    }
+                                                }}
+                                                disabled={isResolving}
+                                                className="
+                                                    rounded
+                                                    border
+                                                    border-[var(--warning)]/40
+                                                    bg-[var(--warning)]/10
+                                                    px-2.5
                                                     py-1.5
                                                     text-xs
                                                     font-semibold
                                                     text-[var(--warning)]
                                                     transition
-                                                    hover:bg-[var(--warning)]/15
+                                                    hover:bg-[var(--warning)]/20
+                                                    disabled:opacity-50
                                                 "
                                             >
-                                                Marcar recibida
+                                                Pasar a fiado
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setTransferToVoid(transfer)
+                                                }
+                                                disabled={isResolving}
+                                                className="
+                                                    rounded
+                                                    border
+                                                    border-[var(--danger-border)]
+                                                    bg-[var(--danger)]/10
+                                                    px-2.5
+                                                    py-1.5
+                                                    text-xs
+                                                    font-semibold
+                                                    text-[var(--danger)]
+                                                    transition
+                                                    hover:bg-[var(--danger)]/20
+                                                    disabled:opacity-50
+                                                "
+                                            >
+                                                Anular
                                             </button>
 
                                         </div>
@@ -1563,10 +1654,183 @@ function RegisterReport() {
 
                 </div>
 
+                {/* VOID TRANSFER CONFIRM DIALOG */}
+                {transferToVoid && (
+                    <ConfirmDialog
+                        title="Anular transferencia no recibida"
+                        message={`¿Confirmás anular la transferencia de ${formatCurrency(transferToVoid.amount)}? No sumará al dinero ingresado de la caja.`}
+                        confirmLabel="Anular transferencia"
+                        cancelLabel="Volver"
+                        isLoading={isResolving}
+                        onCancel={() => setTransferToVoid(null)}
+                        onConfirm={() => handleResolveTransfer(transferToVoid, "void")}
+                    />
+                )}
+
+                {/* CONVERT TO DEBT CLIENT PICKER MODAL */}
+                {transferToDebt && (
+                    <div className="
+                        fixed
+                        inset-0
+                        z-50
+                        flex
+                        items-center
+                        justify-center
+                        bg-black/50
+                        p-4
+                    ">
+                        <div className="
+                            w-full
+                            max-w-md
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            p-6
+                            shadow-xl
+                        ">
+                            <h3 className="
+                                text-lg
+                                font-bold
+                                text-[var(--text-primary)]
+                            ">
+                                Pasar transferencia a cuenta corriente
+                            </h3>
+
+                            <p className="
+                                mt-1.5
+                                text-sm
+                                text-[var(--text-secondary)]
+                            ">
+                                Seleccioná o creá el cliente a quien se le cargará la deuda de <strong>{formatCurrency(transferToDebt.amount)}</strong>.
+                            </p>
+
+                            <div className="mt-4">
+                                <input
+                                    type="text"
+                                    value={clientSearch}
+                                    onChange={(e) => handleSearchClients(e.target.value)}
+                                    placeholder="Buscar o escribir nombre..."
+                                    className="
+                                        w-full
+                                        rounded-md
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--background)]
+                                        px-3.5
+                                        py-2.5
+                                        text-sm
+                                        text-[var(--text-primary)]
+                                        outline-none
+                                        focus:border-[var(--primary)]
+                                        focus:ring-2
+                                        focus:ring-[var(--primary)]/20
+                                    "
+                                    autoFocus
+                                />
+
+                                <div className="
+                                    mt-2
+                                    max-h-48
+                                    overflow-y-auto
+                                    divide-y
+                                    divide-[var(--border)]
+                                    border
+                                    border-[var(--border)]
+                                    bg-[var(--surface)]
+                                ">
+                                    {clientResults.map((c) => (
+                                        <button
+                                            key={c.id}
+                                            type="button"
+                                            onClick={() => handleResolveTransfer(transferToDebt, "convert_to_debt", c.id)}
+                                            disabled={isResolving}
+                                            className="
+                                                flex
+                                                w-full
+                                                items-center
+                                                justify-between
+                                                px-3.5
+                                                py-2.5
+                                                text-left
+                                                text-sm
+                                                text-[var(--text-primary)]
+                                                transition
+                                                hover:bg-[var(--surface-accent)]
+                                            "
+                                        >
+                                            <span className="font-medium">{c.name}</span>
+                                            {c.phone && <span className="text-xs text-[var(--text-secondary)]">{c.phone}</span>}
+                                        </button>
+                                    ))}
+
+                                    {clientSearch.trim() && (
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                setIsResolving(true);
+                                                try {
+                                                    const newClient = await createClient({ name: clientSearch.trim() });
+                                                    await handleResolveTransfer(transferToDebt, "convert_to_debt", newClient.id);
+                                                } catch (err) {
+                                                    console.error(err);
+                                                    toast.error("No se pudo crear el cliente.");
+                                                    setIsResolving(false);
+                                                }
+                                            }}
+                                            disabled={isResolving}
+                                            className="
+                                                flex
+                                                w-full
+                                                items-center
+                                                px-3.5
+                                                py-2.5
+                                                text-left
+                                                text-sm
+                                                font-semibold
+                                                text-[var(--primary)]
+                                                transition
+                                                hover:bg-[var(--surface-accent)]
+                                            "
+                                        >
+                                            + Crear "{clientSearch.trim()}" y pasar a fiado
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="
+                                mt-5
+                                flex
+                                justify-end
+                                gap-3
+                            ">
+                                <button
+                                    type="button"
+                                    onClick={() => setTransferToDebt(null)}
+                                    disabled={isResolving}
+                                    className="
+                                        rounded-md
+                                        border
+                                        border-[var(--border)]
+                                        px-4
+                                        py-2
+                                        text-xs
+                                        font-medium
+                                        text-[var(--text-secondary)]
+                                        hover:bg-[var(--surface-accent)]
+                                        hover:text-[var(--text-primary)]
+                                    "
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );
 }
-
 
 export default RegisterReport;

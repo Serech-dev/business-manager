@@ -18,6 +18,7 @@ class ClientSerializer(serializers.ModelSerializer):
             "name",
             "phone",
             "notes",
+            "initial_debt",
             "created_at",
             "debt",
         ]
@@ -29,7 +30,7 @@ class ClientSerializer(serializers.ModelSerializer):
         ]
 
     def get_debt(self, obj):
-        debt = Decimal("0")
+        debt = obj.initial_debt or Decimal("0")
 
         transactions = (
             obj.transactions
@@ -372,14 +373,17 @@ class TransactionSerializer(
 
         operations = attrs.get("operations", [])
         for op in operations:
-            if (
-                op.get("type")
-                == TransactionOperation.Type.PAYMENT
-                and client is None
-            ):
+            is_payment = (
+                op.get("type") == TransactionOperation.Type.PAYMENT
+            )
+            has_debt = any(
+                amt.get("method") == TransactionOperationAmount.Method.DEBT
+                for amt in op.get("amounts", [])
+            )
+            if (is_payment or has_debt) and client is None:
                 raise serializers.ValidationError({
                     "client":
-                        "El pago de fiado requiere un cliente en la transacción."
+                        "El fiado requiere seleccionar un cliente para la transacción."
                 })
 
         return attrs

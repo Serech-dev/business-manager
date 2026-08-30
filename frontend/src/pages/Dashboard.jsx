@@ -12,10 +12,13 @@ import {
 
 import TransactionCard from "../components/transactions/TransactionCard";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ProviderMovementModal from "../components/providers/ProviderMovementModal";
+import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 
 function Dashboard() {
     const navigate = useNavigate();
+    const { requireOwnerAccess } = useDeviceSecurity();
 
     const [transactions, setTransactions] = useState([]);
 
@@ -24,6 +27,7 @@ function Dashboard() {
 
     const [transactionToDelete, setTransactionToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
     const {
         register,
@@ -193,27 +197,52 @@ function Dashboard() {
 
 
                         {register && (
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    navigate(
-                                        "/transactions/new"
-                                    )
-                                }
-                                className="
-                                    rounded-lg
-                                    bg-[var(--primary)]
-                                    px-5
-                                    py-3
-                                    text-sm
-                                    font-semibold
-                                    text-white
-                                    transition
-                                    hover:bg-[var(--primary-hover)]
-                                "
-                            >
-                                + Nueva operación
-                            </button>
+                            <div className="flex items-center gap-3 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMovementModalOpen(true)}
+                                    className="
+                                        rounded-lg
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--surface-accent)]
+                                        px-4
+                                        py-3
+                                        text-sm
+                                        font-semibold
+                                        text-[var(--text-primary)]
+                                        shadow-xs
+                                        transition
+                                        hover:bg-[var(--surface-muted)]
+                                        hover:border-[var(--primary)]
+                                    "
+                                >
+                                    - Registrar gasto / salida
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        navigate(
+                                            "/transactions/new"
+                                        )
+                                    }
+                                    className="
+                                        rounded-lg
+                                        bg-[var(--primary)]
+                                        px-5
+                                        py-3
+                                        text-sm
+                                        font-semibold
+                                        text-white
+                                        shadow-sm
+                                        transition
+                                        hover:bg-[var(--primary-hover)]
+                                    "
+                                >
+                                    + Nueva venta
+                                </button>
+                            </div>
                         )}
 
                     </header>
@@ -425,7 +454,9 @@ function Dashboard() {
                                                     key={transaction.id}
                                                     transaction={transaction}
                                                     onDelete={(id) => {
-                                                        setTransactionToDelete(id);
+                                                        requireOwnerAccess(() => {
+                                                            setTransactionToDelete(id);
+                                                        });
                                                     }}
                                                     onTransactionUpdate={
                                                         handleTransactionUpdate
@@ -459,10 +490,15 @@ function Dashboard() {
                         />
                     )}
 
+                    <ProviderMovementModal
+                        isOpen={isMovementModalOpen}
+                        onClose={() => setIsMovementModalOpen(false)}
+                        onSuccess={loadDashboard}
+                    />
+
                  </div>
         </div>
     );
 }
-
 
 export default Dashboard;

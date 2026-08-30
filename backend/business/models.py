@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
@@ -21,6 +22,12 @@ class Client(models.Model):
 
     notes = models.TextField(
         blank=True,
+    )
+
+    initial_debt = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
 
     created_at = models.DateTimeField(

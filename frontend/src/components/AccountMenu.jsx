@@ -1,11 +1,13 @@
 import { logout } from "../services/auth";
 import ThemeSelector from "./ThemeSelector";
+import ChangePinModal from "./ChangePinModal";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 
 
 function AccountMenu() {
     const [isOpen, setIsOpen] = useState(false);
+    const [isPinModalOpen, setIsPinModalOpen] = useState(false);
     const [user, setUser] = useState(null);
     const menuRef = useRef(null);
 
@@ -36,53 +38,89 @@ function AccountMenu() {
     }
 
     return (
-        <div
-            ref={menuRef}
-            className="relative"
-        >
-            {isOpen && (
-                <div
-                    className="
-                        absolute
-                        inset-x-0
-                        bottom-full
-                        z-20
-                        mb-2
-                        border
-                        border-[var(--border)]
-                        bg-[var(--surface)]
-                        shadow-lg
-                    "
-                >
+        <>
+            <ChangePinModal
+                isOpen={isPinModalOpen}
+                onClose={() => setIsPinModalOpen(false)}
+            />
 
-                    {/* THEME */}
+            <div
+                ref={menuRef}
+                className="relative"
+            >
+                {isOpen && (
+                    <div
+                        className="
+                            absolute
+                            inset-x-0
+                            bottom-full
+                            z-20
+                            mb-2
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface)]
+                            shadow-lg
+                        "
+                    >
 
-                    <div className="
-                        border-b
-                        border-[var(--border)]
-                        px-4
-                        py-3
-                    ">
+                        {/* THEME */}
+
                         <div className="
-                            flex
-                            items-center
-                            justify-between
-                            gap-4
+                            border-b
+                            border-[var(--border)]
+                            px-4
+                            py-3
                         ">
-                            <span className="
-                                text-sm
-                                font-medium
-                                text-[var(--text-primary)]
+                            <div className="
+                                flex
+                                items-center
+                                justify-between
+                                gap-4
                             ">
-                                Tema
-                            </span>
+                                <span className="
+                                    text-sm
+                                    font-medium
+                                    text-[var(--text-primary)]
+                                ">
+                                    Tema
+                                </span>
 
-                            <ThemeSelector />
+                                <ThemeSelector />
+                            </div>
                         </div>
-                    </div>
 
+                        {/* CHANGE OWNER PIN */}
+                        <div className="
+                            border-b
+                            border-[var(--border)]
+                        ">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    setIsPinModalOpen(true);
+                                }}
+                                className="
+                                    flex
+                                    w-full
+                                    items-center
+                                    justify-between
+                                    px-4
+                                    py-3
+                                    text-left
+                                    text-sm
+                                    font-medium
+                                    text-[var(--text-primary)]
+                                    transition
+                                    hover:bg-[var(--surface-accent)]
+                                "
+                            >
+                                <span>PIN de Dueño</span>
+                                <span className="text-xs text-[var(--text-secondary)]">Cambiar</span>
+                            </button>
+                        </div>
 
-                    {/* LOGOUT */}
+                        {/* LOGOUT */}
 
                     <button
                         type="button"
@@ -176,6 +214,7 @@ function AccountMenu() {
                 </span>
             </button>
         </div>
+        </>
     );
 }
 

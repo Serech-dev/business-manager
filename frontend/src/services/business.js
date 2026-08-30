@@ -214,3 +214,15 @@ export async function deleteProvider(id) {
     );
 }
 
+export async function resolveTransfer(id, { action, clientId = null }) {
+    const response = await api.post(
+        `business/transfers/${id}/resolve/`,
+        {
+            action,
+            client_id: clientId,
+        }
+    );
+
+    return response.data;
+}
+

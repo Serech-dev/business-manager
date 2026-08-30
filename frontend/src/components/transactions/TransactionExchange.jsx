@@ -1,4 +1,5 @@
 import { formatCurrency } from "../../utils/formatCurrency";
+import MoneyInput from "../MoneyInput";
 
 function TransactionExchange({
     exchangeAmount,
@@ -61,10 +62,8 @@ function TransactionExchange({
                         $
                     </span>
 
-                    <input
+                    <MoneyInput
                         id="exchange-amount"
-                        type="number"
-                        min="0"
                         value={exchangeAmount}
                         onChange={(event) =>
                             onChangeExchangeAmount(event.target.value)
@@ -79,6 +78,7 @@ function TransactionExchange({
                             pl-7
                             pr-3
                             text-sm
+                            tabular-nums
                             text-[var(--text-primary)]
                             outline-none
                             transition

@@ -14,19 +14,23 @@ import RegisterHistory from "./pages/RegisterHistory";
 
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PinModal from "./components/PinModal";
+import { DeviceSecurityProvider } from "./context/DeviceSecurityContext";
 
 
 function App() {
 
     return (
 
-        <>
+        <DeviceSecurityProvider>
             <Toaster
                 position="top-center"
                 toastOptions={{
                     duration: 2500,
                 }}
             />
+
+            <PinModal />
 
             <BrowserRouter>
                 <Routes>
@@ -99,7 +103,7 @@ function App() {
 
                 </Routes>
             </BrowserRouter>
-        </>
+        </DeviceSecurityProvider>
     );
 }
 
