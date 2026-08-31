@@ -11,6 +11,7 @@ import ProviderDetail from "./pages/ProviderDetail";
 import RegisterReport from "./pages/RegisterReport";
 import NewTransaction from "./pages/NewTransaction";
 import RegisterHistory from "./pages/RegisterHistory";
+import ReportsAnalytics from "./pages/ReportsAnalytics";
 
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -62,6 +63,11 @@ function App() {
                             <Route
                                 path="/transactions/new"
                                 element={<NewTransaction />}
+                            />
+
+                            <Route
+                                path="/analytics"
+                                element={<ReportsAnalytics />}
                             />
 
                             <Route

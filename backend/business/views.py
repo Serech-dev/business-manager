@@ -537,3 +537,22 @@ class ProviderDetailView(
                 "transaction_operations__amounts"
             )
         )
+
+
+class AnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .analytics import calculate_analytics
+
+        period = request.query_params.get("period", "today")
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        data = calculate_analytics(
+            user=request.user,
+            period=period,
+            start_date_str=start_date,
+            end_date_str=end_date,
+        )
+        return Response(data, status=status.HTTP_200_OK)

@@ -1,6 +1,20 @@
 import api from "./api";
 
 
+export async function getAnalytics(params = {}) {
+    const query = new URLSearchParams();
+    if (params.period) query.set("period", params.period);
+    if (params.start_date) query.set("start_date", params.start_date);
+    if (params.end_date) query.set("end_date", params.end_date);
+
+    const queryString = query.toString();
+    const response = await api.get(
+        `business/analytics/${queryString ? `?${queryString}` : ""}`
+    );
+
+    return response.data;
+}
+
 export async function createTransaction(data) {
     const response = await api.post(
         "business/transactions/",

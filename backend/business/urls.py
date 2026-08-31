@@ -6,9 +6,16 @@ from .views import (ClientDetailView, ClientListCreateView, CloseRegisterView,
                     ProviderListCreateView, RegisterDetailView,
                     RegisterListView, TransactionAmountReceivedView,
                     ReopenLastRegisterView, ResolveTransferView,
-                    TransactionDetailView, TransactionListCreateView)
+                    TransactionDetailView, TransactionListCreateView,
+                    AnalyticsView)
 
 urlpatterns = [
+    path(
+        "analytics/",
+        AnalyticsView.as_view(),
+        name="analytics",
+    ),
+
     path(
         "transactions/",
         TransactionListCreateView.as_view(),

@@ -119,8 +119,8 @@ function Sidebar({
             <div className="
                 border-b
                 border-[var(--border)]
-                px-6
-                py-5
+                px-5
+                py-4
             ">
                 <p className="
                     text-xs
@@ -133,8 +133,8 @@ function Sidebar({
                 </p>
 
                 <h1 className="
-                    mt-1
-                    text-lg
+                    mt-0.5
+                    text-base
                     font-bold
                     tracking-tight
                     text-[var(--text-primary)]
@@ -150,7 +150,7 @@ function Sidebar({
                 flex-1
                 space-y-1
                 overflow-y-auto
-                p-4
+                p-3
             ">
 
                 <button
@@ -163,7 +163,7 @@ function Sidebar({
                         rounded-lg
                         border-l-2
                         px-4
-                        py-3
+                        py-2.5
                         text-left
                         text-sm
                         transition
@@ -200,7 +200,7 @@ function Sidebar({
                         rounded-lg
                         border-l-2
                         px-4
-                        py-3
+                        py-2.5
                         text-left
                         text-sm
                         transition
@@ -225,6 +225,48 @@ function Sidebar({
                     Nueva venta
                 </button>
 
+                <button
+                    type="button"
+                    onClick={() => {
+                        requireOwnerAccess(() => navigate("/analytics"));
+                    }}
+                    className={`
+                        flex
+                        w-full
+                        items-center
+                        justify-between
+                        rounded-lg
+                        border-l-2
+                        px-4
+                        py-2.5
+                        text-left
+                        text-sm
+                        transition
+                        ${
+                            isActive("/analytics")
+                                ? `
+                                    border-[var(--primary)]
+                                    bg-[var(--surface-accent)]
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                `
+                                : `
+                                    border-transparent
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                    hover:bg-[var(--surface-accent)]
+                                    hover:text-[var(--text-primary)]
+                                `
+                        }
+                    `}
+                >
+                    <span>Reportes & Métricas</span>
+                    {isKioskDevice && !isUnlocked && (
+                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                            PIN
+                        </span>
+                    )}
+                </button>
 
                 <button
                     type="button"
@@ -239,7 +281,7 @@ function Sidebar({
                         rounded-lg
                         border-l-2
                         px-4
-                        py-3
+                        py-2.5
                         text-left
                         text-sm
                         transition
@@ -279,7 +321,7 @@ function Sidebar({
                         rounded-lg
                         border-l-2
                         px-4
-                        py-3
+                        py-2.5
                         text-left
                         text-sm
                         transition
@@ -314,7 +356,7 @@ function Sidebar({
                         rounded-lg
                         border-l-2
                         px-4
-                        py-3
+                        py-2.5
                         text-left
                         text-sm
                         transition
@@ -347,17 +389,17 @@ function Sidebar({
             <div className="
                 border-t
                 border-[var(--border)]
-                p-4
+                p-3
             ">
                 <div className="
                     rounded-lg
                     border
                     border-[var(--border)]
                     bg-[var(--background)]
-                    p-4
+                    p-3
                 ">
                     <p className="
-                        text-xs
+                        text-[10px]
                         font-medium
                         uppercase
                         tracking-wider
@@ -367,14 +409,14 @@ function Sidebar({
                     </p>
 
                     <div className="
-                        mt-2
+                        mt-1
                         flex
                         items-center
                         gap-2
                     ">
                         <span className={`
-                            h-2.5
-                            w-2.5
+                            h-2
+                            w-2
                             rounded-full
                             ${
                                 register && register.is_open
@@ -384,8 +426,8 @@ function Sidebar({
                         `} />
 
                         <span className="
-                            text-sm
-                            font-semibold
+                            text-xs
+                            font-bold
                             text-[var(--text-primary)]
                         ">
                             {register && register.is_open
@@ -403,7 +445,7 @@ function Sidebar({
                             }}
                             disabled={isClosing}
                             className="
-                                mt-4
+                                mt-2.5
                                 flex
                                 w-full
                                 items-center
@@ -412,9 +454,9 @@ function Sidebar({
                                 rounded-md
                                 border
                                 border-[var(--danger-border)]
-                                px-3
-                                py-2
-                                text-xs
+                                px-2.5
+                                py-1.5
+                                text-[11px]
                                 font-semibold
                                 text-[var(--danger)]
                                 transition
@@ -425,7 +467,7 @@ function Sidebar({
                         >
                             <span>Cerrar caja</span>
                             {isKioskDevice && !isUnlocked && (
-                                <span className="rounded bg-[var(--danger-bg)] px-1.5 py-0.2 text-[10px] font-semibold text-[var(--danger)]">
+                                <span className="rounded bg-[var(--danger-bg)] px-1 py-0.2 text-[9px] font-semibold text-[var(--danger)]">
                                     PIN
                                 </span>
                             )}
@@ -438,8 +480,8 @@ function Sidebar({
             <div className="
                 border-t
                 border-[var(--border)]
-                px-4
-                py-3
+                px-3.5
+                py-2
             ">
                 <div className="
                     flex
@@ -450,16 +492,16 @@ function Sidebar({
                     <div>
                         {isKioskDevice ? (
                             isUnlocked ? (
-                                <span className="font-semibold text-[var(--success)]">
+                                <span className="font-semibold text-[var(--success)] text-[11px]">
                                     Modo Dueño (Desbloqueado)
                                 </span>
                             ) : (
-                                <span className="font-semibold text-[var(--warning)]">
+                                <span className="font-semibold text-[var(--warning)] text-[11px]">
                                     Modo Caja
                                 </span>
                             )
                         ) : (
-                            <span className="font-semibold text-[var(--text-primary)]">
+                            <span className="font-semibold text-[var(--text-primary)] text-[11px]">
                                 Equipo Dueño
                             </span>
                         )}
@@ -471,7 +513,7 @@ function Sidebar({
                                 <button
                                     type="button"
                                     onClick={lock}
-                                    className="font-medium text-[var(--danger)] hover:underline"
+                                    className="font-medium text-[11px] text-[var(--danger)] hover:underline"
                                 >
                                     Bloquear
                                 </button>
@@ -479,7 +521,7 @@ function Sidebar({
                                 <button
                                     type="button"
                                     onClick={() => requireOwnerAccess(() => {})}
-                                    className="font-semibold text-[var(--primary)] hover:underline"
+                                    className="font-semibold text-[11px] text-[var(--primary)] hover:underline"
                                 >
                                     Desbloquear
                                 </button>
@@ -489,7 +531,7 @@ function Sidebar({
                                 type="button"
                                 onClick={() => toggleKioskDevice(true)}
                                 title="Activar Modo Caja en este terminal"
-                                className="font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                className="font-medium text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                             >
                                 Activar Modo Caja
                             </button>
@@ -498,7 +540,7 @@ function Sidebar({
                 </div>
 
                 {isKioskDevice && (
-                    <div className="mt-1 flex justify-between text-[10px] text-[var(--text-secondary)]">
+                    <div className="mt-0.5 flex justify-between text-[10px] text-[var(--text-secondary)]">
                         <span>Terminal protegida</span>
                         <button
                             type="button"
@@ -518,7 +560,8 @@ function Sidebar({
             <div className="
                 border-t
                 border-[var(--border)]
-                p-4
+                px-3
+                py-2
             ">
                 <AccountMenu />
             </div>
