@@ -5,8 +5,8 @@ from .views import (ClientDetailView, ClientListCreateView, CloseRegisterView,
                     OpenRegisterView, ProviderDetailView,
                     ProviderListCreateView, RegisterDetailView,
                     RegisterListView, TransactionAmountReceivedView,
-                    ResolveTransferView, TransactionDetailView,
-                    TransactionListCreateView)
+                    ReopenLastRegisterView, ResolveTransferView,
+                    TransactionDetailView, TransactionListCreateView)
 
 urlpatterns = [
     path(
@@ -49,6 +49,12 @@ urlpatterns = [
         "register/close/",
         CloseRegisterView.as_view(),
         name="close-register",
+    ),
+
+    path(
+        "register/reopen/",
+        ReopenLastRegisterView.as_view(),
+        name="reopen-register",
     ),
 
     path(

@@ -409,6 +409,55 @@ class CloseRegisterView(APIView):
         )
 
 
+class ReopenLastRegisterView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @db_transaction.atomic
+    def post(self, request):
+        current_open = (
+            Register.objects
+            .filter(
+                user=request.user,
+                closed_at__isnull=True,
+            )
+            .first()
+        )
+
+        if current_open:
+            return Response(
+                {
+                    "detail": "Ya hay una caja abierta actualmente."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        last_closed = (
+            Register.objects
+            .filter(
+                user=request.user,
+                closed_at__isnull=False,
+            )
+            .order_by("-closed_at")
+            .first()
+        )
+
+        if last_closed is None:
+            return Response(
+                {
+                    "detail": "No hay cajas cerradas para reabrir."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        last_closed.closed_at = None
+        last_closed.save(update_fields=["closed_at"])
+
+        return Response(
+            RegisterSerializer(last_closed).data,
+            status=status.HTTP_200_OK,
+        )
+
+
 class RegisterListView(
     generics.ListAPIView
 ):

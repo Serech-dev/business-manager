@@ -65,6 +65,14 @@ export async function closeRegister() {
     return response.data;
 }
 
+export async function reopenLastRegister() {
+    const response = await api.post(
+        "business/register/reopen/"
+    );
+
+    return response.data;
+}
+
 export async function getClosedRegisters() {
     const response = await api.get(
         "business/registers/"

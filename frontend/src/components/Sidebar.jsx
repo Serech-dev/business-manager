@@ -199,12 +199,10 @@ function Sidebar({
                         items-center
                         rounded-lg
                         border-l-2
-                        border-transparent
                         px-4
                         py-3
                         text-left
                         text-sm
-                        font-medium
                         transition
                         ${
                             isActive("/transactions/new")
@@ -215,6 +213,8 @@ function Sidebar({
                                     text-[var(--text-primary)]
                                 `
                                 : `
+                                    border-transparent
+                                    font-medium
                                     text-[var(--text-secondary)]
                                     hover:bg-[var(--surface-accent)]
                                     hover:text-[var(--text-primary)]

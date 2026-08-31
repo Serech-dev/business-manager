@@ -5,6 +5,7 @@ import { useOutletContext } from "react-router-dom";
 
 import {
     openRegister,
+    reopenLastRegister,
     getTransactions,
     deleteTransaction,
     getCurrentRegister,
@@ -24,6 +25,7 @@ function Dashboard() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [isOpening, setIsOpening] = useState(false);
+    const [isReopening, setIsReopening] = useState(false);
 
     const [transactionToDelete, setTransactionToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -94,6 +96,27 @@ function Dashboard() {
         } finally {
             setIsOpening(false);
         }
+    }
+
+    async function handleReopenRegister() {
+        requireOwnerAccess(async () => {
+            setIsReopening(true);
+            try {
+                const reopened = await reopenLastRegister();
+                setRegister(reopened);
+                const transactionData = await getTransactions(true);
+                setTransactions(transactionData);
+                toast.success("Último cierre reabierto con éxito.");
+            } catch (error) {
+                console.error(error);
+                const msg =
+                    error.response?.data?.detail ||
+                    "No se pudo reabrir la caja.";
+                toast.error(msg);
+            } finally {
+                setIsReopening(false);
+            }
+        });
     }
 
     async function handleDelete(id) {
@@ -308,28 +331,55 @@ function Dashboard() {
                                 </p>
 
 
-                                <button
-                                    onClick={handleOpenRegister}
-                                    disabled={isOpening}
-                                    className="
-                                        mt-7
-                                        rounded-lg
-                                        bg-[var(--primary)]
-                                        px-6
-                                        py-3
-                                        text-sm
-                                        font-semibold
-                                        text-white
-                                        transition
-                                        hover:bg-[var(--primary-hover)]
-                                        disabled:cursor-not-allowed
-                                        disabled:opacity-50
-                                    "
-                                >
-                                    {isOpening
-                                        ? "Abriendo..."
-                                        : "Abrir caja"}
-                                </button>
+                                <div className="mt-7 flex flex-wrap items-center gap-3">
+                                    <button
+                                        onClick={handleOpenRegister}
+                                        disabled={isOpening || isReopening}
+                                        className="
+                                            rounded-lg
+                                            bg-[var(--primary)]
+                                            px-6
+                                            py-3
+                                            text-sm
+                                            font-semibold
+                                            text-white
+                                            transition
+                                            hover:bg-[var(--primary-hover)]
+                                            disabled:cursor-not-allowed
+                                            disabled:opacity-50
+                                        "
+                                    >
+                                        {isOpening
+                                            ? "Abriendo..."
+                                            : "Abrir caja"}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleReopenRegister}
+                                        disabled={isOpening || isReopening}
+                                        className="
+                                            rounded-lg
+                                            border
+                                            border-[var(--border)]
+                                            bg-[var(--surface-accent)]
+                                            px-5
+                                            py-3
+                                            text-sm
+                                            font-medium
+                                            text-[var(--text-primary)]
+                                            transition
+                                            hover:border-[var(--primary)]
+                                            hover:bg-[var(--surface-muted)]
+                                            disabled:cursor-not-allowed
+                                            disabled:opacity-50
+                                        "
+                                    >
+                                        {isReopening
+                                            ? "Reabriendo..."
+                                            : "Reabrir último cierre"}
+                                    </button>
+                                </div>
 
                             </div>
 

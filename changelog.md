@@ -1,8 +1,17 @@
+v0.9.0
+
+- Cash Register & Error Correction:
+  - Added "Reabrir último cierre" flow to unseal the immediate last closed shift to fix errors or missing expenses without breaking audit trails.
+  - Added Owner-guarded Edit Transaction modal (EditTransactionModal) with client autocomplete, operation modifications, and split payment adjustments.
+  - Added Reopen action directly on the latest closed register report.
+- UI & Polish:
+  - Fixed active navigation indicator glint for "Nueva venta" in sidebar.
+
 v0.8.0
 
 - Security & Device Permissions:
   - Added Device Security Context with Kiosk Mode (Modo Caja) vs Owner Mode (Equipo Dueño).
-  - PIN modal with numeric keyboard support and auto-lock security timer.
+  - PIN modal with numeric keyboard support, auto-lock security timer, and autofill prevention.
   - Added PIN change modal requiring current PIN authorization before updating.
 - Cash Register & Ghost Transfers:
   - Implemented ghost transfers resolution workflow in register reports (Confirm, Convert to client tab, or Void).

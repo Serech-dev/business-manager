@@ -8,6 +8,8 @@ import {
 } from "../../services/business";
 
 import { formatCurrency } from "../../utils/formatCurrency";
+import EditTransactionModal from "./EditTransactionModal";
+import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
 
 function formatDate(value) {
     return new Intl.DateTimeFormat("es-AR", {
@@ -69,7 +71,9 @@ function TransactionCard({
     onDelete,
     onTransactionUpdate,
 }) {
+    const { requireOwnerAccess } = useDeviceSecurity();
     const [updatingAmountId, setUpdatingAmountId] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const operations = transaction.operations || [];
 
@@ -421,20 +425,52 @@ function TransactionCard({
                         : `${operations.length} operaciones`}
                 </span>
 
-                <button
-                    type="button"
-                    onClick={() => onDelete(transaction.id)}
-                    className="
-                        text-xs
-                        font-medium
-                        text-[var(--danger)]
-                        transition
-                        hover:underline
-                    "
-                >
-                    Eliminar
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            requireOwnerAccess(() => setIsEditModalOpen(true))
+                        }
+                        className="
+                            text-xs
+                            font-medium
+                            text-[var(--primary)]
+                            transition
+                            hover:underline
+                        "
+                    >
+                        Editar
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => onDelete(transaction.id)}
+                        className="
+                            text-xs
+                            font-medium
+                            text-[var(--danger)]
+                            transition
+                            hover:underline
+                        "
+                    >
+                        Eliminar
+                    </button>
+                </div>
             </div>
+
+            {/* EDIT MODAL */}
+            {isEditModalOpen && (
+                <EditTransactionModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    transaction={transaction}
+                    onSuccess={(updated) => {
+                        if (onTransactionUpdate) {
+                            onTransactionUpdate(updated);
+                        }
+                    }}
+                />
+            )}
         </article>
     );
 }

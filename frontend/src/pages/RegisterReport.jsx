@@ -8,6 +8,8 @@ import toast from "react-hot-toast";
 import {
     getMethodLabel,
     getClosedRegister,
+    getCurrentRegister,
+    reopenLastRegister,
     getTransactionLabel,
     updateTransactionAmountReceived,
     resolveTransfer,
@@ -17,6 +19,7 @@ import {
 
 import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
+import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 
 function formatDate(value) {
@@ -43,9 +46,12 @@ function formatDateLong(value) {
 function RegisterReport() {
     const navigate = useNavigate();
     const { id } = useParams();
+    const { requireOwnerAccess } = useDeviceSecurity();
 
     const [register, setRegister] = useState(null);
+    const [currentRegister, setCurrentRegister] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isReopening, setIsReopening] = useState(false);
 
     const [transferToVoid, setTransferToVoid] = useState(null);
     const [transferToDebt, setTransferToDebt] = useState(null);
@@ -56,8 +62,12 @@ function RegisterReport() {
 
     async function loadRegister() {
         try {
-            const data = await getClosedRegister(id);
+            const [data, openReg] = await Promise.all([
+                getClosedRegister(id),
+                getCurrentRegister(),
+            ]);
             setRegister(data);
+            setCurrentRegister(openReg);
         } catch (error) {
             console.error(error);
 
@@ -242,29 +252,74 @@ function RegisterReport() {
                         </div>
 
 
-                        <button
-                            type="button"
-                            onClick={() =>
-                                navigate("/registers")
-                            }
-                            className="
-                                self-start
-                                rounded-md
-                                border
-                                border-[var(--border)]
-                                bg-[var(--surface)]
-                                px-4
-                                py-2
-                                text-sm
-                                font-medium
-                                text-[var(--text-primary)]
-                                transition
-                                hover:bg-[var(--surface-accent)]
-                                sm:self-auto
-                            "
-                        >
-                            Volver al historial
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {!currentRegister && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        requireOwnerAccess(async () => {
+                                            setIsReopening(true);
+                                            try {
+                                                await reopenLastRegister();
+                                                toast.success("Caja reabierta. Redirigiendo al panel...");
+                                                navigate("/");
+                                            } catch (error) {
+                                                console.error(error);
+                                                const msg =
+                                                    error.response?.data?.detail ||
+                                                    "No se pudo reabrir la caja.";
+                                                toast.error(msg);
+                                            } finally {
+                                                setIsReopening(false);
+                                            }
+                                        });
+                                    }}
+                                    disabled={isReopening}
+                                    className="
+                                        self-start
+                                        rounded-md
+                                        bg-[var(--primary)]
+                                        px-4
+                                        py-2
+                                        text-sm
+                                        font-bold
+                                        text-white
+                                        transition
+                                        hover:bg-[var(--primary-hover)]
+                                        disabled:opacity-50
+                                        sm:self-auto
+                                    "
+                                >
+                                    {isReopening
+                                        ? "Reabriendo..."
+                                        : "Reabrir caja para corregir"}
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    navigate("/registers")
+                                }
+                                className="
+                                    self-start
+                                    rounded-md
+                                    border
+                                    border-[var(--border)]
+                                    bg-[var(--surface)]
+                                    px-4
+                                    py-2
+                                    text-sm
+                                    font-medium
+                                    text-[var(--text-primary)]
+                                    transition
+                                    hover:bg-[var(--surface-accent)]
+                                    sm:self-auto
+                                "
+                            >
+                                Volver al historial
+                            </button>
+                        </div>
 
                     </div>
 
