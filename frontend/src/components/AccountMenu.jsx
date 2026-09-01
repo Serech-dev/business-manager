@@ -4,6 +4,7 @@ import ChangePinModal from "./ChangePinModal";
 import GuideModal from "./GuideModal";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { APP_VERSION } from "../utils/version";
 
 
 function AccountMenu() {
@@ -159,37 +160,39 @@ function AccountMenu() {
                         </div>
 
                         {/* LOGOUT */}
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="
+                                flex
+                                w-full
+                                items-center
+                                justify-between
+                                px-4
+                                py-3
+                                text-left
+                                text-sm
+                                font-medium
+                                text-[var(--danger)]
+                                transition
+                                hover:bg-[var(--surface-accent)]
+                            "
+                        >
+                            <span>
+                                Cerrar sesión
+                            </span>
 
-                    <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="
-                            flex
-                            w-full
-                            items-center
-                            justify-between
-                            px-4
-                            py-3
-                            text-left
-                            text-sm
-                            font-medium
-                            text-[var(--danger)]
-                            transition
-                            hover:bg-[var(--surface-accent)]
-                        "
-                    >
-                        <span>
-                            Cerrar sesión
-                        </span>
+                            <span className="text-base">
+                                →
+                            </span>
+                        </button>
 
-                        <span className="
-                            text-base
-                        ">
-                            →
-                        </span>
-                    </button>
-                </div>
-            )}
+                        {/* APP VERSION */}
+                        <div className="border-t border-[var(--border)] px-4 py-2 text-center text-[10px] text-[var(--text-secondary)]/60">
+                            Business Manager {APP_VERSION}
+                        </div>
+                    </div>
+                )}
 
 
             {/* ACCOUNT TOGGLE */}

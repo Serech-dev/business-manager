@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 
 import api, { getApiError } from "../services/api";
 import { getSavedTheme, setTheme } from "../utils/theme";
+import { APP_VERSION } from "../utils/version";
 
 function Login() {
     const navigate = useNavigate();
@@ -241,7 +242,7 @@ function Login() {
             {/* FOOTER */}
             <footer className="relative z-10 text-center py-2">
                 <p className="text-[11px] text-[var(--text-secondary)]/70">
-                    Business Manager v1.0.0 · Sesión cifrada
+                    Business Manager {APP_VERSION} · Sesión cifrada
                 </p>
             </footer>
         </div>
