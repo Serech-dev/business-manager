@@ -14,18 +14,21 @@ import {
 import TransactionCard from "../components/transactions/TransactionCard";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ProviderMovementModal from "../components/providers/ProviderMovementModal";
+import OpenRegisterModal from "../components/registers/OpenRegisterModal";
+import { formatCurrency } from "../utils/formatCurrency";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 
 function Dashboard() {
     const navigate = useNavigate();
-    const { requireOwnerAccess } = useDeviceSecurity();
+    const { requireOwnerAccess, isKioskDevice, isUnlocked } = useDeviceSecurity();
+    const isOwner = !isKioskDevice || isUnlocked;
 
     const [transactions, setTransactions] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
-    const [isOpening, setIsOpening] = useState(false);
     const [isReopening, setIsReopening] = useState(false);
+    const [isOpenRegisterModalOpen, setIsOpenRegisterModalOpen] = useState(false);
 
     const [transactionToDelete, setTransactionToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -36,7 +39,7 @@ function Dashboard() {
         setRegister,
     } = useOutletContext();
 
-    function handleTransactionUpdate(
+    async function handleTransactionUpdate(
         updatedTransaction
     ) {
         setTransactions((current) =>
@@ -46,6 +49,13 @@ function Dashboard() {
                     : transaction
             )
         );
+
+        try {
+            const currentRegister = await getCurrentRegister();
+            setRegister(currentRegister);
+        } catch (error) {
+            console.error("Error refreshing register on transaction update:", error);
+        }
     }
 
     async function loadDashboard() {
@@ -75,27 +85,9 @@ function Dashboard() {
         loadDashboard();
     }, []);
 
-    async function handleOpenRegister() {
-        setIsOpening(true);
-
-        try {
-            const newRegister =
-                await openRegister();
-
-            setRegister(newRegister);
-
-            toast.success(
-                "Caja abierta."
-            );
-        } catch (error) {
-            console.error(error);
-
-            toast.error(
-                "No se pudo abrir la caja."
-            );
-        } finally {
-            setIsOpening(false);
-        }
+    function handleOpenRegisterSuccess(newRegister) {
+        setRegister(newRegister);
+        loadDashboard();
     }
 
     async function handleReopenRegister() {
@@ -333,8 +325,9 @@ function Dashboard() {
 
                                 <div className="mt-7 flex flex-wrap items-center gap-3">
                                     <button
-                                        onClick={handleOpenRegister}
-                                        disabled={isOpening || isReopening}
+                                        type="button"
+                                        onClick={() => setIsOpenRegisterModalOpen(true)}
+                                        disabled={isReopening}
                                         className="
                                             rounded-lg
                                             bg-[var(--primary)]
@@ -349,15 +342,13 @@ function Dashboard() {
                                             disabled:opacity-50
                                         "
                                     >
-                                        {isOpening
-                                            ? "Abriendo..."
-                                            : "Abrir caja"}
+                                        Abrir caja
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={handleReopenRegister}
-                                        disabled={isOpening || isReopening}
+                                        disabled={isReopening}
                                         className="
                                             rounded-lg
                                             border
@@ -389,7 +380,56 @@ function Dashboard() {
 
                         /* OPEN REGISTER */
 
-                        <section className="mt-10">
+                        <section className="mt-8">
+
+                            {/* LIVE FUNDS & DRAWER BALANCE (EXCLUSIVELY IN OWNER MODE) */}
+                            {isOwner && (
+                                <div className="mb-8 grid gap-4 sm:grid-cols-2">
+                                    {/* EFECTIVO EN CAJA */}
+                                    <div className="border border-[var(--border)] bg-[var(--surface)] p-5 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                                Efectivo en Caja
+                                            </span>
+                                            <span className="rounded bg-[var(--success-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--success)]">
+                                                En vivo
+                                            </span>
+                                        </div>
+                                        <p className="text-2xl font-bold tabular-nums text-[var(--success)]">
+                                            {formatCurrency(register.expected_cash ?? 0)}
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--text-secondary)]">
+                                            <span>Inicial: {formatCurrency(register.initial_cash ?? 0)}</span>
+                                            <span>·</span>
+                                            <span className="text-[var(--success)]">+{formatCurrency(register.cash_in ?? 0)}</span>
+                                            <span>·</span>
+                                            <span className="text-[var(--danger)]">-{formatCurrency(register.cash_out ?? 0)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* SALDO EN BANCO */}
+                                    <div className="border border-[var(--border)] bg-[var(--surface)] p-5 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                                Saldo en Banco / Digital
+                                            </span>
+                                            <span className="rounded bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-400">
+                                                En vivo
+                                            </span>
+                                        </div>
+                                        <p className="text-2xl font-bold tabular-nums text-sky-400">
+                                            {formatCurrency(register.expected_bank ?? 0)}
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--text-secondary)]">
+                                            <span>Inicial: {formatCurrency(register.initial_bank ?? 0)}</span>
+                                            <span>·</span>
+                                            <span className="text-sky-400">+{formatCurrency(register.bank_in ?? 0)}</span>
+                                            <span>·</span>
+                                            <span className="text-[var(--danger)]">-{formatCurrency(register.bank_out ?? 0)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="
                                 flex
@@ -544,6 +584,12 @@ function Dashboard() {
                         isOpen={isMovementModalOpen}
                         onClose={() => setIsMovementModalOpen(false)}
                         onSuccess={loadDashboard}
+                    />
+
+                    <OpenRegisterModal
+                        isOpen={isOpenRegisterModalOpen}
+                        onClose={() => setIsOpenRegisterModalOpen(false)}
+                        onSuccess={handleOpenRegisterSuccess}
                     />
 
                  </div>

@@ -1,6 +1,7 @@
 import { logout } from "../services/auth";
 import ThemeSelector from "./ThemeSelector";
 import ChangePinModal from "./ChangePinModal";
+import GuideModal from "./GuideModal";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 
@@ -8,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 function AccountMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+    const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
     const [user, setUser] = useState(null);
     const menuRef = useRef(null);
 
@@ -42,6 +44,11 @@ function AccountMenu() {
             <ChangePinModal
                 isOpen={isPinModalOpen}
                 onClose={() => setIsPinModalOpen(false)}
+            />
+
+            <GuideModal
+                isOpen={isGuideModalOpen}
+                onClose={() => setIsGuideModalOpen(false)}
             />
 
             <div
@@ -87,6 +94,37 @@ function AccountMenu() {
 
                                 <ThemeSelector />
                             </div>
+                        </div>
+
+                        {/* SYSTEM GUIDE */}
+                        <div className="
+                            border-b
+                            border-[var(--border)]
+                        ">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    setIsGuideModalOpen(true);
+                                }}
+                                className="
+                                    flex
+                                    w-full
+                                    items-center
+                                    justify-between
+                                    px-4
+                                    py-3
+                                    text-left
+                                    text-sm
+                                    font-medium
+                                    text-[var(--text-primary)]
+                                    transition
+                                    hover:bg-[var(--surface-accent)]
+                                "
+                            >
+                                <span>Guía del Sistema</span>
+                                <span className="text-xs font-semibold text-[var(--primary)]">Ayuda</span>
+                            </button>
                         </div>
 
                         {/* CHANGE OWNER PIN */}

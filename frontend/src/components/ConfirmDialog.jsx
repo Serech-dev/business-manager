@@ -35,14 +35,14 @@ function ConfirmDialog({
                     {title}
                 </h2>
 
-                <p className="
+                <div className="
                     mt-2
                     text-sm
                     leading-6
                     text-[var(--text-secondary)]
                 ">
                     {message}
-                </p>
+                </div>
 
                 <div className="
                     mt-6

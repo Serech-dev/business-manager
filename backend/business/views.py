@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import transaction as db_transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -364,8 +366,13 @@ class OpenRegisterView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        initial_cash = request.data.get("initial_cash", Decimal("0.00")) or Decimal("0.00")
+        initial_bank = request.data.get("initial_bank", Decimal("0.00")) or Decimal("0.00")
+
         register = Register.objects.create(
             user=request.user,
+            initial_cash=initial_cash,
+            initial_bank=initial_bank,
         )
 
         return Response(
@@ -555,4 +562,4 @@ class AnalyticsView(APIView):
             start_date_str=start_date,
             end_date_str=end_date,
         )
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_200_OK)

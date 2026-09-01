@@ -62,6 +62,18 @@ class Register(models.Model):
         blank=True,
     )
 
+    initial_cash = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
+    initial_bank = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

@@ -510,6 +510,103 @@ function RegisterReport() {
                 </section>
 
 
+                {/* FUNDS BREAKDOWN & CLOSING BALANCES */}
+                <section className="mt-8">
+                    <div className="mb-4">
+                        <h2 className="text-lg font-bold text-[var(--text-primary)]">
+                            Dinero en Caja & Banco
+                        </h2>
+                        <p className="text-xs text-[var(--text-secondary)]">
+                            Dinero que debe haber físicamente en caja y en cuenta bancaria al momento del cierre.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {/* EFECTIVO EN CAJA */}
+                        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 space-y-4">
+                            <div className="border-b border-[var(--border)] pb-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Físico
+                                </p>
+                                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                                    Efectivo en Caja
+                                </h3>
+                            </div>
+
+                            <div className="space-y-2.5 text-xs">
+                                <div className="flex justify-between text-[var(--text-secondary)]">
+                                    <span>Fondo inicial (Apertura):</span>
+                                    <span className="font-semibold text-[var(--text-primary)]">
+                                        {formatCurrency(register.initial_cash ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-[var(--text-secondary)]">
+                                    <span>Cobrado en efectivo (+):</span>
+                                    <span className="font-semibold text-[var(--success)]">
+                                        +{formatCurrency(register.cash_in ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-[var(--text-secondary)]">
+                                    <span>Salidas en efectivo (-):</span>
+                                    <span className="font-semibold text-[var(--danger)]">
+                                        -{formatCurrency(register.cash_out ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="border-t border-[var(--border)] pt-3 flex items-center justify-between font-bold">
+                                    <span className="text-sm text-[var(--text-primary)]">
+                                        Efectivo total en caja:
+                                    </span>
+                                    <span className="text-xl tabular-nums text-[var(--success)]">
+                                        {formatCurrency(register.expected_cash ?? 0)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* BANCO / DIGITAL */}
+                        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 space-y-4">
+                            <div className="border-b border-[var(--border)] pb-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Digital
+                                </p>
+                                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                                    Banco / Billetera Virtual
+                                </h3>
+                            </div>
+
+                            <div className="space-y-2.5 text-xs">
+                                <div className="flex justify-between text-[var(--text-secondary)]">
+                                    <span>Saldo inicial (Apertura):</span>
+                                    <span className="font-semibold text-[var(--text-primary)]">
+                                        {formatCurrency(register.initial_bank ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-[var(--text-secondary)]">
+                                    <span>Transferencias recibidas (+):</span>
+                                    <span className="font-semibold text-sky-400">
+                                        +{formatCurrency(register.bank_in ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-[var(--text-secondary)]">
+                                    <span>Transferencias pagadas (-):</span>
+                                    <span className="font-semibold text-[var(--danger)]">
+                                        -{formatCurrency(register.bank_out ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="border-t border-[var(--border)] pt-3 flex items-center justify-between font-bold">
+                                    <span className="text-sm text-[var(--text-primary)]">
+                                        Saldo total en banco:
+                                    </span>
+                                    <span className="text-xl tabular-nums text-sky-400">
+                                        {formatCurrency(register.expected_bank ?? 0)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+
                 {/* PENDING TRANSFERS */}
 
                 {pendingTransfers.length > 0 && (

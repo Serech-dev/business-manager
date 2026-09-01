@@ -259,10 +259,10 @@ function ReportsAnalytics() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-base font-bold text-[var(--text-primary)]">
-                                Turnos & Bloques del Día
+                                Franjas Horarias del Día
                             </h2>
                             <p className="text-xs text-[var(--text-secondary)]">
-                                Distribución horaria por franja horaria y cambio de turno
+                                Distribución de ingresos y movimientos por momento del día
                             </p>
                         </div>
 

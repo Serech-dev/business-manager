@@ -70,6 +70,11 @@ class ClientSerializer(serializers.ModelSerializer):
 class TransactionOperationAmountSerializer(
     serializers.ModelSerializer
 ):
+    received = serializers.BooleanField(
+        default=False,
+        required=False,
+    )
+
     class Meta:
         model = TransactionOperationAmount
 
@@ -546,6 +551,14 @@ class RegisterSerializer(
     money_out = serializers.SerializerMethodField()
     net_movement = serializers.SerializerMethodField()
 
+    cash_in = serializers.SerializerMethodField()
+    cash_out = serializers.SerializerMethodField()
+    expected_cash = serializers.SerializerMethodField()
+
+    bank_in = serializers.SerializerMethodField()
+    bank_out = serializers.SerializerMethodField()
+    expected_bank = serializers.SerializerMethodField()
+
     totals_by_method = serializers.SerializerMethodField()
     totals_by_type = serializers.SerializerMethodField()
 
@@ -571,12 +584,23 @@ class RegisterSerializer(
             "closed_at",
             "is_open",
 
+            "initial_cash",
+            "initial_bank",
+
             "transaction_count",
 
             "total",
             "money_in",
             "money_out",
             "net_movement",
+
+            "cash_in",
+            "cash_out",
+            "expected_cash",
+
+            "bank_in",
+            "bank_out",
+            "expected_bank",
 
             "totals_by_method",
             "totals_by_type",
@@ -725,6 +749,80 @@ class RegisterSerializer(
             self.get_money_in(obj)
             - self.get_money_out(obj)
         )
+
+    def _calculate_funds(self, obj):
+        if hasattr(obj, "_cached_funds"):
+            return obj._cached_funds
+
+        cash_in = Decimal("0")
+        cash_out = Decimal("0")
+        bank_in = Decimal("0")
+        bank_out = Decimal("0")
+
+        for transaction in self._get_transactions(obj):
+            for operation in transaction.operations.all():
+                is_out = self._is_outgoing(operation)
+
+                if operation.type == TransactionOperation.Type.EXCHANGE:
+                    fee = operation.exchange_fee or Decimal("0")
+                    for amount in operation.amounts.all():
+                        if not self._is_money_movement(amount):
+                            continue
+                        if amount.method == TransactionOperationAmount.Method.CASH:
+                            cash_in += fee
+                        elif amount.method in [
+                            TransactionOperationAmount.Method.TRANSFER,
+                            TransactionOperationAmount.Method.CARD,
+                        ]:
+                            bank_in += fee
+                        break
+                    continue
+
+                for amount in operation.amounts.all():
+                    if not self._is_money_movement(amount):
+                        continue
+
+                    if amount.method == TransactionOperationAmount.Method.CASH:
+                        if is_out:
+                            cash_out += amount.amount
+                        else:
+                            cash_in += amount.amount
+                    elif amount.method in [
+                        TransactionOperationAmount.Method.TRANSFER,
+                        TransactionOperationAmount.Method.CARD,
+                    ]:
+                        if is_out:
+                            bank_out += amount.amount
+                        else:
+                            bank_in += amount.amount
+
+        obj._cached_funds = {
+            "cash_in": cash_in,
+            "cash_out": cash_out,
+            "bank_in": bank_in,
+            "bank_out": bank_out,
+            "expected_cash": (obj.initial_cash or Decimal("0")) + cash_in - cash_out,
+            "expected_bank": (obj.initial_bank or Decimal("0")) + bank_in - bank_out,
+        }
+        return obj._cached_funds
+
+    def get_cash_in(self, obj):
+        return self._calculate_funds(obj)["cash_in"]
+
+    def get_cash_out(self, obj):
+        return self._calculate_funds(obj)["cash_out"]
+
+    def get_expected_cash(self, obj):
+        return self._calculate_funds(obj)["expected_cash"]
+
+    def get_bank_in(self, obj):
+        return self._calculate_funds(obj)["bank_in"]
+
+    def get_bank_out(self, obj):
+        return self._calculate_funds(obj)["bank_out"]
+
+    def get_expected_bank(self, obj):
+        return self._calculate_funds(obj)["expected_bank"]
 
     def get_totals_by_method(self, obj):
         totals = {}

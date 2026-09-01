@@ -63,9 +63,10 @@ export async function getCurrentRegister() {
     return response.data;
 }
 
-export async function openRegister() {
+export async function openRegister(data = {}) {
     const response = await api.post(
-        "business/register/open/"
+        "business/register/open/",
+        data
     );
 
     return response.data;
