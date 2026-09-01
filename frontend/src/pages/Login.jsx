@@ -63,10 +63,7 @@ function Login() {
     const isDark = currentTheme === "dark";
 
     return (
-        <div className="relative min-h-screen bg-[var(--background)] flex flex-col justify-between p-4 selection:bg-[var(--primary)] selection:text-white transition-colors duration-200">
-            {/* AMBIENT BACKGROUND GLOW */}
-            <div className="animate-ambient-1 pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[450px] w-[450px] rounded-full bg-[var(--primary)]/12 blur-[130px]" />
-
+        <div className="min-h-screen bg-[var(--background)] flex flex-col justify-between p-4 selection:bg-[var(--primary)] selection:text-white transition-colors duration-200">
             {/* TOP BAR / THEME SWITCHER */}
             <header className="relative z-10 flex items-center justify-end px-2 sm:px-6 py-2">
                 <button

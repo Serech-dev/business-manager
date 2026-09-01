@@ -50,7 +50,6 @@ function ChangePinModal({ isOpen, onClose }) {
             justify-center
             bg-black/60
             p-4
-            backdrop-blur-xs
         ">
             <div className="
                 w-full
