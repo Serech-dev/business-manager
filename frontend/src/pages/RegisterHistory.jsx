@@ -66,8 +66,6 @@ function RegisterHistory() {
 
     return (
         <div className="
-            min-h-screen
-            bg-[var(--background)]
             px-4
             py-8
         ">

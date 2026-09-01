@@ -192,8 +192,6 @@ function RegisterReport() {
 
     return (
         <div className="
-            min-h-screen
-            bg-[var(--background)]
             px-4
             py-8
         ">
@@ -583,7 +581,7 @@ function RegisterReport() {
                                 </div>
                                 <div className="flex justify-between text-[var(--text-secondary)]">
                                     <span>Transferencias recibidas (+):</span>
-                                    <span className="font-semibold text-sky-400">
+                                    <span className="font-semibold text-[var(--bank)]">
                                         +{formatCurrency(register.bank_in ?? 0)}
                                     </span>
                                 </div>
@@ -597,7 +595,7 @@ function RegisterReport() {
                                     <span className="text-sm text-[var(--text-primary)]">
                                         Saldo total en banco:
                                     </span>
-                                    <span className="text-xl tabular-nums text-sky-400">
+                                    <span className="text-xl tabular-nums text-[var(--bank)]">
                                         {formatCurrency(register.expected_bank ?? 0)}
                                     </span>
                                 </div>

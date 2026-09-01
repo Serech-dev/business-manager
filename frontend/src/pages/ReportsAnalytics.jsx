@@ -96,7 +96,7 @@ function ReportsAnalytics() {
     };
 
     return (
-        <div className="min-h-screen bg-[var(--background)] p-6 text-[var(--text-primary)] md:p-8">
+        <div className="p-6 text-[var(--text-primary)] md:p-8">
             <div className="mx-auto max-w-7xl space-y-8">
                 {/* HEADER & PERIOD CONTROLS */}
                 <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-center lg:justify-between">

@@ -203,8 +203,6 @@ function NewTransaction() {
 
     return (
         <div className="
-            min-h-screen
-            bg-[var(--background)]
             px-4
             py-6
             sm:px-8
