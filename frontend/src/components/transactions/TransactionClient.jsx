@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getClients } from "../../services/business";
+import { formatCurrency } from "../../utils/formatCurrency";
 
 function TransactionClient({
     selectedClient,
@@ -109,6 +110,23 @@ function TransactionClient({
                                 ">
                                     {selectedClient.phone}
                                 </p>
+                            )}
+                            {selectedClient.debt !== undefined && (
+                                <div className="mt-1 flex items-center gap-2">
+                                    {Number(selectedClient.debt) > 0 ? (
+                                        <span className="rounded bg-[var(--danger)]/10 px-2 py-0.5 text-xs font-semibold text-[var(--danger)]">
+                                            Deuda: {formatCurrency(selectedClient.debt)}
+                                        </span>
+                                    ) : Number(selectedClient.debt) < 0 ? (
+                                        <span className="rounded bg-[var(--success)]/10 px-2 py-0.5 text-xs font-semibold text-[var(--success)]">
+                                            ✓ Saldo a favor: {formatCurrency(Math.abs(selectedClient.debt))}
+                                        </span>
+                                    ) : (
+                                        <span className="rounded bg-[var(--surface-accent)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+                                            Cuenta al día ($ 0)
+                                        </span>
+                                    )}
+                                </div>
                             )}
                         </div>
 
@@ -238,6 +256,18 @@ function TransactionClient({
                                                         </span>
                                                     )}
                                                 </span>
+
+                                                {client.debt !== undefined && (
+                                                    <span className="shrink-0 text-xs font-semibold">
+                                                        {Number(client.debt) > 0 ? (
+                                                            <span className="text-[var(--danger)]">Debe {formatCurrency(client.debt)}</span>
+                                                        ) : Number(client.debt) < 0 ? (
+                                                            <span className="text-[var(--success)]">A favor {formatCurrency(Math.abs(client.debt))}</span>
+                                                        ) : (
+                                                            <span className="text-[var(--text-secondary)]">Al día</span>
+                                                        )}
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
 

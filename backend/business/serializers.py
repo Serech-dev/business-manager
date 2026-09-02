@@ -61,10 +61,7 @@ class ClientSerializer(serializers.ModelSerializer):
                         )
                     )
 
-        return max(
-            debt,
-            Decimal("0")
-        )
+        return debt
 
 
 class TransactionOperationAmountSerializer(

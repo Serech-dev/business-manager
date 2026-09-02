@@ -136,7 +136,7 @@ function TransactionAmounts({
                                 <option value="cash">Efectivo</option>
                                 <option value="transfer">Transferencia</option>
                                 <option value="card">Tarjeta</option>
-                                {!disableDebt && <option value="debt">Fiado</option>}
+                                {!disableDebt && <option value="debt">A cuenta</option>}
                             </select>
 
                             <div className="

@@ -5,18 +5,17 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-}
 
-[data-theme="dark"] {
-  --background: #0f1117;
-  --surface: #181b24;
-  --surface-accent: #222634;
-  --surface-muted: #13151e;
+  /* DEFAULT / DARK THEME */
+  --background: #0b0d13;
+  --surface: #151822;
+  --surface-accent: #1e2230;
+  --surface-muted: #10121a;
 
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
 
-  --border: #2d3345;
+  --border: #262c3d;
 
   --primary: #6366f1;
   --primary-hover: #4f46e5;
@@ -35,20 +34,60 @@
   --bank: #38bdf8;
   --bank-bg: rgba(56, 189, 248, 0.12);
 
+  --bg-gradient: radial-gradient(circle at 85% -10%, rgba(99, 102, 241, 0.22) 0%, transparent 50%),
+                 radial-gradient(circle at 10% 45%, rgba(14, 165, 233, 0.16) 0%, transparent 45%),
+                 radial-gradient(circle at 80% 95%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+
+  --control-icon: #94a3b8;
+  --control-icon-hover: #6366f1;
+}
+
+[data-theme="dark"] {
+  --background: #0b0d13;
+  --surface: #151822;
+  --surface-accent: #1e2230;
+  --surface-muted: #10121a;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+
+  --border: #262c3d;
+
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+
+  --success: #10b981;
+  --success-text: #34d399;
+  --success-bg: #064e3b;
+  --success-border: #047857;
+
+  --warning: #f59e0b;
+
+  --danger: #f43f5e;
+  --danger-bg: #4c0519;
+  --danger-border: #9f1239;
+
+  --bank: #38bdf8;
+  --bank-bg: rgba(56, 189, 248, 0.12);
+
+  --bg-gradient: radial-gradient(circle at 85% -10%, rgba(99, 102, 241, 0.22) 0%, transparent 50%),
+                 radial-gradient(circle at 10% 45%, rgba(14, 165, 233, 0.16) 0%, transparent 45%),
+                 radial-gradient(circle at 80% 95%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+
   --control-icon: #94a3b8;
   --control-icon-hover: #6366f1;
 }
 
 [data-theme="light"] {
-  --background: #edf0f5;
+  --background: #edf1f7;
   --surface: #ffffff;
-  --surface-accent: #e2e7ef;
-  --surface-muted: #f4f6f9;
+  --surface-accent: #e2e8f2;
+  --surface-muted: #f4f7fa;
 
-  --text-primary: #1e293b;
+  --text-primary: #0f172a;
   --text-secondary: #475569;
 
-  --border: #cad3df;
+  --border: #cbd5e1;
 
   --primary: #4f46e5;
   --primary-hover: #4338ca;
@@ -66,6 +105,10 @@
 
   --bank: #0284c7;
   --bank-bg: #e0f2fe;
+
+  --bg-gradient: radial-gradient(circle at 85% -10%, rgba(99, 102, 241, 0.16) 0%, transparent 50%),
+                 radial-gradient(circle at 10% 45%, rgba(14, 165, 233, 0.14) 0%, transparent 45%),
+                 radial-gradient(circle at 80% 95%, rgba(168, 85, 247, 0.12) 0%, transparent 50%);
 
   --control-icon: #475569;
   --control-icon-hover: #4f46e5;
@@ -124,7 +167,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 body {
   margin: 0;
-  background: var(--background);
+  background-color: var(--background);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--text-primary);
 }
 

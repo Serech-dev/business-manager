@@ -159,7 +159,7 @@ function EditTransactionModal({
         e.preventDefault();
 
         if (hasDebtOrPayment && !client) {
-            toast.error("Las operaciones con fiado o pago de fiado requieren asignar un cliente.");
+            toast.error("Las operaciones a cuenta o de pago a cuenta requieren asignar un cliente.");
             return;
         }
 
@@ -425,7 +425,7 @@ function EditTransactionModal({
                                             { value: "sube", label: "Carga SUBE" },
                                             { value: "phone", label: "Celular" },
                                             { value: "exchange", label: "Cambio" },
-                                            { value: "payment", label: "Pago fiado" },
+                                            { value: "payment", label: "Pago a cuenta" },
                                         ].map((t) => (
                                             <button
                                                 key={t.value}
@@ -540,7 +540,7 @@ function EditTransactionModal({
                                                     <option value="transfer">Transferencia</option>
                                                     <option value="card">Tarjeta</option>
                                                     {op.type !== "payment" && (
-                                                        <option value="debt">Fiado</option>
+                                                        <option value="debt">A cuenta</option>
                                                     )}
                                                 </select>
 

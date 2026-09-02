@@ -105,8 +105,8 @@ function NewTransaction() {
         if ((hasPaymentOperation || hasDebtAmount) && !client) {
             toast.error(
                 hasPaymentOperation
-                    ? "El pago de fiado requiere seleccionar un cliente."
-                    : "Para registrar un fiado tenés que seleccionar o crear un cliente."
+                    ? "El pago a cuenta requiere seleccionar un cliente."
+                    : "Para registrar una venta a cuenta tenés que seleccionar o crear un cliente."
             );
             setShowExtraDetails(true);
             return;
@@ -360,7 +360,7 @@ function NewTransaction() {
                                                     { value: "sube", label: "Carga SUBE" },
                                                     { value: "phone", label: "Celular" },
                                                     { value: "exchange", label: "Cambio" },
-                                                    { value: "payment", label: "Pago fiado" },
+                                                    { value: "payment", label: "Pago a cuenta" },
                                                 ].map((t) => {
                                                     const isSelected = op.type === t.value;
                                                     return (
@@ -500,7 +500,7 @@ function NewTransaction() {
                                 )}
                                 {hasPaymentOperation && (
                                     <span className="text-xs font-semibold text-[var(--danger)]">
-                                        (Obligatorio para pago de fiado)
+                                        (Obligatorio para pago a cuenta)
                                     </span>
                                 )}
                             </div>

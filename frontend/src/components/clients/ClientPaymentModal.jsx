@@ -19,11 +19,11 @@ function ClientPaymentModal({
 
     if (!isOpen || !client) return null;
 
-    const numericDebt = Math.max(0, Number(currentDebt) || 0);
+    const rawDebt = Number(currentDebt) || 0;
 
     function handlePayFull() {
-        if (numericDebt > 0) {
-            setAmount(String(numericDebt));
+        if (rawDebt > 0) {
+            setAmount(String(rawDebt));
         }
     }
 
@@ -56,7 +56,7 @@ function ClientPaymentModal({
             };
 
             await createTransaction(payload);
-            toast.success(`Cobro de ${formatCurrency(cleanAmount)} registrado.`);
+            toast.success(`Pago a cuenta de ${formatCurrency(cleanAmount)} registrado.`);
             setAmount("");
             setDescription("");
             setMethod("cash");
@@ -99,7 +99,7 @@ function ClientPaymentModal({
                 <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] pb-4">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
-                            Cobro de Fiado
+                            Pago / Ingreso a Cuenta
                         </p>
                         <h2 className="mt-1 text-lg font-bold text-[var(--text-primary)]">
                             {client.name}
@@ -108,20 +108,22 @@ function ClientPaymentModal({
 
                     <div className="text-right">
                         <span className="text-xs text-[var(--text-secondary)]">
-                            Deuda actual
+                            {rawDebt > 0 ? "Deuda actual" : rawDebt < 0 ? "Saldo a favor" : "Estado"}
                         </span>
-                        <p className="text-lg font-bold tabular-nums text-[var(--warning)]">
-                            {formatCurrency(numericDebt)}
+                        <p className={`text-lg font-bold tabular-nums ${
+                            rawDebt > 0 ? "text-[var(--danger)]" : rawDebt < 0 ? "text-[var(--success)]" : "text-[var(--text-primary)]"
+                        }`}>
+                            {rawDebt > 0 ? formatCurrency(rawDebt) : rawDebt < 0 ? formatCurrency(Math.abs(rawDebt)) : "$ 0"}
                         </p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-5 space-y-4">
                     {/* QUICK SETTLE BUTTON */}
-                    {numericDebt > 0 && (
+                    {rawDebt > 0 && (
                         <div className="flex items-center justify-between gap-2 rounded-md bg-[var(--surface-accent)]/50 p-2.5">
                             <span className="text-xs text-[var(--text-secondary)]">
-                                ¿Paga la totalidad?
+                                ¿Paga la totalidad de la deuda?
                             </span>
                             <button
                                 type="button"
@@ -141,7 +143,7 @@ function ClientPaymentModal({
                                     hover:text-white
                                 "
                             >
-                                Saldar total ({formatCurrency(numericDebt)})
+                                Saldar total ({formatCurrency(rawDebt)})
                             </button>
                         </div>
                     )}

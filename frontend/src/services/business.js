@@ -129,7 +129,7 @@ export function getTransactionLabel(type) {
         provider: "Proveedor",
         expense: "Gasto",
         loss: "Pérdida",
-        payment: "Pagos de fiado",
+        payment: "Pago a cuenta",
     };
 
     return labels[type] || type;
@@ -141,7 +141,7 @@ export function getMethodLabel(method) {
         cash: "Efectivo",
         transfer: "Transferencia",
         card: "Tarjeta",
-        debt: "Fiado",
+        debt: "A cuenta",
     };
 
     return labels[method] || method;

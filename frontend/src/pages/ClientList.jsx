@@ -105,7 +105,7 @@ function ClientList() {
                         text-sm
                         text-[var(--text-secondary)]
                     ">
-                        Clientes registrados y seguimiento de fiados.
+                        Clientes registrados y estado de cuenta.
                     </p>
                 </div>
 
@@ -282,18 +282,50 @@ function ClientList() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-4 shrink-0">
+                                    <div className="flex items-center gap-3 shrink-0">
                                         {Number(client.debt || 0) > 0 && (
                                             <span className="
-                                                rounded
-                                                bg-[var(--warning)]/10
-                                                px-2.5
+                                                rounded-full
+                                                border
+                                                border-[var(--danger)]/30
+                                                bg-[var(--danger)]/10
+                                                px-3
                                                 py-1
                                                 text-xs
                                                 font-semibold
-                                                text-[var(--warning)]
+                                                text-[var(--danger)]
                                             ">
-                                                Fiado: {formatCurrency(client.debt)}
+                                                Debe: {formatCurrency(client.debt)}
+                                            </span>
+                                        )}
+                                        {Number(client.debt || 0) < 0 && (
+                                            <span className="
+                                                rounded-full
+                                                border
+                                                border-[var(--success)]/30
+                                                bg-[var(--success)]/10
+                                                px-3
+                                                py-1
+                                                text-xs
+                                                font-semibold
+                                                text-[var(--success)]
+                                            ">
+                                                A favor: {formatCurrency(Math.abs(client.debt))}
+                                            </span>
+                                        )}
+                                        {Number(client.debt || 0) === 0 && (
+                                            <span className="
+                                                rounded-full
+                                                border
+                                                border-[var(--border)]
+                                                bg-[var(--surface-accent)]
+                                                px-3
+                                                py-1
+                                                text-xs
+                                                font-medium
+                                                text-[var(--text-secondary)]
+                                            ">
+                                                Al día
                                             </span>
                                         )}
                                         <span className="

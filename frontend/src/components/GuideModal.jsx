@@ -78,7 +78,7 @@ function GuideModal({ isOpen, onClose }) {
                                     Apertura y Cierre de Caja
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Al iniciar la jornada o turno, presioná <strong>"Abrir caja"</strong> en el Dashboard. Todas las ventas, salidas y cobros se acumulan en esa caja. Al terminar, presioná <strong>"Cerrar caja"</strong> en la barra lateral para generar el reporte de recaudación.
+                                    Al iniciar la jornada o turno, presioná <strong>"Abrir caja"</strong> en el Panel Principal. Todas las ventas, salidas y cobros se acumulan en esa caja. Al terminar, presioná <strong>"Cerrar caja"</strong> en la barra lateral para generar el reporte de recaudación.
                                 </p>
                             </div>
 
@@ -96,7 +96,7 @@ function GuideModal({ isOpen, onClose }) {
                                     Transferencias no recibidas
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Si una transferencia bancaria no impactó al momento del cierre, el sistema te permite elegir: confirmarla cuando llegue, pasarla a la libreta del cliente como fiado, o anularla.
+                                    Si una transferencia bancaria no impactó al momento del cierre, el sistema te permite elegir: confirmarla cuando llegue, pasarla a la cuenta corriente del cliente como saldo deudor, o anularla.
                                 </p>
                             </div>
                         </div>
@@ -115,19 +115,19 @@ function GuideModal({ isOpen, onClose }) {
 
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
                                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                                    Ventas a Fiado (Libreta)
+                                    Ventas A Cuenta (Libreta / Cuenta Corriente)
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Al seleccionar <strong>Fiado</strong>, es obligatorio asignar a qué cliente corresponde. El importe aumenta la deuda de su libreta y no suma efectivo a la caja hasta el momento en que el cliente realice el pago.
+                                    Al seleccionar <strong>A cuenta</strong>, es obligatorio asignar a qué cliente corresponde. Si el cliente tiene <strong>saldo a favor</strong>, el sistema lo descuenta de allí; si no, aumenta su deuda hasta que realice un pago.
                                 </p>
                             </div>
 
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
                                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                                    Migración de cuadernos y Cobro de deudas
+                                    Migración de cuadernos y Pagos a Cuenta
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Al crear un cliente podés cargar su <strong>"Saldo deudor inicial"</strong> para migrar deudas de papel. Cuando venga a pagar, entrás a su ficha y usás <strong>"+ Registrar cobro"</strong> para saldar total o parcialmente su cuenta.
+                                    Al crear un cliente podés cargar su <strong>"Saldo deudor inicial"</strong> para migrar deudas de papel. Cuando venga a pagar o deje dinero a favor, entrás a su ficha y usás <strong>"+ Registrar pago a cuenta"</strong>.
                                 </p>
                             </div>
                         </div>
@@ -140,7 +140,7 @@ function GuideModal({ isOpen, onClose }) {
                                     Pagos y Salidas de Caja
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Tocando <strong>"- Registrar gasto / salida"</strong> en el Dashboard podés registrar pagos a repartidores o gastos generales del local, descontando el dinero físico de la caja activa.
+                                    Tocando <strong>"- Gasto / Salida"</strong> en el Panel Principal podés registrar pagos a repartidores o gastos generales del local, descontando el dinero físico de la caja activa.
                                 </p>
                             </div>
 

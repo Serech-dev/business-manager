@@ -160,7 +160,7 @@ function Dashboard() {
 
                         <div className="mt-1 flex items-center gap-3">
                             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
-                                Dashboard
+                                Panel Principal
                             </h1>
 
                             {register ? (
@@ -228,7 +228,7 @@ function Dashboard() {
                                     Abrí la caja para comenzar la jornada
                                 </h2>
                                 <p className="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">
-                                    Las ventas, cobros de fiados y pagos a proveedores se registrarán dentro del turno actual y formarán parte del reporte de cierre.
+                                    Las ventas, pagos a cuenta y pagos a proveedores se registrarán dentro del turno actual y formarán parte del reporte de cierre.
                                 </p>
                             </div>
 

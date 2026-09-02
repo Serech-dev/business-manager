@@ -16,11 +16,18 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
 import MoneyInput from "../components/MoneyInput";
 import ClientPaymentModal from "../components/clients/ClientPaymentModal";
+import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 
 function ClientDetail({ isNewClient = false }) {
     const { id } = useParams();
     const navigate = useNavigate();
+
+    const {
+        isKioskDevice,
+        isUnlocked,
+        requireOwnerAccess,
+    } = useDeviceSecurity();
 
     const [client, setClient] = useState(
         isNewClient ? {} : null
@@ -95,10 +102,22 @@ function ClientDetail({ isNewClient = false }) {
             toast.error(
                 "El nombre es obligatorio."
             );
-
             return;
         }
 
+        const currentInitialDebt = client?.initial_debt ? Number(client.initial_debt) : 0;
+        const newInitialDebt = initialDebt ? Number(initialDebt) : 0;
+        const isEditingDebt = currentInitialDebt !== newInitialDebt || (isNewClient && newInitialDebt > 0);
+
+        if (isEditingDebt && isKioskDevice && !isUnlocked) {
+            requireOwnerAccess(() => executeSave());
+            return;
+        }
+
+        await executeSave();
+    }
+
+    async function executeSave() {
         setIsSaving(true);
 
         try {
@@ -159,6 +178,14 @@ function ClientDetail({ isNewClient = false }) {
             setIsDeleting(false);
             setShowDeleteDialog(false);
         }
+    }
+
+    function requestDelete() {
+        if (isKioskDevice && !isUnlocked) {
+            requireOwnerAccess(() => setShowDeleteDialog(true));
+            return;
+        }
+        setShowDeleteDialog(true);
     }
 
 
@@ -271,31 +298,27 @@ function ClientDetail({ isNewClient = false }) {
 
                     {!isNewClient && (
                         <div className="flex flex-wrap items-center gap-2">
-                            {debtTotal > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPaymentModalOpen(true)}
-                                    className="
-                                        rounded-md
-                                        bg-[var(--primary)]
-                                        px-4
-                                        py-2
-                                        text-sm
-                                        font-bold
-                                        text-white
-                                        transition
-                                        hover:bg-[var(--primary-hover)]
-                                    "
-                                >
-                                    + Registrar cobro
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => setIsPaymentModalOpen(true)}
+                                className="
+                                    rounded-md
+                                    bg-[var(--primary)]
+                                    px-4
+                                    py-2
+                                    text-sm
+                                    font-bold
+                                    text-white
+                                    transition
+                                    hover:bg-[var(--primary-hover)]
+                                "
+                            >
+                                {debtTotal > 0 ? "+ Registrar pago a cuenta" : "+ Ingresar a cuenta"}
+                            </button>
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    setShowDeleteDialog(true)
-                                }
+                                onClick={requestDelete}
                                 disabled={isDeleting}
                                 className="
                                     rounded-md
@@ -354,7 +377,7 @@ function ClientDetail({ isNewClient = false }) {
                                     tracking-wider
                                     text-[var(--text-secondary)]
                                 ">
-                                    Fiado acumulado
+                                    {debtTotal > 0 ? "Deuda actual" : debtTotal < 0 ? "Saldo a favor" : "Estado de cuenta"}
                                 </p>
 
                                 <p className={`
@@ -363,11 +386,13 @@ function ClientDetail({ isNewClient = false }) {
                                     font-bold
                                     ${
                                         debtTotal > 0
-                                            ? "text-[var(--warning)]"
-                                            : "text-[var(--text-primary)]"
+                                            ? "text-[var(--danger)]"
+                                            : debtTotal < 0
+                                                ? "text-[var(--success)]"
+                                                : "text-[var(--text-primary)]"
                                     }
                                 `}>
-                                    {formatCurrency(debtTotal)}
+                                    {debtTotal > 0 ? formatCurrency(debtTotal) : debtTotal < 0 ? formatCurrency(Math.abs(debtTotal)) : "$ 0"}
                                 </p>
 
                                 <p className="
@@ -377,31 +402,31 @@ function ClientDetail({ isNewClient = false }) {
                                 ">
                                     {debtTotal > 0
                                         ? "Saldo pendiente de cobro"
-                                        : "Sin deuda pendiente"}
+                                        : debtTotal < 0
+                                            ? "Tiene saldo a favor para sus compras"
+                                            : "Cuenta al día (sin deuda)"}
                                 </p>
                             </div>
 
-                            {debtTotal > 0 && (
-                                <div className="mt-4 border-t border-[var(--border)] pt-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsPaymentModalOpen(true)}
-                                        className="
-                                            w-full
-                                            rounded-md
-                                            bg-[var(--primary)]
-                                            py-2
-                                            text-xs
-                                            font-bold
-                                            text-white
-                                            transition
-                                            hover:bg-[var(--primary-hover)]
-                                        "
-                                    >
-                                        Cobrar fiado
-                                    </button>
-                                </div>
-                            )}
+                            <div className="mt-4 border-t border-[var(--border)] pt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPaymentModalOpen(true)}
+                                    className="
+                                        w-full
+                                        rounded-md
+                                        bg-[var(--primary)]
+                                        py-2
+                                        text-xs
+                                        font-bold
+                                        text-white
+                                        transition
+                                        hover:bg-[var(--primary-hover)]
+                                    "
+                                >
+                                    {debtTotal > 0 ? "Registrar cobro / pago a cuenta" : "Ingresar dinero a cuenta"}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="
@@ -575,9 +600,17 @@ function ClientDetail({ isNewClient = false }) {
                                     text-sm
                                     font-medium
                                     text-[var(--text-primary)]
+                                    inline-flex
+                                    items-center
+                                    gap-2
                                 "
                             >
-                                Saldo inicial / Deuda previa en libreta
+                                <span>Saldo inicial / Deuda previa en libreta</span>
+                                {isKioskDevice && !isUnlocked && (
+                                    <span className="rounded bg-[var(--warning)]/10 px-2 py-0.5 text-xs text-[var(--warning)] font-semibold">
+                                        🔒 Requiere PIN de dueño
+                                    </span>
+                                )}
                             </label>
 
                             <p className="mt-0.5 text-xs text-[var(--text-secondary)]">

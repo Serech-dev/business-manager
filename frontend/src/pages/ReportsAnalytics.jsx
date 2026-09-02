@@ -182,14 +182,28 @@ function ReportsAnalytics() {
                         <input
                             type="date"
                             value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                            max={endDate || undefined}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setStartDate(val);
+                                if (endDate && val > endDate) {
+                                    setEndDate(val);
+                                }
+                            }}
                             className="rounded border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                         />
                         <span className="font-semibold text-[var(--text-secondary)]">Hasta:</span>
                         <input
                             type="date"
                             value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                            min={startDate || undefined}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setEndDate(val);
+                                if (startDate && val < startDate) {
+                                    setStartDate(val);
+                                }
+                            }}
                             className="rounded border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                         />
                         <span className="ml-auto font-semibold text-[var(--primary)]">
@@ -451,7 +465,7 @@ function ReportsAnalytics() {
                                 { key: "cash", label: "Efectivo", color: "bg-[var(--success)]" },
                                 { key: "transfer", label: "Transferencia", color: "bg-sky-500" },
                                 { key: "card", label: "Tarjeta", color: "bg-purple-500" },
-                                { key: "debt", label: "Fiado otorgado", color: "bg-[var(--warning)]" },
+                                { key: "debt", label: "A cuenta otorgado", color: "bg-[var(--warning)]" },
                             ].map((m) => {
                                 const val = methods[m.key] || 0;
                                 const pct = totalMethodsVolume > 0 ? Math.round((val / totalMethodsVolume) * 100) : 0;

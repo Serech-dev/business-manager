@@ -22,7 +22,7 @@ function AppLayout() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)]">
+        <div className="min-h-screen text-[var(--text-primary)]">
             <Sidebar
                 register={register}
                 setRegister={setRegister}
