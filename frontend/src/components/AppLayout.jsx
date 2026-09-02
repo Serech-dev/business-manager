@@ -5,26 +5,21 @@ import Sidebar from "./Sidebar";
 import HelpButton from "./HelpButton";
 import { getCurrentRegister } from "../services/business";
 
-
 function AppLayout() {
     const [register, setRegister] = useState(null);
 
     async function loadRegister() {
         try {
-            const currentRegister =
-                await getCurrentRegister();
-
+            const currentRegister = await getCurrentRegister();
             setRegister(currentRegister);
         } catch (error) {
-            console.error(error);
+            console.error("Error loading current register in AppLayout:", error);
         }
     }
-
 
     useEffect(() => {
         loadRegister();
     }, []);
-
 
     return (
         <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)]">
@@ -42,10 +37,10 @@ function AppLayout() {
                     }}
                 />
             </main>
+
             <HelpButton />
         </div>
     );
 }
-
 
 export default AppLayout;
