@@ -311,4 +311,129 @@ class TransactionOperationAmount(models.Model):
         return f"{self.method}: {self.amount}"
 
 
+class Category(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="product_categories",
+    )
+
+    name = models.CharField(
+        max_length=100,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "user",
+                name="unique_category_name_per_user_ci",
+            )
+        ]
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    class UnitType(models.TextChoices):
+        UNIT = "unit", "Unidad"
+        KG = "kg", "Kilogramo (kg)"
+        HUNDRED_GRAMS = "100g", "100 Gramos (100g)"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="products",
+    )
+
+    name = models.CharField(
+        max_length=150,
+    )
+
+    unit_type = models.CharField(
+        max_length=10,
+        choices=UnitType.choices,
+        default=UnitType.UNIT,
+    )
+
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+    )
+
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+    )
+
+    sale_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
+    cost_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        blank=True,
+    )
+
+    barcode = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+    )
+
+    stock = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    min_stock = models.IntegerField(
+        default=0,
+        null=True,
+        blank=True,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "user",
+                name="unique_product_name_per_user_ci",
+            )
+        ]
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 

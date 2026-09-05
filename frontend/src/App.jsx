@@ -12,6 +12,7 @@ import RegisterReport from "./pages/RegisterReport";
 import NewTransaction from "./pages/NewTransaction";
 import RegisterHistory from "./pages/RegisterHistory";
 import ReportsAnalytics from "./pages/ReportsAnalytics";
+import ProductList from "./pages/ProductList";
 
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -102,6 +103,10 @@ function App() {
                             <Route
                                 path="/providers/:id"
                                 element={<ProviderDetail />}
+                            />
+                            <Route
+                                path="/products"
+                                element={<ProductList />}
                             />
                         </Route>
 

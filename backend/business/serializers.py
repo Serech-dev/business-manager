@@ -3,8 +3,9 @@ from decimal import Decimal
 from django.db import transaction as db_transaction
 from rest_framework import serializers
 
-from .models import (Client, Provider, Register, Transaction,
-                     TransactionOperation, TransactionOperationAmount)
+from .models import (Category, Client, Product, Provider, Register,
+                     Transaction, TransactionOperation,
+                     TransactionOperationAmount)
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -1246,3 +1247,73 @@ class ProviderSerializer(
             debt_created - debt_paid,
             Decimal("0"),
         )
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    products_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = [
+            "id",
+            "name",
+            "created_at",
+            "products_count",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "products_count",
+        ]
+
+    def get_products_count(self, obj):
+        return obj.products.filter(is_active=True).count()
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(
+        source="category.name",
+        read_only=True,
+        default=None,
+    )
+    provider_name = serializers.CharField(
+        source="provider.name",
+        read_only=True,
+        default=None,
+    )
+    markup_percentage = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "name",
+            "unit_type",
+            "category",
+            "category_name",
+            "provider",
+            "provider_name",
+            "sale_price",
+            "cost_price",
+            "barcode",
+            "stock",
+            "min_stock",
+            "is_active",
+            "markup_percentage",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "markup_percentage",
+            "category_name",
+            "provider_name",
+        ]
+
+    def get_markup_percentage(self, obj):
+        if obj.cost_price and obj.cost_price > Decimal("0") and obj.sale_price:
+            markup = ((obj.sale_price - obj.cost_price) / obj.cost_price) * Decimal("100")
+            return round(float(markup), 1)
+        return None

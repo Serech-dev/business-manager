@@ -141,6 +141,23 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
+/* REMOVE NUMBER INPUT SPINNER ARROWS GLOBALLY */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Global Select & Option styling to prevent OS default white boxes */
+select option {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
 /* THEMED SLICK SCROLLBARS */
 ::-webkit-scrollbar {
   width: 5px;

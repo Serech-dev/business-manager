@@ -381,6 +381,49 @@ function Sidebar({
                     Proveedores
                 </button>
 
+                <button
+                    type="button"
+                    onClick={() => {
+                        requireOwnerAccess(() => navigate("/products"));
+                    }}
+                    className={`
+                        flex
+                        w-full
+                        items-center
+                        justify-between
+                        rounded-lg
+                        border-l-2
+                        px-4
+                        py-2.5
+                        text-left
+                        text-sm
+                        transition
+                        ${
+                            isActive("/products")
+                                ? `
+                                    border-[var(--primary)]
+                                    bg-[var(--surface-accent)]
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                `
+                                : `
+                                    border-transparent
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                    hover:bg-[var(--surface-accent)]
+                                    hover:text-[var(--text-primary)]
+                                `
+                        }
+                    `}
+                >
+                    <span>Productos</span>
+                    {isKioskDevice && !isUnlocked && (
+                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                            PIN
+                        </span>
+                    )}
+                </button>
+
             </nav>
 
 

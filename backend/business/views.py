@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction as db_transaction
 from django.utils import timezone
@@ -7,9 +7,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import (Client, Provider, Register, Transaction,
-                     TransactionOperationAmount)
-from .serializers import (ClientSerializer, ProviderSerializer,
+from .models import (Category, Client, Product, Provider, Register,
+                     Transaction, TransactionOperationAmount)
+from .serializers import (CategorySerializer, ClientSerializer,
+                          ProductSerializer, ProviderSerializer,
                           RegisterSerializer,
                           TransactionAmountReceivedSerializer,
                           TransactionSerializer)
@@ -563,3 +564,235 @@ class AnalyticsView(APIView):
             end_date_str=end_date,
         )
         return Response(data, status=status.HTTP_200_OK)
+
+
+class CategoryListCreateView(generics.ListCreateAPIView):
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Category.objects
+            .filter(user=self.request.user)
+            .prefetch_related("products")
+            .order_by("name")
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
+
+
+class ProductListCreateView(generics.ListCreateAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = (
+            Product.objects
+            .filter(user=self.request.user)
+            .select_related("category", "provider")
+            .order_by("name")
+        )
+
+        search = self.request.query_params.get("search")
+        if search:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(barcode__iexact=search)
+            )
+
+        category_id = self.request.query_params.get("category")
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        provider_id = self.request.query_params.get("provider")
+        if provider_id:
+            queryset = queryset.filter(provider_id=provider_id)
+
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            active_bool = is_active.lower() in ["true", "1"]
+            queryset = queryset.filter(is_active=active_bool)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Product.objects
+            .filter(user=self.request.user)
+            .select_related("category", "provider")
+        )
+
+
+class ImportStarterCatalogView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .starter_catalog import import_starter_catalog_for_user
+
+        result = import_starter_catalog_for_user(request.user)
+        return Response(result, status=status.HTTP_200_OK)
+
+
+def calculate_adjusted_price(current_val, adjustment_type, adjustment_value, rounding="none"):
+    if current_val is None:
+        return Decimal("0.00")
+    val = Decimal(str(current_val))
+    adj = Decimal(str(adjustment_value))
+
+    if adjustment_type == "percentage":
+        new_val = val * (Decimal("1") + (adj / Decimal("100")))
+    else:  # fixed
+        new_val = val + adj
+
+    if new_val < Decimal("0"):
+        new_val = Decimal("0")
+
+    if rounding == "10":
+        new_val = (new_val / Decimal("10")).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * Decimal("10")
+    elif rounding == "50":
+        new_val = (new_val / Decimal("50")).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * Decimal("50")
+    elif rounding == "100":
+        new_val = (new_val / Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * Decimal("100")
+    else:
+        new_val = new_val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    return new_val
+
+
+class BulkUpdateProductPricesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @db_transaction.atomic
+    def post(self, request):
+        scope = request.data.get("scope", "all")
+        selected_ids = request.data.get("selected_ids", [])
+        category_id = request.data.get("category_id")
+        provider_id = request.data.get("provider_id")
+        adjustment_type = request.data.get("adjustment_type", "percentage")
+        adjustment_value = request.data.get("adjustment_value", 0)
+        target_field = request.data.get("target_field", "sale")
+        rounding = request.data.get("rounding", "none")
+
+        try:
+            adj_val_decimal = Decimal(str(adjustment_value))
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "El valor del ajuste debe ser un número válido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = Product.objects.filter(user=request.user)
+
+        if scope == "selected":
+            if not selected_ids:
+                return Response(
+                    {"error": "No se especificaron productos seleccionados."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            queryset = queryset.filter(id__in=selected_ids)
+        elif scope == "category":
+            if not category_id:
+                return Response(
+                    {"error": "Debés seleccionar una categoría."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            queryset = queryset.filter(category_id=category_id)
+        elif scope == "provider":
+            if not provider_id:
+                return Response(
+                    {"error": "Debés seleccionar un proveedor."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            queryset = queryset.filter(provider_id=provider_id)
+        elif scope == "all":
+            pass
+        else:
+            return Response(
+                {"error": "Alcance inválido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        products = list(queryset)
+        if not products:
+            return Response(
+                {"updated_count": 0, "message": "No se encontraron productos para actualizar."},
+                status=status.HTTP_200_OK,
+            )
+
+        fields_to_update = []
+        if target_field in ["sale", "both"]:
+            fields_to_update.append("sale_price")
+        if target_field in ["cost", "both"]:
+            fields_to_update.append("cost_price")
+
+        for product in products:
+            if target_field in ["sale", "both"]:
+                product.sale_price = calculate_adjusted_price(
+                    product.sale_price,
+                    adjustment_type,
+                    adj_val_decimal,
+                    rounding,
+                )
+            if target_field in ["cost", "both"]:
+                if product.cost_price and product.cost_price > Decimal("0"):
+                    product.cost_price = calculate_adjusted_price(
+                        product.cost_price,
+                        adjustment_type,
+                        adj_val_decimal,
+                        rounding,
+                    )
+
+        Product.objects.bulk_update(products, fields_to_update)
+
+        return Response(
+            {
+                "updated_count": len(products),
+                "message": f"Se actualizaron los precios de {len(products)} productos correctamente.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class BulkDeleteProductsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @db_transaction.atomic
+    def post(self, request):
+        product_ids = request.data.get("product_ids", [])
+        if not product_ids:
+            return Response(
+                {"error": "No se seleccionaron productos para eliminar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        deleted_count, _ = Product.objects.filter(
+            user=request.user,
+            id__in=product_ids,
+        ).delete()
+
+        return Response(
+            {
+                "deleted_count": deleted_count,
+                "message": f"Se eliminaron {deleted_count} productos correctamente.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+

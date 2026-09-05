@@ -1,13 +1,17 @@
 from django.urls import path
 
-from .views import (ClientDetailView, ClientListCreateView, CloseRegisterView,
+from .views import (AnalyticsView, BulkDeleteProductsView,
+                    BulkUpdateProductPricesView, CategoryDetailView,
+                    CategoryListCreateView, ClientDetailView,
+                    ClientListCreateView, CloseRegisterView,
                     CurrentRegisterView, CurrentTransactionListView,
-                    OpenRegisterView, ProviderDetailView,
-                    ProviderListCreateView, RegisterDetailView,
-                    RegisterListView, TransactionAmountReceivedView,
+                    ImportStarterCatalogView, OpenRegisterView,
+                    ProductDetailView, ProductListCreateView,
+                    ProviderDetailView, ProviderListCreateView,
+                    RegisterDetailView, RegisterListView,
                     ReopenLastRegisterView, ResolveTransferView,
-                    TransactionDetailView, TransactionListCreateView,
-                    AnalyticsView)
+                    TransactionAmountReceivedView, TransactionDetailView,
+                    TransactionListCreateView)
 
 urlpatterns = [
     path(
@@ -101,5 +105,47 @@ urlpatterns = [
     path(
         "providers/<int:pk>/",
         ProviderDetailView.as_view(),
+    ),
+
+    path(
+        "categories/",
+        CategoryListCreateView.as_view(),
+        name="category-list-create",
+    ),
+
+    path(
+        "categories/<int:pk>/",
+        CategoryDetailView.as_view(),
+        name="category-detail",
+    ),
+
+    path(
+        "products/",
+        ProductListCreateView.as_view(),
+        name="product-list-create",
+    ),
+
+    path(
+        "products/<int:pk>/",
+        ProductDetailView.as_view(),
+        name="product-detail",
+    ),
+
+    path(
+        "products/import-starter/",
+        ImportStarterCatalogView.as_view(),
+        name="import-starter-catalog",
+    ),
+
+    path(
+        "products/bulk-update-prices/",
+        BulkUpdateProductPricesView.as_view(),
+        name="bulk-update-product-prices",
+    ),
+
+    path(
+        "products/bulk-delete/",
+        BulkDeleteProductsView.as_view(),
+        name="bulk-delete-products",
     ),
 ]

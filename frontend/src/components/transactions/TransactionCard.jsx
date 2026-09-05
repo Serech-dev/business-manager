@@ -143,11 +143,16 @@ function TransactionCard({
 
     return (
         <article className="
+            overflow-hidden
+            rounded-xl
             border
             border-[var(--border)]
             bg-[var(--surface)]
-            transition
-            hover:bg-[var(--surface-accent)]/30
+            shadow-xs
+            transition-all
+            duration-200
+            hover:border-[var(--primary)]/35
+            hover:shadow-sm
         ">
             {/* HEADER */}
             <div className="
@@ -251,7 +256,7 @@ function TransactionCard({
                                 space-y-2
                                 px-5
                                 py-3.5
-                                bg-[var(--surface)]
+                                bg-[var(--surface-accent)]/20
                             "
                         >
                             {/* OPERATION TITLE & CONTEXT */}
@@ -425,18 +430,25 @@ function TransactionCard({
                         : `${operations.length} operaciones`}
                 </span>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <button
                         type="button"
                         onClick={() =>
                             requireOwnerAccess(() => setIsEditModalOpen(true))
                         }
                         className="
+                            rounded-lg
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface-accent)]/50
+                            px-3
+                            py-1
                             text-xs
-                            font-medium
-                            text-[var(--primary)]
+                            font-semibold
+                            text-[var(--text-primary)]
                             transition
-                            hover:underline
+                            hover:bg-[var(--surface-accent)]
+                            hover:text-[var(--primary)]
                         "
                     >
                         Editar
@@ -446,11 +458,18 @@ function TransactionCard({
                         type="button"
                         onClick={() => onDelete(transaction.id)}
                         className="
+                            rounded-lg
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface-accent)]/50
+                            px-3
+                            py-1
                             text-xs
-                            font-medium
+                            font-semibold
                             text-[var(--danger)]
                             transition
-                            hover:underline
+                            hover:bg-[var(--danger)]/10
+                            hover:border-[var(--danger)]/30
                         "
                     >
                         Eliminar

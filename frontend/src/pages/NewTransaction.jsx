@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
     createTransaction,
     createClient,
+    getProducts,
+    getCategories,
     getTransactionLabel,
 } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -12,12 +14,15 @@ import { formatCurrency } from "../utils/formatCurrency";
 import TransactionClient from "../components/transactions/TransactionClient";
 import TransactionExchange from "../components/transactions/TransactionExchange";
 import TransactionAmounts from "../components/transactions/TransactionAmounts";
+import SaleProductSelector from "../components/transactions/SaleProductSelector";
+import TransactionChangeCalculator from "../components/transactions/TransactionChangeCalculator";
 
 function createNewOperation() {
     return {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: "sale",
         exchangeAmount: "",
+        items: [],
         amounts: [
             {
                 method: "cash",
@@ -30,11 +35,30 @@ function createNewOperation() {
 function NewTransaction() {
     const navigate = useNavigate();
 
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [client, setClient] = useState(null);
     const [description, setDescription] = useState("");
+    const [receivedCash, setReceivedCash] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
     const [showExtraDetails, setShowExtraDetails] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        async function loadCatalog() {
+            try {
+                const [prodsData, catsData] = await Promise.all([
+                    getProducts(),
+                    getCategories(),
+                ]);
+                setProducts(prodsData);
+                setCategories(catsData);
+            } catch (err) {
+                console.error("Error loading products catalog for sale:", err);
+            }
+        }
+        loadCatalog();
+    }, []);
 
     const hasPaymentOperation = operations.some((op) => op.type === "payment");
 
@@ -84,6 +108,32 @@ function NewTransaction() {
         );
     }
 
+    function handleUpdateOperationItems(index, items) {
+        setOperations((current) =>
+            current.map((op, opIndex) => {
+                if (opIndex !== index) return op;
+
+                const cartTotal = items.reduce((sum, it) => sum + it.subtotal, 0);
+                let updatedAmounts = [...op.amounts];
+
+                if (items.length > 0) {
+                    if (updatedAmounts.length === 1) {
+                        updatedAmounts[0] = {
+                            ...updatedAmounts[0],
+                            amount: cartTotal > 0 ? String(cartTotal) : "",
+                        };
+                    }
+                }
+
+                return {
+                    ...op,
+                    items,
+                    amounts: updatedAmounts,
+                };
+            })
+        );
+    }
+
     const grandTotal = operations.reduce((total, op) => {
         return (
             total +
@@ -91,6 +141,15 @@ function NewTransaction() {
                 (sum, a) => sum + (Number(a.amount) || 0),
                 0
             )
+        );
+    }, 0);
+
+    const totalCashDue = operations.reduce((sum, op) => {
+        return (
+            sum +
+            (op.amounts || [])
+                .filter((a) => a.method === "cash")
+                .reduce((s, a) => s + (Number(a.amount) || 0), 0)
         );
     }, 0);
 
@@ -173,9 +232,47 @@ function NewTransaction() {
                 });
             }
 
+            // Auto-generate description from cart items if no custom description is provided
+            let finalDescription = description.trim();
+            if (!finalDescription) {
+                const itemSummaries = [];
+                for (const op of operations) {
+                    if (op.type === "sale" && op.items && op.items.length > 0) {
+                        for (const it of op.items) {
+                            if (it.unitType === "unit") {
+                                itemSummaries.push(
+                                    `${it.quantity > 1 ? `${it.quantity} ` : ""}${it.product.name}`
+                                );
+                            } else {
+                                const weightStr =
+                                    it.grams >= 1000
+                                        ? `${(it.grams / 1000).toFixed(2).replace(/\.?0+$/, "")}kg`
+                                        : `${it.grams}g`;
+                                itemSummaries.push(`${weightStr} ${it.product.name}`);
+                            }
+                        }
+                    }
+                }
+                if (itemSummaries.length > 0) {
+                    finalDescription = itemSummaries.join(", ");
+                }
+            }
+
+            // Append cash change note if cash payment was given with change
+            const receivedNum = Number(receivedCash) || 0;
+            if (totalCashDue > 0 && receivedNum > totalCashDue) {
+                const change = receivedNum - totalCashDue;
+                const changeNote = `(Pagó ${formatCurrency(receivedNum)} · Vuelto ${formatCurrency(change)})`;
+                if (finalDescription) {
+                    finalDescription = `${finalDescription} · ${changeNote}`;
+                } else {
+                    finalDescription = changeNote;
+                }
+            }
+
             const payload = {
                 client: clientId,
-                description: description.trim(),
+                description: finalDescription,
                 operations: resolvedOperations,
             };
 
@@ -397,6 +494,23 @@ function NewTransaction() {
                                             </div>
                                         </div>
 
+                                        {/* PRODUCT SELECTION & WEIGHT CALCULATOR (FOR SALES) */}
+                                        {op.type === "sale" && (
+                                            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/20 p-4">
+                                                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                                    Productos
+                                                </label>
+                                                <SaleProductSelector
+                                                    products={products}
+                                                    categories={categories}
+                                                    items={op.items || []}
+                                                    onItemsChange={(newItems) =>
+                                                        handleUpdateOperationItems(index, newItems)
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+
                                         {/* EXCHANGE DETAILS (IF APPLICABLE) */}
                                         {isExchange && (
                                             <TransactionExchange
@@ -414,6 +528,11 @@ function NewTransaction() {
                                         {/* AMOUNTS & PAYMENT METHODS */}
                                         <TransactionAmounts
                                             amounts={op.amounts}
+                                            targetTotal={
+                                                op.type === "sale" && op.items && op.items.length > 0
+                                                    ? op.items.reduce((s, it) => s + it.subtotal, 0)
+                                                    : (op.type === "exchange" ? Number(op.exchangeAmount) || 0 : 0)
+                                            }
                                             onAmountsChange={(amounts) =>
                                                 handleUpdateOperation(
                                                     index,
@@ -459,6 +578,16 @@ function NewTransaction() {
                         <span>+</span>
                         Agregar otra operación a esta venta
                     </button>
+
+                    {/* CASH CHANGE CALCULATOR (VUELTO) */}
+                    {totalCashDue > 0 && (
+                        <TransactionChangeCalculator
+                            totalCashDue={totalCashDue}
+                            grandTotal={grandTotal}
+                            receivedCash={receivedCash}
+                            onReceivedCashChange={setReceivedCash}
+                        />
+                    )}
 
                     {/* OPTIONAL CLIENT & NOTE (COMPACT & UNCONGESTED) */}
                     <div className="

@@ -249,3 +249,81 @@ export async function resolveTransfer(id, { action, clientId = null }) {
     return response.data;
 }
 
+
+export async function getCategories() {
+    const response = await api.get("business/categories/");
+    return response.data;
+}
+
+
+export async function createCategory(data) {
+    const response = await api.post("business/categories/", data);
+    return response.data;
+}
+
+
+export async function deleteCategory(id) {
+    await api.delete(`business/categories/${id}/`);
+}
+
+
+export async function getProducts(params = {}) {
+    const query = new URLSearchParams();
+    if (params.search) query.set("search", params.search);
+    if (params.category) query.set("category", params.category);
+    if (params.provider) query.set("provider", params.provider);
+    if (params.is_active !== undefined) query.set("is_active", params.is_active);
+
+    const queryString = query.toString();
+    const response = await api.get(
+        `business/products/${queryString ? `?${queryString}` : ""}`
+    );
+    return response.data;
+}
+
+
+export async function getProduct(id) {
+    const response = await api.get(`business/products/${id}/`);
+    return response.data;
+}
+
+
+export async function createProduct(data) {
+    const response = await api.post("business/products/", data);
+    return response.data;
+}
+
+
+export async function updateProduct(id, data) {
+    const response = await api.patch(`business/products/${id}/`, data);
+    return response.data;
+}
+
+
+export async function deleteProduct(id) {
+    await api.delete(`business/products/${id}/`);
+}
+
+
+export async function importStarterCatalog() {
+    const response = await api.post("business/products/import-starter/");
+    return response.data;
+}
+
+
+export async function bulkUpdateProductPrices(data) {
+    const response = await api.post("business/products/bulk-update-prices/", data);
+    return response.data;
+}
+
+
+export async function bulkDeleteProducts(productIds) {
+    const response = await api.post("business/products/bulk-delete/", {
+        product_ids: productIds,
+    });
+    return response.data;
+}
+
+
+
+
