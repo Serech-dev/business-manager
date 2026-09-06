@@ -13,6 +13,7 @@ import ProductModal from "../components/products/ProductModal";
 import CategoryModal from "../components/products/CategoryModal";
 import ProviderModal from "../components/products/ProviderModal";
 import BulkPriceModal from "../components/products/BulkPriceModal";
+import ImportCatalogModal from "../components/products/ImportCatalogModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
@@ -90,8 +91,7 @@ function ProductList() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-    const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     async function loadData() {
         try {
@@ -329,23 +329,6 @@ function ProductList() {
         }
     }
 
-    async function handleImportStarter() {
-        setIsImporting(true);
-        try {
-            const res = await importStarterCatalog();
-            toast.success(
-                `Catálogo base importado: ${res.created_products} productos en ${res.created_categories} categorías.`
-            );
-            setIsImportConfirmOpen(false);
-            await loadData();
-        } catch (error) {
-            console.error("Error importing starter catalog:", error);
-            toast.error("No se pudo importar el catálogo base.");
-        } finally {
-            setIsImporting(false);
-        }
-    }
-
     function handleBulkPricesUpdated() {
         loadData();
     }
@@ -444,7 +427,7 @@ function ProductList() {
 
                     <button
                         type="button"
-                        onClick={() => requireOwnerAccess(() => setIsImportConfirmOpen(true))}
+                        onClick={() => requireOwnerAccess(() => setIsImportModalOpen(true))}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         <span>Catálogo Base</span>
@@ -758,10 +741,10 @@ function ProductList() {
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => setIsImportConfirmOpen(true)}
+                                    onClick={() => requireOwnerAccess(() => setIsImportModalOpen(true))}
                                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                                 >
-                                    <span>Cargar catálogo base (80+ productos)</span>
+                                    <span>Cargar catálogo base (Multi-Rubro)</span>
                                 </button>
 
                                 <button
@@ -1206,30 +1189,12 @@ function ProductList() {
                 />
             )}
 
-            {/* IMPORT STARTER CATALOG CONFIRMATION */}
-            {isImportConfirmOpen && (
-                <ConfirmDialog
-                    title="Cargar catálogo base de Almacén"
-                    message={
-                        <div className="space-y-2 text-xs text-[var(--text-secondary)] leading-relaxed">
-                            <p className="text-sm text-[var(--text-primary)] font-medium">
-                                Se van a importar automáticamente <strong>~80 productos</strong> organizados en <strong>8 categorías</strong> (Bebidas, Cervezas, Golosinas, Galletitas, Almacén, Lácteos, Cigarrillos y Limpieza).
-                            </p>
-                            <p>
-                                Vienen con precios de referencia estándar que vas a poder ajustar, aumentar o eliminar cuando quieras.
-                            </p>
-                            <p className="text-[11px] text-[var(--primary)] font-semibold">
-                                No sobrescribe ni duplica productos que ya tengas creados.
-                            </p>
-                        </div>
-                    }
-                    confirmLabel={isImporting ? "Importando..." : "Importar catálogo ahora"}
-                    cancelLabel="Cancelar"
-                    onConfirm={handleImportStarter}
-                    onCancel={() => setIsImportConfirmOpen(false)}
-                    isLoading={isImporting}
-                />
-            )}
+            {/* MULTI-RUBRO STARTER CATALOG MODAL */}
+            <ImportCatalogModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onSuccess={loadData}
+            />
         </div>
     );
 }

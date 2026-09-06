@@ -305,8 +305,10 @@ export async function deleteProduct(id) {
 }
 
 
-export async function importStarterCatalog() {
-    const response = await api.post("business/products/import-starter/");
+export async function importStarterCatalog(presets = []) {
+    const response = await api.post("business/products/import-starter/", {
+        presets,
+    });
     return response.data;
 }
 

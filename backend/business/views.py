@@ -646,7 +646,11 @@ class ImportStarterCatalogView(APIView):
     def post(self, request):
         from .starter_catalog import import_starter_catalog_for_user
 
-        result = import_starter_catalog_for_user(request.user)
+        preset_keys = request.data.get("presets", [])
+        if not isinstance(preset_keys, list) or len(preset_keys) == 0:
+            preset_keys = None
+
+        result = import_starter_catalog_for_user(request.user, preset_keys=preset_keys)
         return Response(result, status=status.HTTP_200_OK)
 
 
