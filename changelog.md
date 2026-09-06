@@ -1,3 +1,34 @@
+v1.2.0 (Phase 2 - Products Catalog & POS Thermal Tickets)
+
+- Products & Inventory Module (Módulo de Productos & Categorías):
+  - Added full product catalog with category classification, cost/sale price, profit margin %, stock, barcode, and active status.
+  - Multi-unit pricing support: Unidad (`unit`), Kilogramo (`kg`), and 100 Gramos (`100g`) with automated fractional weight calculation.
+  - Quick-start catalog importer (`import-starter/`) with common Argentine business items (bakery, deli, butcher, grocery).
+  - Bulk price updater modal (percentage markup/markdown by category or across all products).
+  - Bulk product deletion with multi-selection table toolbar.
+  - Integrated inline Category and Provider management modals directly from the product creation/edit form (`+ Gestionar`).
+  - Provider management dashboard with total supplier counter (`Proveedores (N)`) on main product view.
+  - Owner PIN protection across catalog views, bulk operations, and Modo Caja lock screens.
+- New Sale Integration & POS Cash Register UX:
+  - Interactive product search with instant live filtering, barcode search, category pills, and itemized cart.
+  - Weight & Gram calculator modal with quick presets (100g, 250g, 500g, 1kg) and budget-to-grams conversion.
+  - Automatic cash change calculator (*"Vuelto"*) with standard banknote quick-add shortcuts ($2.000, $5.000, $10.000, $20.000).
+  - Smart split payment auto-balancing.
+  - Plug & Play hardware barcode scanner listener (USB/Bluetooth HID) with keystroke buffer detection.
+- POS Thermal Ticket & Receipt Printing:
+  - Authentic monospace thermal receipt formatting (`ReceiptTicket.jsx`) supporting 58mm and 80mm roll paper widths.
+  - Itemized breakdowns for products (quantities, unit prices, weights, subtotals), multi-operation breakdowns, payment methods, and cash change details.
+  - Realistic preview canvas with paper width selector (`58 mm` / `80 mm`) and inline editable store name persisted in `localStorage`.
+  - Zero-margin print isolation styles (`@media print`) isolating `#printable-receipt` without browser headers or margins.
+  - Space-efficient opt-in micro-switch toggle in the bottom checkout action bar to enable/disable post-sale ticket printing on demand.
+  - On-demand "Ticket" reprint button on every transaction card on the home dashboard.
+- Client Credit & UI Polish:
+  - Renamed "Fiado" to "A cuenta" across the application.
+  - Client credit balance (*"Saldo a favor"*) handling when debt overpayments occur.
+  - PIN-protected debt balance editing.
+  - Native browser auto-translation protection (`translate="no"`).
+  - Performance optimization: stripped heavy backdrop-blur filters for fluid 60fps rendering on low-end hardware.
+
 v1.0.0 (Phase 1 Complete)
 
 - Money on Register (Arqueo Inicial, Saldo en Tiempo Real y Conciliación):
