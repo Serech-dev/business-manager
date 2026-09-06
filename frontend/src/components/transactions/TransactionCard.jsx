@@ -9,6 +9,7 @@ import {
 
 import { formatCurrency } from "../../utils/formatCurrency";
 import EditTransactionModal from "./EditTransactionModal";
+import ReceiptModal from "./ReceiptModal";
 import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
 
 function formatDate(value) {
@@ -74,6 +75,7 @@ function TransactionCard({
     const { requireOwnerAccess } = useDeviceSecurity();
     const [updatingAmountId, setUpdatingAmountId] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
     const operations = transaction.operations || [];
 
@@ -433,6 +435,44 @@ function TransactionCard({
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
+                        onClick={() => setIsReceiptModalOpen(true)}
+                        className="
+                            inline-flex
+                            items-center
+                            gap-1.5
+                            rounded-lg
+                            border
+                            border-[var(--border)]
+                            bg-[var(--surface-accent)]/50
+                            px-2.5
+                            py-1
+                            text-xs
+                            font-semibold
+                            text-[var(--text-primary)]
+                            transition
+                            hover:bg-[var(--surface-accent)]
+                            hover:text-[var(--primary)]
+                        "
+                        title="Imprimir ticket / comprobante de venta"
+                    >
+                        <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="2"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M6.72 13.829c-.24-1.04-.37-2.12-.37-3.229 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.109-.13 2.19-.37 3.229M6.72 13.829l-1.92 8.32a.75.75 0 0 0 .96.88l3.48-1.16 3.48 1.16a.75.75 0 0 0 .48 0l3.48-1.16 3.48 1.16a.75.75 0 0 0 .96-.88l-1.92-8.32"
+                            />
+                        </svg>
+                        <span>Ticket</span>
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={() =>
                             requireOwnerAccess(() => setIsEditModalOpen(true))
                         }
@@ -476,6 +516,15 @@ function TransactionCard({
                     </button>
                 </div>
             </div>
+
+            {/* RECEIPT MODAL */}
+            {isReceiptModalOpen && (
+                <ReceiptModal
+                    isOpen={isReceiptModalOpen}
+                    onClose={() => setIsReceiptModalOpen(false)}
+                    transaction={transaction}
+                />
+            )}
 
             {/* EDIT MODAL */}
             {isEditModalOpen && (

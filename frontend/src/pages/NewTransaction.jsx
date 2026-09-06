@@ -16,6 +16,7 @@ import TransactionExchange from "../components/transactions/TransactionExchange"
 import TransactionAmounts from "../components/transactions/TransactionAmounts";
 import SaleProductSelector from "../components/transactions/SaleProductSelector";
 import TransactionChangeCalculator from "../components/transactions/TransactionChangeCalculator";
+import ReceiptModal from "../components/transactions/ReceiptModal";
 
 function createNewOperation() {
     return {
@@ -43,6 +44,14 @@ function NewTransaction() {
     const [operations, setOperations] = useState([createNewOperation()]);
     const [showExtraDetails, setShowExtraDetails] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Post-sale completion & ticket modal
+    const [printTicketOnSave, setPrintTicketOnSave] = useState(() => {
+        return localStorage.getItem("bm_print_ticket_on_save") === "true";
+    });
+    const [completedSale, setCompletedSale] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
 
     useEffect(() => {
         async function loadCatalog() {
@@ -276,15 +285,28 @@ function NewTransaction() {
                 operations: resolvedOperations,
             };
 
-            await createTransaction(payload);
+            const createdTx = await createTransaction(payload);
 
-            toast.success(
-                operations.length > 1
-                    ? "Venta registrada con éxito."
-                    : "Venta registrada con éxito."
-            );
+            toast.success("Venta registrada con éxito.");
 
-            navigate("/");
+            if (printTicketOnSave) {
+                // Collect cart items for receipt printing
+                const allCartItems = operations
+                    .flatMap((op) => op.items || [])
+                    .filter(Boolean);
+
+                setCompletedSale({
+                    transaction: {
+                        ...createdTx,
+                        client: client?.name || (typeof client === "string" ? client : null) || createdTx?.client,
+                        description: finalDescription,
+                    },
+                    items: allCartItems,
+                });
+                setShowSuccessModal(true);
+            } else {
+                navigate("/");
+            }
         } catch (error) {
             console.error(error);
             const message =
@@ -296,6 +318,17 @@ function NewTransaction() {
         } finally {
             setIsSubmitting(false);
         }
+    }
+
+    function handleResetForm() {
+        setOperations([createNewOperation()]);
+        setClient(null);
+        setDescription("");
+        setReceivedCash("");
+        setShowExtraDetails(false);
+        setCompletedSale(null);
+        setShowSuccessModal(false);
+        setShowReceiptModal(false);
     }
 
     return (
@@ -699,42 +732,131 @@ function NewTransaction() {
                     {/* BOTTOM CHECKOUT ACTION BAR */}
                     <div className="
                         sticky
-                        bottom-4
+                        bottom-3
                         z-20
                         flex
                         flex-col
-                        gap-3
-                        rounded-lg
+                        gap-2.5
+                        rounded-xl
                         border
                         border-[var(--border)]
                         bg-[var(--surface)]
-                        p-4
+                        p-3
                         shadow-xl
                         sm:flex-row
                         sm:items-center
                         sm:justify-between
+                        sm:px-4
+                        sm:py-3
                     ">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                        <div className="flex items-baseline justify-between gap-3 sm:block">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                                 Total a cobrar
                             </p>
-                            <p className="mt-0.5 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                            <p className="text-xl font-bold tabular-nums text-[var(--text-primary)] sm:mt-0.5 sm:text-2xl">
                                 {formatCurrency(grandTotal)}
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5">
+                            {/* CUSTOM PRINT TICKET SWITCH TOGGLE */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const next = !printTicketOnSave;
+                                    setPrintTicketOnSave(next);
+                                    localStorage.setItem(
+                                        "bm_print_ticket_on_save",
+                                        next ? "true" : "false"
+                                    );
+                                }}
+                                className={`
+                                    group
+                                    inline-flex
+                                    items-center
+                                    gap-2
+                                    rounded-lg
+                                    border
+                                    px-2.5
+                                    py-1.5
+                                    text-xs
+                                    font-semibold
+                                    transition
+                                    select-none
+                                    ${
+                                        printTicketOnSave
+                                            ? "border-[var(--primary)]/60 bg-[var(--primary)]/10 text-[var(--primary)]"
+                                            : "border-[var(--border)] bg-[var(--surface-accent)]/40 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                                    }
+                                `}
+                                title="Activar para emitir comprobante / ticket al registrar la venta"
+                            >
+                                {/* Micro slider track */}
+                                <span
+                                    className={`
+                                        relative
+                                        inline-flex
+                                        h-4
+                                        w-7
+                                        shrink-0
+                                        items-center
+                                        rounded-full
+                                        p-0.5
+                                        transition-colors
+                                        duration-200
+                                        ease-in-out
+                                        ${
+                                            printTicketOnSave
+                                                ? "bg-[var(--primary)]"
+                                                : "bg-neutral-600/40 dark:bg-neutral-600/60"
+                                        }
+                                    `}
+                                >
+                                    <span
+                                        className={`
+                                            inline-block
+                                            h-3
+                                            w-3
+                                            rounded-full
+                                            bg-white
+                                            shadow-xs
+                                            transition-transform
+                                            duration-200
+                                            ease-in-out
+                                            ${printTicketOnSave ? "translate-x-3" : "translate-x-0"}
+                                        `}
+                                    />
+                                </span>
+
+                                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                                    <svg
+                                        className="h-3.5 w-3.5 shrink-0"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth="2"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M6.72 13.829c-.24-1.04-.37-2.12-.37-3.229 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.109-.13 2.19-.37 3.229M6.72 13.829l-1.92 8.32a.75.75 0 0 0 .96.88l3.48-1.16 3.48 1.16a.75.75 0 0 0 .48 0l3.48-1.16 3.48 1.16a.75.75 0 0 0 .96-.88l-1.92-8.32"
+                                        />
+                                    </svg>
+                                    <span>Imprimir ticket</span>
+                                </span>
+                            </button>
+
                             <button
                                 type="button"
                                 onClick={() => navigate("/")}
                                 disabled={isSubmitting}
                                 className="
-                                    rounded-md
+                                    rounded-lg
                                     border
                                     border-[var(--border)]
-                                    px-4
-                                    py-2.5
-                                    text-sm
+                                    px-3.5
+                                    py-2
+                                    text-xs
                                     font-medium
                                     text-[var(--text-secondary)]
                                     transition
@@ -750,11 +872,11 @@ function NewTransaction() {
                                 type="submit"
                                 disabled={isSubmitting || grandTotal <= 0}
                                 className="
-                                    rounded-md
+                                    rounded-lg
                                     bg-[var(--primary)]
-                                    px-6
-                                    py-2.5
-                                    text-sm
+                                    px-5
+                                    py-2
+                                    text-xs
                                     font-bold
                                     text-white
                                     shadow-sm
@@ -771,6 +893,102 @@ function NewTransaction() {
                         </div>
                     </div>
                 </form>
+
+                {/* POST-SALE SUCCESS & RECEIPT PROMPT MODAL */}
+                {showSuccessModal && completedSale && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+                            onClick={() => navigate("/")}
+                        />
+                        <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">
+                            <div className="text-center space-y-2">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                                    <svg
+                                        className="h-6 w-6"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth="2.5"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="m4.5 12.75 6 6 9-13.5"
+                                        />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                                    ¡Venta Registrada!
+                                </h3>
+                                <p className="text-3xl font-extrabold text-[var(--primary)] tabular-nums">
+                                    {formatCurrency(completedSale.transaction.total || grandTotal)}
+                                </p>
+                                {completedSale.transaction.client && (
+                                    <p className="text-xs text-[var(--text-secondary)]">
+                                        Cliente:{" "}
+                                        <span className="font-semibold text-[var(--text-primary)]">
+                                            {typeof completedSale.transaction.client === "object"
+                                                ? completedSale.transaction.client.name
+                                                : completedSale.transaction.client}
+                                        </span>
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="space-y-2.5 pt-2 border-t border-[var(--border)]">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReceiptModal(true)}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] py-3 px-4 text-xs font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-98"
+                                >
+                                    <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth="2"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M6.72 13.829c-.24-1.04-.37-2.12-.37-3.229 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.109-.13 2.19-.37 3.229M6.72 13.829l-1.92 8.32a.75.75 0 0 0 .96.88l3.48-1.16 3.48 1.16a.75.75 0 0 0 .48 0l3.48-1.16 3.48 1.16a.75.75 0 0 0 .96-.88l-1.92-8.32"
+                                        />
+                                    </svg>
+                                    <span>Imprimir Ticket</span>
+                                </button>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleResetForm}
+                                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] py-2.5 px-3 text-xs font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                                    >
+                                        + Nueva Venta
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate("/")}
+                                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] py-2.5 px-3 text-xs font-bold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                                    >
+                                        Ir al Inicio
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* RECEIPT MODAL */}
+                {completedSale && (
+                    <ReceiptModal
+                        isOpen={showReceiptModal}
+                        onClose={() => setShowReceiptModal(false)}
+                        transaction={completedSale.transaction}
+                        items={completedSale.items}
+                    />
+                )}
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 
@@ -70,50 +70,102 @@ function SaleProductSelector({
     }, []);
 
     // Open weight/quantity dialog for a product
-    function handleSelectProduct(product) {
-        setIsSearchOpen(false);
-        setSearchQuery("");
+    const handleSelectProduct = useCallback(
+        (product) => {
+            setIsSearchOpen(false);
+            setSearchQuery("");
 
-        if (product.unit_type === "unit") {
-            // For unit products, check if already in cart
-            const existingIndex = items.findIndex(
-                (it) => it.product.id === product.id
-            );
-            if (existingIndex >= 0) {
-                // Increment existing item quantity
-                const updated = [...items];
-                const item = updated[existingIndex];
-                const newQty = item.quantity + 1;
-                updated[existingIndex] = {
-                    ...item,
-                    quantity: newQty,
-                    subtotal: Math.round(newQty * Number(product.sale_price)),
-                };
-                onItemsChange(updated);
+            if (product.unit_type === "unit") {
+                // For unit products, check if already in cart
+                const existingIndex = items.findIndex(
+                    (it) => it.product.id === product.id
+                );
+                if (existingIndex >= 0) {
+                    // Increment existing item quantity
+                    const updated = [...items];
+                    const item = updated[existingIndex];
+                    const newQty = item.quantity + 1;
+                    updated[existingIndex] = {
+                        ...item,
+                        quantity: newQty,
+                        subtotal: Math.round(newQty * Number(product.sale_price)),
+                    };
+                    onItemsChange(updated);
+                } else {
+                    // Add new unit item
+                    const newItem = {
+                        product,
+                        unitType: "unit",
+                        quantity: 1,
+                        grams: null,
+                        unitPrice: Number(product.sale_price),
+                        subtotal: Math.round(Number(product.sale_price)),
+                    };
+                    onItemsChange([...items, newItem]);
+                }
             } else {
-                // Add new unit item
-                const newItem = {
-                    product,
-                    unitType: "unit",
-                    quantity: 1,
-                    grams: null,
-                    unitPrice: Number(product.sale_price),
-                    subtotal: Math.round(Number(product.sale_price)),
-                };
-                onItemsChange([...items, newItem]);
+                // Open weight dialog for kg or 100g
+                setActiveProductForWeight(product);
+                setEditingItemIndex(null);
+                setWeightInputMode("weight");
+                // Default preset: 500g for kg, 150g for 100g
+                setWeightGrams(product.unit_type === "kg" ? "500" : "150");
+                setTargetMoney("");
             }
-        } else {
-            // Open weight dialog for kg or 100g
-            setActiveProductForWeight(product);
-            setEditingItemIndex(null);
-            setWeightInputMode("weight");
-            // Default preset: 500g for kg, 150g for 100g
-            setWeightGrams(product.unit_type === "kg" ? "500" : "150");
-            setTargetMoney("");
-        }
-    }
+        },
+        [items, onItemsChange]
+    );
 
-    // Handle barcode / fast enter key submission
+    // Global Hardware Barcode Scanner Listener (Plug & Play USB / Bluetooth HID)
+    useEffect(() => {
+        let barcodeBuffer = "";
+        let lastKeyTime = Date.now();
+
+        function handleGlobalKeyDown(e) {
+            const targetTag = e.target?.tagName;
+            // Ignore if user is manually typing inside modal inputs, textarea, etc.
+            if (e.target !== searchInputRef.current && (targetTag === "INPUT" || targetTag === "TEXTAREA" || targetTag === "SELECT")) {
+                return;
+            }
+
+            // If searchInput is already focused, its onKeyDown handles it
+            if (e.target === searchInputRef.current) {
+                return;
+            }
+
+            const currentTime = Date.now();
+            const timeDiff = currentTime - lastKeyTime;
+            lastKeyTime = currentTime;
+
+            if (e.key === "Enter") {
+                if (barcodeBuffer.trim().length >= 3) {
+                    const query = barcodeBuffer.trim().toLowerCase();
+                    const matched =
+                        activeProducts.find((p) => p.barcode && p.barcode.toLowerCase() === query) ||
+                        activeProducts.find((p) => p.barcode && p.barcode.toLowerCase().includes(query)) ||
+                        activeProducts.find((p) => p.name.toLowerCase() === query);
+
+                    if (matched) {
+                        e.preventDefault();
+                        handleSelectProduct(matched);
+                    }
+                }
+                barcodeBuffer = "";
+            } else if (e.key.length === 1) {
+                // Buffer printable character if coming rapidly from scanner (< 100ms between chars)
+                if (timeDiff > 100) {
+                    barcodeBuffer = e.key;
+                } else {
+                    barcodeBuffer += e.key;
+                }
+            }
+        }
+
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [activeProducts, handleSelectProduct]);
+
+    // Handle barcode / fast enter key submission when input is focused
     function handleSearchKeyDown(e) {
         if (e.key === "Enter") {
             e.preventDefault();

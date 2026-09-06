@@ -194,3 +194,48 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* ==========================================================================
+   THERMAL POS RECEIPT PRINT MEDIA
+   Isolates #printable-receipt on 58mm/80mm roll printers or regular print
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Hide everything on the page except the printable receipt */
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-receipt,
+  #printable-receipt * {
+    visibility: visible;
+  }
+
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 4mm 2mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
