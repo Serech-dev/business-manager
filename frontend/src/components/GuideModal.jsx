@@ -1,9 +1,42 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
+import { useOnboarding } from "../context/OnboardingContext";
 
 function GuideModal({ isOpen, onClose }) {
     const [activeTab, setActiveTab] = useState("caja");
+    const location = useLocation();
+    const { startTour, resetAllTours } = useOnboarding();
 
     if (!isOpen) return null;
+
+    const currentTourKey =
+        location.pathname === "/"
+            ? "dashboard"
+            : location.pathname.startsWith("/transactions/new")
+            ? "new-sale"
+            : location.pathname.startsWith("/products")
+            ? "products"
+            : null;
+
+    function handleStartCurrentTour() {
+        if (!currentTourKey) return;
+        onClose();
+        setTimeout(() => {
+            startTour(currentTourKey, true);
+        }, 150);
+    }
+
+    function handleResetAllTours() {
+        resetAllTours();
+        toast.success("Tutoriales visuales reiniciados.");
+        onClose();
+        if (currentTourKey) {
+            setTimeout(() => {
+                startTour(currentTourKey, true);
+            }, 150);
+        }
+    }
 
     const tabs = [
         { id: "caja", label: "Caja & Cierres" },
@@ -32,14 +65,28 @@ function GuideModal({ isOpen, onClose }) {
                         </h2>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
-                        aria-label="Cerrar guía"
-                    >
-                        ✕
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {currentTourKey && (
+                            <button
+                                type="button"
+                                onClick={handleStartCurrentTour}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition"
+                                title="Iniciar recorrido con punteros visuales en esta pantalla"
+                            >
+                                <span>🎯</span>
+                                <span>Ver recorrido interactivo</span>
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                            aria-label="Cerrar guía"
+                        >
+                            ✕
+                        </button>
+                    </div>
                 </div>
 
                 {/* 4 TABS - SINGLE CLEAN ROW */}
@@ -188,17 +235,25 @@ function GuideModal({ isOpen, onClose }) {
                 </div>
 
                 {/* FOOTER */}
-                <div className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--background)] px-6 py-3">
-                    <span className="text-xs text-[var(--text-secondary)]">
-                        Accesible en cualquier momento desde el menú de usuario.
-                    </span>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--background)] px-6 py-3">
                     <button
                         type="button"
-                        onClick={onClose}
-                        className="rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white transition hover:bg-[var(--primary-hover)]"
+                        onClick={handleResetAllTours}
+                        className="text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] transition"
+                        title="Vuelve a activar las guías visuales automáticas en todas las pantallas"
                     >
-                        Cerrar
+                        🔄 Reiniciar todas las guías visuales
                     </button>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white transition hover:bg-[var(--primary-hover)]"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

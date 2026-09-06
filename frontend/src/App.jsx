@@ -18,6 +18,7 @@ import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PinModal from "./components/PinModal";
 import { DeviceSecurityProvider } from "./context/DeviceSecurityContext";
+import { OnboardingProvider } from "./context/OnboardingContext";
 
 
 function App() {
@@ -25,14 +26,15 @@ function App() {
     return (
 
         <DeviceSecurityProvider>
-            <Toaster
-                position="top-center"
-                toastOptions={{
-                    duration: 2500,
-                }}
-            />
+            <OnboardingProvider>
+                <Toaster
+                    position="top-center"
+                    toastOptions={{
+                        duration: 2500,
+                    }}
+                />
 
-            <PinModal />
+                <PinModal />
 
             <BrowserRouter>
                 <Routes>
@@ -114,6 +116,7 @@ function App() {
 
                 </Routes>
             </BrowserRouter>
+            </OnboardingProvider>
         </DeviceSecurityProvider>
     );
 }

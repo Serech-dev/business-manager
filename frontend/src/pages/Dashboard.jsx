@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOutletContext } from "react-router-dom";
 
@@ -14,6 +14,7 @@ import TransactionCard from "../components/transactions/TransactionCard";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ProviderMovementModal from "../components/providers/ProviderMovementModal";
 import OpenRegisterModal from "../components/registers/OpenRegisterModal";
+import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
@@ -120,6 +121,58 @@ function Dashboard() {
         }
     }
 
+    const dashboardTourSteps = useMemo(() => {
+        if (!register) {
+            return [
+                {
+                    target: '[data-tour="dashboard-register-status"]',
+                    title: "Terminal de Caja",
+                    content: "Este es el panel central de tu negocio. Desde acá gestionás los turnos de caja y ves el estado de apertura.",
+                    position: "bottom",
+                },
+                {
+                    target: '[data-tour="dashboard-open-register"]',
+                    title: "Abrir Caja",
+                    content: "Para comenzar a vender, abrí la caja ingresando el dinero en efectivo disponible para dar cambio.",
+                    position: "bottom",
+                },
+                {
+                    target: '[data-tour="sidebar-nav"]',
+                    title: "Menú Principal",
+                    content: "Accedé a tus productos, clientes con libreta, proveedores y reportes detallados en cualquier momento.",
+                    position: "right",
+                },
+            ];
+        }
+
+        return [
+            {
+                target: '[data-tour="dashboard-register-status"]',
+                title: "Caja en Operación",
+                content: "Tu caja está abierta. Todas las ventas y gastos registrados impactarán en este turno.",
+                position: "bottom",
+            },
+            {
+                target: '[data-tour="dashboard-new-sale"]',
+                title: "Cobrar Venta (POS)",
+                content: "Cobrá artículos por unidad o por peso (kg/100g), recargas o ventas a cuenta con cálculo de vuelto instantáneo.",
+                position: "bottom",
+            },
+            {
+                target: '[data-tour="dashboard-expense"]',
+                title: "Gasto o Salida",
+                content: "Registrá pagos a repartidores, proveedores o retiros de efectivo directamente del cajón.",
+                position: "bottom",
+            },
+            {
+                target: '[data-tour="dashboard-kpis"]',
+                title: "Saldos en Vivo",
+                content: "Monitoreá en tiempo real el efectivo físico en cajón y los cobros digitales acumulados en la jornada.",
+                position: "top",
+            },
+        ];
+    }, [register]);
+
     if (isLoading) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-[var(--background)] text-sm text-[var(--text-secondary)]">
@@ -158,7 +211,7 @@ function Dashboard() {
                             Terminal de Caja
                         </p>
 
-                        <div className="mt-1 flex items-center gap-3">
+                        <div className="mt-1 flex items-center gap-3" data-tour="dashboard-register-status">
                             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
                                 Panel Principal
                             </h1>
@@ -184,6 +237,7 @@ function Dashboard() {
                         <div className="flex flex-wrap items-center gap-3">
                             <button
                                 type="button"
+                                data-tour="dashboard-expense"
                                 onClick={() => setIsMovementModalOpen(true)}
                                 className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs sm:text-sm font-semibold text-[var(--text-primary)] shadow-xs transition hover:border-[var(--primary)] hover:bg-[var(--surface-muted)]"
                             >
@@ -193,6 +247,7 @@ function Dashboard() {
 
                             <button
                                 type="button"
+                                data-tour="dashboard-new-sale"
                                 onClick={() => navigate("/transactions/new")}
                                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)]"
                             >
@@ -235,6 +290,7 @@ function Dashboard() {
                             <div className="flex flex-wrap items-center gap-3 pt-2">
                                 <button
                                     type="button"
+                                    data-tour="dashboard-open-register"
                                     onClick={() => setIsOpenRegisterModalOpen(true)}
                                     disabled={isReopening}
                                     className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
@@ -273,7 +329,7 @@ function Dashboard() {
                     <div className="space-y-8">
                         {/* LIVE FUNDS (EXCLUSIVELY IN OWNER MODE) */}
                         {isOwner && (
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid gap-4 sm:grid-cols-2" data-tour="dashboard-kpis">
                                 {/* EFECTIVO EN CAJA */}
                                 <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs space-y-3">
                                     <div className="flex items-center justify-between">
@@ -427,6 +483,12 @@ function Dashboard() {
                     isOpen={isOpenRegisterModalOpen}
                     onClose={() => setIsOpenRegisterModalOpen(false)}
                     onSuccess={handleOpenRegisterSuccess}
+                />
+
+                {/* ONBOARDING TOUR */}
+                <OnboardingTour
+                    tourKey="dashboard"
+                    steps={dashboardTourSteps}
                 />
         </div>
     );

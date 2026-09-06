@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, forwardRef } from "react";
 
 function formatThousands(val) {
     if (val === "" || val === null || val === undefined) return "";
@@ -21,17 +21,20 @@ function formatThousands(val) {
     return parsedNumber.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-function MoneyInput({
-    value = "",
-    onChange,
-    placeholder = "0",
-    className = "",
-    disabled = false,
-    autoFocus = false,
-    id,
-    name,
-    ...rest
-}) {
+const MoneyInput = forwardRef(function MoneyInput(
+    {
+        value = "",
+        onChange,
+        placeholder = "0",
+        className = "",
+        disabled = false,
+        autoFocus = false,
+        id,
+        name,
+        ...rest
+    },
+    ref
+) {
     const displayValue = useMemo(() => {
         return formatThousands(value);
     }, [value]);
@@ -61,6 +64,7 @@ function MoneyInput({
 
     return (
         <input
+            ref={ref}
             id={id}
             name={name}
             type="text"
@@ -75,7 +79,7 @@ function MoneyInput({
             {...rest}
         />
     );
-}
+});
 
 export default MoneyInput;
 export { formatThousands };

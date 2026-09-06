@@ -150,6 +150,20 @@ function ReceiptTicket({
                                 </div>
                             );
                         })}
+
+                        {/* Extra manual / unitemized amount if grandTotal > itemized total */}
+                        {grandTotal > cartItems.reduce((s, it) => s + (Number(it.subtotal) || 0), 0) && (
+                            <div className="flex justify-between items-start gap-1 pt-1 border-t border-dotted border-gray-300">
+                                <span className="font-medium text-gray-800">
+                                    Varios / Monto manual
+                                </span>
+                                <span className="font-bold shrink-0 tabular-nums">
+                                    {formatCurrency(
+                                        grandTotal - cartItems.reduce((s, it) => s + (Number(it.subtotal) || 0), 0)
+                                    )}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     // OPERATIONS SUMMARY / LUMP-SUM SALE

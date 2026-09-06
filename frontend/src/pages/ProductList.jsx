@@ -15,7 +15,35 @@ import ProviderModal from "../components/products/ProviderModal";
 import BulkPriceModal from "../components/products/BulkPriceModal";
 import ImportCatalogModal from "../components/products/ImportCatalogModal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+
+const PRODUCTS_TOUR_STEPS = [
+    {
+        target: '[data-tour="products-import-catalog"]',
+        title: "Catálogo Base Sugerido",
+        content: "Si recién empezás, podés cargar en 1 clic un catálogo pre-armado para Kiosco, Almacén, Verdulería o Fiambrería con categorías y precios listos.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="products-create-btn"]',
+        title: "Nuevo Producto",
+        content: "Creá artículos personalizados con código de barra, costo, margen de ganancia y modalidades por Unidad, por Kilo o por 100 Gramos.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="products-bulk-price"]',
+        title: "Aumento Masivo",
+        content: "Actualizá precios por porcentaje (%) en lote para todo tu catálogo, proveedores específicos o categorías enteras.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="products-search-bar"]',
+        title: "Búsqueda y Filtros",
+        content: "Filtrá rápidamente por nombre, código de barra, categoría o proveedor para editar precios o controlar tu mercadería.",
+        position: "top",
+    },
+];
 
 // High-contrast, custom styled checkbox component
 function CustomCheckbox({ checked, indeterminate = false, onChange, ariaLabel }) {
@@ -406,6 +434,7 @@ function ProductList() {
                 <div className="flex flex-wrap items-center gap-2.5">
                     <button
                         type="button"
+                        data-tour="products-bulk-price"
                         onClick={() => requireOwnerAccess(() => setIsBulkPriceModalOpen(true))}
                         className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
@@ -427,6 +456,7 @@ function ProductList() {
 
                     <button
                         type="button"
+                        data-tour="products-import-catalog"
                         onClick={() => requireOwnerAccess(() => setIsImportModalOpen(true))}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
@@ -451,6 +481,7 @@ function ProductList() {
 
                     <button
                         type="button"
+                        data-tour="products-create-btn"
                         onClick={() => requireOwnerAccess(handleOpenCreate)}
                         className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                     >
@@ -469,7 +500,7 @@ function ProductList() {
             </header>
 
             {/* SEARCH & FILTERS TOOLBAR */}
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
+            <div data-tour="products-search-bar" className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
                 {/* PRIMARY CONTROLS ROW */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
                     {/* SEARCH INPUT */}
@@ -1194,6 +1225,12 @@ function ProductList() {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={loadData}
+            />
+
+            {/* ONBOARDING TOUR */}
+            <OnboardingTour
+                tourKey="products"
+                steps={PRODUCTS_TOUR_STEPS}
             />
         </div>
     );

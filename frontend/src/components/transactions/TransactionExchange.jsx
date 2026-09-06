@@ -10,126 +10,67 @@ function TransactionExchange({
     const clientAmount = Math.max(0, numericAmount - fee);
 
     return (
-        <section className="
-            border
-            border-[var(--border)]
-            bg-[var(--surface)]
-        ">
-            <div className="
-                border-b
-                border-[var(--border)]
-                px-6
-                py-4
-            ">
-                <h3 className="
-                    text-sm
-                    font-semibold
-                    text-[var(--text-primary)]
-                ">
-                    Datos del cambio
-                </h3>
-                <p className="
-                    mt-0.5
-                    text-xs
-                    text-[var(--text-secondary)]
-                ">
-                    Indicá el monto sobre el cual se calcula la comisión.
-                </p>
+        <section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-accent)]/40 px-4 py-2.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                    Cambio de dinero (Virtual a Efectivo)
+                </span>
+                <span className="rounded bg-sky-500/15 px-2 py-0.5 text-xs font-bold text-sky-600 dark:text-sky-400">
+                    Comisión 10%
+                </span>
             </div>
 
-            <div className="max-w-md p-6">
-                <label
-                    htmlFor="exchange-amount"
-                    className="
-                        text-sm
-                        font-medium
-                        text-[var(--text-primary)]
-                    "
-                >
-                    Monto de cambio
-                </label>
+            <div className="p-4 space-y-3.5">
+                <div>
+                    <label
+                        htmlFor="exchange-amount"
+                        className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
+                    >
+                        Monto transferido por el cliente ($)
+                    </label>
 
-                <div className="relative mt-2">
-                    <span className="
-                        pointer-events-none
-                        absolute
-                        left-3
-                        top-1/2
-                        -translate-y-1/2
-                        text-sm
-                        text-[var(--text-secondary)]
-                    ">
-                        $
-                    </span>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-secondary)]">
+                            $
+                        </span>
 
-                    <MoneyInput
-                        id="exchange-amount"
-                        value={exchangeAmount}
-                        onChange={(event) =>
-                            onChangeExchangeAmount(event.target.value)
-                        }
-                        className="
-                            w-full
-                            rounded-md
-                            border
-                            border-[var(--border)]
-                            bg-[var(--background)]
-                            py-2.5
-                            pl-7
-                            pr-3
-                            text-sm
-                            tabular-nums
-                            text-[var(--text-primary)]
-                            outline-none
-                            transition
-                            focus:border-[var(--primary)]
-                            focus:ring-2
-                            focus:ring-[var(--primary)]/20
-                        "
-                        placeholder="0"
-                    />
+                        <MoneyInput
+                            id="exchange-amount"
+                            value={exchangeAmount}
+                            onChange={(event) =>
+                                onChangeExchangeAmount(event.target.value)
+                            }
+                            className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            placeholder="0"
+                        />
+                    </div>
                 </div>
 
                 {numericAmount > 0 && (
-                    <div className="
-                        mt-4
-                        border-t
-                        border-[var(--border)]
-                        pt-4
-                        text-sm
-                    ">
-                        <div className="
-                            flex
-                            items-center
-                            justify-between
-                        ">
+                    <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3.5 space-y-2.5 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between text-xs">
                             <span className="text-[var(--text-secondary)]">
-                                Comisión de cambio: 10%
+                                Comisión ganada (10%):
                             </span>
-                            <strong className="text-[var(--text-primary)]">
-                                {formatCurrency(fee)}
+                            <strong className="font-bold text-[var(--text-primary)] tabular-nums">
+                                +{formatCurrency(fee)}
                             </strong>
                         </div>
 
-                        <div className="
-                            mt-2
-                            flex
-                            items-center
-                            justify-between
-                        ">
-                            <span className="
-                                font-medium
-                                text-[var(--text-primary)]
-                            ">
-                                Cliente recibe
-                            </span>
-                            <strong className="
-                                text-lg
-                                font-bold
-                                text-[var(--success)]
-                            ">
+                        <div className="flex items-center justify-between border-t border-sky-500/20 pt-2">
+                            <div>
+                                <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300 block">
+                                    Entregar en efectivo al cliente
+                                </span>
+                                <span className="text-[11px] text-[var(--text-secondary)] mt-0.5 block">
+                                    Transferencia {formatCurrency(numericAmount)} − Comisión {formatCurrency(fee)}
+                                </span>
+                            </div>
+
+                            <span className="text-xl sm:text-2xl font-black text-sky-600 dark:text-sky-400 tabular-nums">
                                 {formatCurrency(clientAmount)}
-                            </strong>
+                            </span>
                         </div>
                     </div>
                 )}

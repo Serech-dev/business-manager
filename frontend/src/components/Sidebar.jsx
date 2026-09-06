@@ -146,7 +146,9 @@ function Sidebar({
 
             {/* NAVIGATION */}
 
-            <nav className="
+            <nav
+                data-tour="sidebar-nav"
+                className="
                 flex-1
                 space-y-1
                 overflow-y-auto
