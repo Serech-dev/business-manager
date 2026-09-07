@@ -17,6 +17,12 @@ function GuideModal({ isOpen, onClose }) {
             ? "new-sale"
             : location.pathname.startsWith("/products")
             ? "products"
+            : location.pathname.startsWith("/stock")
+            ? "stock"
+            : location.pathname.startsWith("/providers")
+            ? location.pathname === "/providers" || location.pathname === "/providers/"
+                ? "providers"
+                : "provider-detail"
             : null;
 
     function handleStartCurrentTour() {
@@ -41,6 +47,7 @@ function GuideModal({ isOpen, onClose }) {
     const tabs = [
         { id: "caja", label: "Caja & Cierres" },
         { id: "ventas", label: "Ventas & Libreta" },
+        { id: "stock", label: "Stock & Control" },
         { id: "proveedores", label: "Proveedores & Gastos" },
         { id: "seguridad", label: "Seguridad & Reportes" },
     ];
@@ -89,8 +96,8 @@ function GuideModal({ isOpen, onClose }) {
                     </div>
                 </div>
 
-                {/* 4 TABS - SINGLE CLEAN ROW */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
+                {/* 5 TABS - CLEAN RESPONSIVE ROW */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -180,23 +187,72 @@ function GuideModal({ isOpen, onClose }) {
                         </div>
                     )}
 
-                    {activeTab === "proveedores" && (
+                    {activeTab === "stock" && (
                         <div className="space-y-3.5">
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
                                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                                    Pagos y Salidas de Caja
+                                    Descuento Automático y Alertas
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Tocando <strong>"- Gasto / Salida"</strong> en el Panel Principal podés registrar pagos a repartidores o gastos generales del local, descontando el dinero físico de la caja activa.
+                                    Cada venta descuenta automáticamente la cantidad vendida del inventario (por unidad o peso exacto en Kg/100g). Si un producto queda en 1 o menos unidades, el sistema te mostrará una alerta de <strong>Stock bajo</strong> o <strong>Agotado</strong>.
                                 </p>
                             </div>
 
                             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
                                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                                    Compras Fiadas y Control de "Debo"
+                                    Ingreso de Mercadería en Lote
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Si un proveedor te baja mercadería pero no le pagás en el momento, podés registrarlo indicando el saldo pendiente. La etiqueta <strong>"Debo $X"</strong> te mantendrá al tanto de lo que le debés a cada distribuidor.
+                                    Con <strong>"Registrar Ingreso de Stock"</strong> podés cargar reposiciones por proveedor sumando múltiples productos en un solo movimiento, actualizando precios de costo y registrando el pago al contado o a deber.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    Ajustes Rápidos y Mermas
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Si tenés roturas, productos vencidos, pérdidas o realizás un recuento físico, usá el botón de <strong>Ajuste</strong> en la tabla para corregir el stock y dejar registrado el motivo para auditoría.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    Libreta de Notas y Faltantes
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    En la pestaña <strong>"Notas & pedidos"</strong> podés anotar mercadería faltante para el próximo pedido y marcarla como completada cuando llegue la reposición.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "proveedores" && (
+                        <div className="space-y-3.5">
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    Ficha Integral y Enlace a WhatsApp
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Hacé clic en cualquier proveedor para ver su saldo adeudado (<strong>Debo</strong>), la valuación del stock que te abastece y un botón directo para <strong>abrir chat de WhatsApp</strong> o llamarlo al instante.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    Vincular Productos en Lote
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Dentro de la ficha del proveedor podés usar <strong>"+ Vincular productos"</strong> para asignar en lote qué artículos te provee, o seleccionarlos con las casillas en la lista general de Productos y presionar <strong>"Asignar Proveedor"</strong>.
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    Pagos, Compras y Salidas de Caja
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Podés registrar compras de mercadería descontando el dinero de la caja activa o sumándolo a tu saldo deudor pendiente para pagar más adelante.
                                 </p>
                             </div>
                         </div>

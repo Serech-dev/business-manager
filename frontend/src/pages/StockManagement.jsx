@@ -19,7 +19,35 @@ import StockAdjustModal from "../components/stock/StockAdjustModal";
 import StockNoteModal from "../components/stock/StockNoteModal";
 import ProductModal from "../components/products/ProductModal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+
+const STOCK_TOUR_STEPS = [
+    {
+        target: '[data-tour="stock-restock-btn"]',
+        title: "Ingreso de Mercadería",
+        content: "Cargá pedidos y reposiciones en lote por proveedor, actualizando cantidades, precios de costo y forma de pago.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="stock-kpis"]',
+        title: "Alertas y Métricas de Stock",
+        content: "Monitoreá artículos con bajo stock, productos agotados y la valuación total de tu inventario a precio de costo.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="stock-tabs"]',
+        title: "Vistas de Stock",
+        content: "Alterná entre el inventario activo, el historial cronológico de reposiciones y la lista de notas de compras pendientes.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="stock-table-actions"]',
+        title: "Ajuste Rápido y Reposición",
+        content: "Registrá mermas o roturas al instante con motivos de auditoría, o sumá unidades directamente a cada producto.",
+        position: "top",
+    },
+];
 
 function formatDate(val) {
     if (!val) return "-";
@@ -208,6 +236,7 @@ function StockManagement() {
 
                     <button
                         type="button"
+                        data-tour="stock-restock-btn"
                         onClick={() => {
                             setRestockProduct(null);
                             setIsRestockModalOpen(true);
@@ -223,7 +252,7 @@ function StockManagement() {
             </div>
 
             {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
+            <div data-tour="stock-kpis" className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                         Artículos con seguimiento
@@ -290,7 +319,7 @@ function StockManagement() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-[var(--border)]">
+            <div data-tour="stock-tabs" className="flex border-b border-[var(--border)]">
                 <button
                     type="button"
                     onClick={() => setActiveTab("inventory")}
@@ -427,7 +456,7 @@ function StockManagement() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                    <div data-tour="stock-table-actions" className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs text-[var(--text-primary)]">
                                 <thead className="border-b border-[var(--border)] bg-[var(--surface-accent)]/50 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -1028,6 +1057,12 @@ function StockManagement() {
                     onCancel={() => setNoteToDelete(null)}
                 />
             )}
+
+            {/* ONBOARDING TOUR */}
+            <OnboardingTour
+                tourKey="stock"
+                steps={STOCK_TOUR_STEPS}
+            />
         </div>
     );
 }

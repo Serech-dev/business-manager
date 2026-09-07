@@ -24,7 +24,7 @@ v1.3.0 (Phase 2 - Stock Control, Smart Inventory & Provider Hub)
 - POS Sales UX & Interactive Onboarding:
   - Zero-click manual amount typing in New Sale.
   - Dominant transaction type banners and in-card cash change displays.
-  - Interactive visual onboarding tours (`OnboardingTour.jsx`) guiding new users through Catalog, Sales, Cash Registers, and Analytics.
+  - Interactive visual onboarding tours (`OnboardingTour.jsx`) guiding users across Catalog, Stock Control, Providers Hub, Sales, Cash Registers, and Analytics.
 
 v1.2.0 (Phase 2 - Products Catalog & POS Thermal Tickets)
 
