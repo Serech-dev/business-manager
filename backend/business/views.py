@@ -814,6 +814,50 @@ class BulkDeleteProductsView(APIView):
         )
 
 
+class BulkAssignProductProviderView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @db_transaction.atomic
+    def post(self, request):
+        product_ids = request.data.get("product_ids", [])
+        provider_id = request.data.get("provider_id")
+
+        if not isinstance(product_ids, list) or len(product_ids) == 0:
+            return Response(
+                {"error": "No se proporcionaron productos para asignar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        provider = None
+        if provider_id is not None:
+            try:
+                provider = Provider.objects.get(user=request.user, id=provider_id)
+            except Provider.DoesNotExist:
+                return Response(
+                    {"error": "El proveedor especificado no existe."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        updated_count = Product.objects.filter(
+            user=request.user,
+            id__in=product_ids,
+        ).update(provider=provider)
+
+        msg = (
+            f"Se asignaron {updated_count} productos a {provider.name}."
+            if provider
+            else f"Se desvincularon {updated_count} productos del proveedor."
+        )
+
+        return Response(
+            {
+                "updated_count": updated_count,
+                "message": msg,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class StockMovementListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 

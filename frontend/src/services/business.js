@@ -326,6 +326,14 @@ export async function bulkDeleteProducts(productIds) {
     return response.data;
 }
 
+export async function bulkAssignProductProvider(productIds, providerId) {
+    const response = await api.post("business/products/bulk-assign-provider/", {
+        product_ids: productIds,
+        provider_id: providerId,
+    });
+    return response.data;
+}
+
 export async function getStockMovements(params = {}) {
     const query = new URLSearchParams();
     if (params.product_id) query.set("product_id", params.product_id);

@@ -1,3 +1,31 @@
+v1.3.0 (Phase 2 - Stock Control, Smart Inventory & Provider Hub)
+
+- Stock Control & Smart Inventory Module (Módulo de Control de Stock v1):
+  - Real-time automated stock decrement on sales with support for discrete units and fractional weights (Kg, 100g).
+  - Out-of-stock indicators and low stock warnings across product catalog and stock dashboard (default minimum stock warning set to 1).
+  - Smart restock batch entry modal (`RestockModal.jsx`) supporting multi-product restock batches, provider assignment, cost price updates, and payment method allocation.
+  - Quick stock adjustment modal (`StockAdjustModal.jsx`) with preset audit reasons (Rotura, Vencimiento, Pérdida, Conteo físico, Donación, Consumo interno).
+  - Complete stock movements ledger (`/stock-movements`) with date filtering, provider tags, movement type classification, and search.
+  - Intelligent stock insights & forecasts (`/stock-insights`) for fast-depleting inventory and restock forecasting.
+  - Collaborative stock notes / shopping list (`StockNotes.jsx`) with quick completion checkboxes.
+  - Employee security lock: Stock management and manual inventory adjustments protected behind Owner Mode PIN in Modo Caja.
+- High-Precision Relevance Search Engine:
+  - Multi-word scoring algorithm (`productSearch.js`) prioritizing exact name matches, word prefixes, and category weights over substring noise.
+  - Integrated consistently across Product Catalog, New Sale POS, Restock Modal, and Provider Product Linker.
+- Multi-Rubro Starter Catalog Expansion:
+  - Expanded base starter catalog to 716 realistic Argentine retail products across 6 presets (Kiosco 220+, Almacén 120+, Fiambrería 100+, Verdulería 75, Carnicería 80, Panadería 100+).
+  - Added generic bulk bread by weight (*Pan Francés / Criollo por Kg*) and standardized EAN-13 barcodes with realistic 2026 ARS pricing.
+- Provider Hub & Bulk Product Assignment:
+  - Redesigned Provider Detail view (`ProviderDetail.jsx`) with initials avatar, click-to-call, and direct WhatsApp chat links.
+  - 4 Key Performance Indicator (KPI) cards: Saldo Adeudado (Debo), Productos Asignados & Valuación de Stock a Costo, Compras en Caja Actual, and Historial Total.
+  - 3 Segmented tabs: Productos Suministrados, Historial de Movimientos, and Información & Notas.
+  - Backend bulk product-provider assignment endpoint (`POST /api/business/products/bulk-assign-provider/`) with atomic operations and multi-tenant security isolation.
+  - Dual assignment workflows: Dedicated multi-select modal from Provider Detail (`AssignProductsToProviderModal.jsx`) and Floating selection bar action in Product List (`AssignProviderModal.jsx`).
+- POS Sales UX & Interactive Onboarding:
+  - Zero-click manual amount typing in New Sale.
+  - Dominant transaction type banners and in-card cash change displays.
+  - Interactive visual onboarding tours (`OnboardingTour.jsx`) guiding new users through Catalog, Sales, Cash Registers, and Analytics.
+
 v1.2.0 (Phase 2 - Products Catalog & POS Thermal Tickets)
 
 - Products & Inventory Module (Módulo de Productos & Categorías):

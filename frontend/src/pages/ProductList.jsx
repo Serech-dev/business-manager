@@ -16,6 +16,7 @@ import ProductModal from "../components/products/ProductModal";
 import CategoryModal from "../components/products/CategoryModal";
 import ProviderModal from "../components/products/ProviderModal";
 import BulkPriceModal from "../components/products/BulkPriceModal";
+import AssignProviderModal from "../components/products/AssignProviderModal";
 import ImportCatalogModal from "../components/products/ImportCatalogModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
@@ -119,6 +120,7 @@ function ProductList() {
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
     const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
+    const [isAssignProviderModalOpen, setIsAssignProviderModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
@@ -1146,6 +1148,14 @@ function ProductList() {
 
                     <button
                         type="button"
+                        onClick={() => setIsAssignProviderModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2 text-xs font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-accent)]/80"
+                    >
+                        <span>Asignar Proveedor</span>
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={() => setIsBulkDeleteOpen(true)}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--danger)]/15 px-3 py-2 text-xs font-bold text-[var(--danger)] transition hover:bg-[var(--danger)]/25"
                     >
@@ -1174,6 +1184,16 @@ function ProductList() {
                 categories={categories}
                 providers={providers}
                 onSuccess={handleBulkPricesUpdated}
+            />
+
+            {/* ASSIGN PROVIDER MODAL */}
+            <AssignProviderModal
+                isOpen={isAssignProviderModalOpen}
+                onClose={() => setIsAssignProviderModalOpen(false)}
+                selectedIds={selectedIds}
+                providers={providers}
+                onSuccess={loadData}
+                onOpenProviderModal={() => setIsProviderModalOpen(true)}
             />
 
             {/* PRODUCT MODAL */}

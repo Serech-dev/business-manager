@@ -1,9 +1,9 @@
 from django.urls import path
 
-from .views import (AnalyticsView, BulkDeleteProductsView,
-                    BulkUpdateProductPricesView, CategoryDetailView,
-                    CategoryListCreateView, ClientDetailView,
-                    ClientListCreateView, CloseRegisterView,
+from .views import (AnalyticsView, BulkAssignProductProviderView,
+                    BulkDeleteProductsView, BulkUpdateProductPricesView,
+                    CategoryDetailView, CategoryListCreateView,
+                    ClientDetailView, ClientListCreateView, CloseRegisterView,
                     CurrentRegisterView, CurrentTransactionListView,
                     ImportStarterCatalogView, OpenRegisterView,
                     ProductDetailView, ProductListCreateView,
@@ -150,6 +150,12 @@ urlpatterns = [
         "products/bulk-delete/",
         BulkDeleteProductsView.as_view(),
         name="bulk-delete-products",
+    ),
+
+    path(
+        "products/bulk-assign-provider/",
+        BulkAssignProductProviderView.as_view(),
+        name="bulk-assign-product-provider",
     ),
 
     path(
