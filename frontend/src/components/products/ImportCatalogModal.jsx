@@ -6,9 +6,9 @@ const PRESET_OPTIONS = [
     {
         id: "kiosco_bebidas",
         name: "Kiosco, Bebidas & Golosinas",
-        count: "40+ productos",
+        count: "220+ productos",
         hasBarcodes: true,
-        description: "Gaseosas, cervezas, alfajores, chocolates, snacks y cigarrillos.",
+        description: "Gaseosas, cervezas, alfajores, chocolates, snacks, golosinas y cigarrillos.",
         highlights: "Coca-Cola, Quilmes, Branca, Speed, Guaymallén, Lays, Marlboro...",
         icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -19,9 +19,9 @@ const PRESET_OPTIONS = [
     {
         id: "almacen_despensa",
         name: "Almacén & Despensa",
-        count: "26 productos",
+        count: "120+ productos",
         hasBarcodes: true,
-        description: "Yerbas, aceites, harinas, fideos, arroz, condimentos y conservas.",
+        description: "Yerbas, aceites, harinas, fideos, arroz, condimentos, café y conservas.",
         highlights: "Playadito, Taragüi, Natura, Lucchetti, Pureza, La Campagnola, Dolca...",
         icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -32,9 +32,9 @@ const PRESET_OPTIONS = [
     {
         id: "fiambreria_lacteos",
         name: "Fiambrería & Lácteos",
-        count: "26 productos",
+        count: "100+ productos",
         hasWeight: true,
-        description: "Quesos y fiambres por peso (100g y kg), leches, manteca y yogures.",
+        description: "Quesos y fiambres por peso (100g y kg), leches, manteca, yogures y tapas.",
         highlights: "Queso Cremoso, Barra Tybo, Jamón Cocido/Crudo, Leches, DDL, Tapas...",
         icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -45,7 +45,7 @@ const PRESET_OPTIONS = [
     {
         id: "verduleria_fruteria",
         name: "Verdulería & Frutería",
-        count: "21 productos",
+        count: "75 productos",
         hasWeight: true,
         description: "Papas, cebollas, tomates, bananas, manzanas y cítricos por kilo.",
         highlights: "Papa Negra, Tomate Redondo, Banana Ecuador, Manzanas, Lechuga, Palta...",
@@ -58,7 +58,7 @@ const PRESET_OPTIONS = [
     {
         id: "panaderia_confiteria",
         name: "Panadería & Confitería",
-        count: "17 productos",
+        count: "80 productos",
         hasWeight: true,
         description: "Pan francés, criollos, facturas, medialunas, chipá y sándwiches de miga.",
         highlights: "Pan Francés, Criollo/Mignon, Facturas, Medialunas, Chipá, Sándwiches...",
@@ -71,7 +71,7 @@ const PRESET_OPTIONS = [
     {
         id: "limpieza_perfumeria",
         name: "Limpieza & Perfumería",
-        count: "21 productos",
+        count: "100+ productos",
         hasBarcodes: true,
         description: "Lavandinas, detergentes, skip, papel higiénico, desodorantes y shampoo.",
         highlights: "Ayudín, Magistral, Skip, Higienol, Rexona, Sedal, Colgate...",
