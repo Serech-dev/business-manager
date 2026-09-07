@@ -18,6 +18,7 @@ import {
 
 import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatStockQty, formatUnitType } from "../utils/formatStock";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 function formatDate(value) {
@@ -489,6 +490,10 @@ function RegisterReport() {
                             id: "operaciones",
                             label: `Operaciones (${register.transaction_count || 0})`,
                         },
+                        {
+                            id: "stock",
+                            label: "Mercadería & Stock del Turno",
+                        },
                     ].map((tab) => {
                         const isActive = activeTab === tab.id;
                         return (
@@ -719,6 +724,111 @@ function RegisterReport() {
                                     );
                                 })
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 4: MERCADERÍA & STOCK DEL TURNO */}
+                {activeTab === "stock" && (
+                    <div className="space-y-6">
+                        {/* Critical Alerts during this shift */}
+                        {register.shift_stock_summary?.critical_stock_alerts?.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    Alertas de Stock Crítico
+                                </h3>
+                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                                    {register.shift_stock_summary.critical_stock_alerts.map((alt) => (
+                                        <div
+                                            key={alt.id}
+                                            className={`flex items-center justify-between rounded-xl border p-3.5 ${
+                                                alt.status === "out_of_stock"
+                                                    ? "border-[var(--danger-border)] bg-[var(--danger-bg)]/30"
+                                                    : "border-amber-500/20 bg-amber-500/5"
+                                            }`}
+                                        >
+                                            <div>
+                                                <div className="text-sm font-bold text-[var(--text-primary)]">
+                                                    {alt.name}
+                                                </div>
+                                                <div className="text-xs text-[var(--text-secondary)]">
+                                                    Mínimo sugerido: {alt.min_stock} u.
+                                                </div>
+                                            </div>
+                                            <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                                                alt.status === "out_of_stock"
+                                                    ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                                                    : "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                            }`}>
+                                                <span className={`h-1.5 w-1.5 rounded-full ${
+                                                    alt.status === "out_of_stock" ? "bg-[var(--danger)]" : "bg-amber-500"
+                                                }`} />
+                                                {alt.status === "out_of_stock" ? "Agotado (0)" : `Stock: ${alt.stock}`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Shift Sold Products Table */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Productos Vendidos en Este Turno
+                                </h3>
+                                <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                                    Total de unidades vendidas: <b className="text-[var(--text-primary)]">{register.shift_stock_summary?.total_items_sold || 0}</b>
+                                </span>
+                            </div>
+
+                            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                                <table className="w-full text-left text-sm text-[var(--text-primary)]">
+                                    <thead className="border-b border-[var(--border)] bg-[var(--surface-accent)]/50 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                        <tr>
+                                            <th className="px-4 py-3">Producto</th>
+                                            <th className="px-4 py-3">Unidades Vendidas</th>
+                                            <th className="px-4 py-3">Total Recaudado</th>
+                                            <th className="px-4 py-3 text-right">Stock Restante</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--border)]">
+                                        {(!register.shift_stock_summary?.products_sold || register.shift_stock_summary.products_sold.length === 0) ? (
+                                            <tr>
+                                                <td colSpan={4} className="py-8 text-center text-xs text-[var(--text-secondary)]">
+                                                    No se registraron productos catalogados en las ventas de esta caja.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            register.shift_stock_summary.products_sold.map((it, idx) => (
+                                                <tr key={idx} className="transition hover:bg-[var(--surface-accent)]/30">
+                                                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
+                                                        {it.product_name}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-bold text-sm">
+                                                        {formatStockQty(it.quantity, it.unit_type)} <span className="text-xs font-normal text-[var(--text-secondary)]">{formatUnitType(it.unit_type, false, it.quantity)}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 font-bold text-[var(--success)]">
+                                                        {formatCurrency(it.total_amount)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-xs text-[var(--text-secondary)]">
+                                                        {it.current_stock !== null ? (
+                                                            <span className="font-bold text-[var(--text-primary)]">
+                                                                {formatStockQty(it.current_stock, it.unit_type)} {formatUnitType(it.unit_type, false, it.current_stock)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="italic">Sin seguimiento</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -607,8 +607,11 @@ function ClientDetail({ isNewClient = false }) {
                             >
                                 <span>Saldo inicial / Deuda previa en libreta</span>
                                 {isKioskDevice && !isUnlocked && (
-                                    <span className="rounded bg-[var(--warning)]/10 px-2 py-0.5 text-xs text-[var(--warning)] font-semibold">
-                                        🔒 Requiere PIN de dueño
+                                    <span className="inline-flex items-center gap-1 rounded bg-[var(--warning)]/10 px-2 py-0.5 text-xs font-semibold text-[var(--warning)]">
+                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                                        </svg>
+                                        Requiere PIN de dueño
                                     </span>
                                 )}
                             </label>

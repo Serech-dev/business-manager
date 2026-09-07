@@ -13,6 +13,7 @@ import NewTransaction from "./pages/NewTransaction";
 import RegisterHistory from "./pages/RegisterHistory";
 import ReportsAnalytics from "./pages/ReportsAnalytics";
 import ProductList from "./pages/ProductList";
+import StockManagement from "./pages/StockManagement";
 
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -109,6 +110,10 @@ function App() {
                             <Route
                                 path="/products"
                                 element={<ProductList />}
+                            />
+                            <Route
+                                path="/stock"
+                                element={<StockManagement />}
                             />
                         </Route>
 

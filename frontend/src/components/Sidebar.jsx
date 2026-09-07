@@ -6,6 +6,7 @@ import {
     closeRegister,
     getCurrentRegister,
     getClosedRegisters,
+    getStockAlertsSummary,
 } from "../services/business";
 
 import AccountMenu from "./AccountMenu";
@@ -30,6 +31,7 @@ function Sidebar({
 
     const [showCloseDialog, setShowCloseDialog] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
+    const [stockAlerts, setStockAlerts] = useState(null);
 
     async function handleCloseRegister() {
         setIsClosing(true);
@@ -62,18 +64,21 @@ function Sidebar({
 
 
     useEffect(() => {
-        async function loadRegister() {
+        async function loadSidebarData() {
             try {
-                const currentRegister =
-                    await getCurrentRegister();
+                const [currentRegister, alerts] = await Promise.all([
+                    getCurrentRegister(),
+                    getStockAlertsSummary().catch(() => null),
+                ]);
 
                 setRegister(currentRegister);
+                if (alerts) setStockAlerts(alerts);
             } catch (error) {
                 console.error(error);
             }
         }
 
-        loadRegister();
+        loadSidebarData();
     }, [location.pathname]);
 
 
@@ -419,6 +424,56 @@ function Sidebar({
                     `}
                 >
                     <span>Productos</span>
+                    {isKioskDevice && !isUnlocked && (
+                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                            PIN
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        requireOwnerAccess(() => navigate("/stock"));
+                    }}
+                    className={`
+                        flex
+                        w-full
+                        items-center
+                        justify-between
+                        rounded-lg
+                        border-l-2
+                        px-4
+                        py-2.5
+                        text-left
+                        text-sm
+                        transition
+                        ${
+                            isActive("/stock")
+                                ? `
+                                    border-[var(--primary)]
+                                    bg-[var(--surface-accent)]
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                `
+                                : `
+                                    border-transparent
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                    hover:bg-[var(--surface-accent)]
+                                    hover:text-[var(--text-primary)]
+                                `
+                        }
+                    `}
+                >
+                    <div className="flex items-center gap-2">
+                        <span>Control de Stock</span>
+                        {stockAlerts?.total_alerts > 0 && (
+                            <span className="rounded-full bg-[var(--danger-bg)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--danger)] border border-[var(--danger-border)]">
+                                {stockAlerts.total_alerts}
+                            </span>
+                        )}
+                    </div>
                     {isKioskDevice && !isUnlocked && (
                         <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
                             PIN

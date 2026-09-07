@@ -53,7 +53,7 @@ function ProductModal({
             setProviderId("");
             setBarcode("");
             setStock("");
-            setMinStock("");
+            setMinStock("1");
             setIsActive(true);
             setShowAdvanced(false);
         }
@@ -117,7 +117,7 @@ function ProductModal({
                 provider: providerId ? Number(providerId) : null,
                 barcode: barcode.trim() || null,
                 stock: stock !== "" ? Number(stock) : null,
-                min_stock: minStock !== "" ? Number(minStock) : 0,
+                min_stock: minStock !== "" ? Number(minStock) : 1,
                 is_active: isActive,
             };
 
@@ -411,10 +411,11 @@ function ProductModal({
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                                            Stock inicial
+                                            Stock inicial {unitType === "kg" ? "(kg)" : "(u.)"}
                                         </label>
                                         <input
                                             type="number"
+                                            step="any"
                                             value={stock}
                                             onChange={(e) => setStock(e.target.value)}
                                             placeholder="0"
@@ -423,13 +424,14 @@ function ProductModal({
                                     </div>
                                     <div>
                                         <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                                            Alerta stock mínimo
+                                            Alerta mínimo {unitType === "kg" ? "(kg)" : "(u.)"}
                                         </label>
                                         <input
                                             type="number"
+                                            step="any"
                                             value={minStock}
                                             onChange={(e) => setMinStock(e.target.value)}
-                                            placeholder="0"
+                                            placeholder="1"
                                             className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                                         />
                                     </div>

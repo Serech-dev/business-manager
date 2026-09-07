@@ -10,6 +10,9 @@ from .views import (AnalyticsView, BulkDeleteProductsView,
                     ProviderDetailView, ProviderListCreateView,
                     RegisterDetailView, RegisterListView,
                     ReopenLastRegisterView, ResolveTransferView,
+                    StockAdjustmentView, StockAlertsSummaryView,
+                    StockInsightsView, StockMovementListCreateView,
+                    StockNoteDetailView, StockNoteListCreateView,
                     TransactionAmountReceivedView, TransactionDetailView,
                     TransactionListCreateView)
 
@@ -147,5 +150,41 @@ urlpatterns = [
         "products/bulk-delete/",
         BulkDeleteProductsView.as_view(),
         name="bulk-delete-products",
+    ),
+
+    path(
+        "stock-movements/",
+        StockMovementListCreateView.as_view(),
+        name="stock-movement-list-create",
+    ),
+
+    path(
+        "stock-adjust/",
+        StockAdjustmentView.as_view(),
+        name="stock-adjustment",
+    ),
+
+    path(
+        "stock-insights/",
+        StockInsightsView.as_view(),
+        name="stock-insights",
+    ),
+
+    path(
+        "stock-notes/",
+        StockNoteListCreateView.as_view(),
+        name="stock-note-list-create",
+    ),
+
+    path(
+        "stock-notes/<int:pk>/",
+        StockNoteDetailView.as_view(),
+        name="stock-note-detail",
+    ),
+
+    path(
+        "stock-alerts/",
+        StockAlertsSummaryView.as_view(),
+        name="stock-alerts-summary",
     ),
 ]

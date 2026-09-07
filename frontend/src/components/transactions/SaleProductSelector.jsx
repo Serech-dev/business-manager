@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
+import { filterAndRankProducts } from "../../utils/productSearch";
 
 /**
  * SaleProductSelector
@@ -35,27 +36,12 @@ function SaleProductSelector({
         return products.filter((p) => p.is_active);
     }, [products]);
 
-    // Search results matching query and category
+    // Search results matching query and category with precision relevance ranking
     const searchResults = useMemo(() => {
-        let list = activeProducts;
-
-        if (selectedCategory !== "all") {
-            list = list.filter(
-                (p) => String(p.category) === String(selectedCategory)
-            );
-        }
-
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase().trim();
-            list = list.filter(
-                (p) =>
-                    p.name.toLowerCase().includes(q) ||
-                    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-                    (p.category_name && p.category_name.toLowerCase().includes(q))
-            );
-        }
-
-        return list.slice(0, 15);
+        return filterAndRankProducts(activeProducts, searchQuery, {
+            categoryId: selectedCategory,
+            maxResults: 20,
+        });
     }, [activeProducts, searchQuery, selectedCategory]);
 
     // Reset selected result index when results change
@@ -462,6 +448,17 @@ function SaleProductSelector({
                                                 {is100g && (
                                                     <span className="shrink-0 rounded bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
                                                         Por 100g
+                                                    </span>
+                                                )}
+                                                {p.stock !== null && p.stock !== undefined && (
+                                                    <span className={`shrink-0 rounded px-1.5 py-0.2 text-[9px] font-bold ${
+                                                        Number(p.stock) <= 0
+                                                            ? "bg-[var(--danger-bg)] text-[var(--danger)]"
+                                                            : Number(p.stock) <= (Number(p.min_stock) || 0)
+                                                            ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                                                            : "bg-[var(--surface-accent)] text-[var(--text-secondary)]"
+                                                    }`}>
+                                                        {Number(p.stock) <= 0 ? "Sin stock" : `Stock: ${p.stock}`}
                                                     </span>
                                                 )}
                                             </div>

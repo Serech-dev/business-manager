@@ -279,10 +279,32 @@ function NewTransaction() {
                 const exchangeFee = Math.round(exchangeNum * 0.1);
                 const exchangeClientAmount = Math.max(0, exchangeNum - exchangeFee);
 
+                const resolvedItems = [];
+                if (op.type === "sale" && op.items && op.items.length > 0) {
+                    for (const it of op.items) {
+                        const qty =
+                            it.unitType === "kg"
+                                ? (Number(it.grams) || 0) / 1000
+                                : it.unitType === "100g"
+                                ? (Number(it.grams) || 0) / 100
+                                : Number(it.quantity) || 1;
+
+                        resolvedItems.push({
+                            product: it.product?.id || null,
+                            product_name: it.product?.name || "Producto",
+                            unit_type: it.unitType || "unit",
+                            quantity: qty,
+                            unit_price: Number(it.unitPrice) || 0,
+                            subtotal: Number(it.subtotal) || 0,
+                        });
+                    }
+                }
+
                 resolvedOperations.push({
                     type: op.type,
                     exchange_amount: isExchange ? exchangeClientAmount : null,
                     amounts: validAmounts,
+                    items: resolvedItems,
                 });
             }
 

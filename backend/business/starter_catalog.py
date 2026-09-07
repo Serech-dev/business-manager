@@ -98,12 +98,13 @@ RUBRO_PRESETS = {
     "almacen_despensa": {
         "id": "almacen_despensa",
         "name": "Almacén & Despensa",
-        "description": "Yerbas, aceites, harinas, fideos, arroz, condimentos, café y conservas.",
+        "description": "Pan, yerbas, aceites, harinas, fideos, arroz, condimentos, café y conservas.",
         "icon": "shopping-bag",
         "catalog": [
             {
                 "category": "Almacén & Despensa",
                 "products": [
+                    {"name": "Pan (por kilo)", "barcode": "", "sale_price": Decimal("2400.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
                     {"name": "Yerba Mate Playadito 500g", "barcode": "7791290000105", "sale_price": Decimal("2900.00"), "cost_price": Decimal("2150.00"), "unit_type": "unit"},
                     {"name": "Yerba Mate Taragüi 500g", "barcode": "7790387011407", "sale_price": Decimal("2700.00"), "cost_price": Decimal("2000.00"), "unit_type": "unit"},
                     {"name": "Yerba Mate Amanda 500g", "barcode": "7790070011234", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1900.00"), "unit_type": "unit"},
@@ -210,15 +211,14 @@ RUBRO_PRESETS = {
     "panaderia_confiteria": {
         "id": "panaderia_confiteria",
         "name": "Panadería & Confitería",
-        "description": "Pan francés, criollos, facturas surtidas, medialunas, chipá y sándwiches de miga.",
+        "description": "Pan por kilo, criollos, facturas surtidas, medialunas, chipá y sándwiches de miga.",
         "icon": "bread",
         "catalog": [
             {
                 "category": "Panadería & Confitería",
                 "products": [
-                    {"name": "Pan Francés", "barcode": "", "sale_price": Decimal("2400.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
+                    {"name": "Pan (por kilo)", "barcode": "", "sale_price": Decimal("2400.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
                     {"name": "Pan Criollo / Mignon", "barcode": "", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1800.00"), "unit_type": "kg"},
-                    {"name": "Pan Flauta", "barcode": "", "sale_price": Decimal("2500.00"), "cost_price": Decimal("1750.00"), "unit_type": "kg"},
                     {"name": "Pan de Molde / Lactal Blanco", "barcode": "7790580199111", "sale_price": Decimal("2200.00"), "cost_price": Decimal("1550.00"), "unit_type": "unit"},
                     {"name": "Facturas Surtidas x docena", "barcode": "", "sale_price": Decimal("7200.00"), "cost_price": Decimal("4800.00"), "unit_type": "unit"},
                     {"name": "Facturas Surtidas c/u", "barcode": "", "sale_price": Decimal("650.00"), "cost_price": Decimal("420.00"), "unit_type": "unit"},
@@ -325,6 +325,7 @@ def import_starter_catalog_for_user(user, preset_keys=None):
                         sale_price=item["sale_price"],
                         cost_price=item.get("cost_price", Decimal("0.00")),
                         barcode=barcode,
+                        min_stock=item.get("min_stock", 1),
                         is_active=True,
                     )
                     created_products_count += 1

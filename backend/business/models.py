@@ -405,7 +405,7 @@ class Product(models.Model):
     )
 
     min_stock = models.IntegerField(
-        default=0,
+        default=1,
         null=True,
         blank=True,
     )
@@ -434,6 +434,165 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class TransactionOperationItem(models.Model):
+    operation = models.ForeignKey(
+        TransactionOperation,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operation_items",
+    )
+    product_name = models.CharField(
+        max_length=150,
+    )
+    unit_type = models.CharField(
+        max_length=10,
+        default=Product.UnitType.UNIT,
+    )
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("1.00"),
+    )
+    unit_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+    subtotal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
+    def __str__(self):
+        return f"{self.quantity} x {self.product_name} (${self.subtotal})"
+
+
+class StockMovement(models.Model):
+    class MovementType(models.TextChoices):
+        RESTOCK = "restock", "Reabastecimiento / Compra"
+        SALE = "sale", "Venta"
+        ADJUSTMENT = "adjustment", "Ajuste manual"
+        LOSS = "loss", "Pérdida / Rotura / Vencido"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="stock_movements",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="stock_movements",
+    )
+    movement_type = models.CharField(
+        max_length=20,
+        choices=MovementType.choices,
+        default=MovementType.RESTOCK,
+    )
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Positivo para ingresos/ganancias, negativo para ventas/pérdidas",
+    )
+    unit_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    total_cost = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_movements",
+    )
+    notes = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Etiqueta de temporada, factura o motivo (ej: 'Navidad 2025', 'Pan diario')",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.get_movement_type_display()}: {self.quantity} {self.product.name}"
+
+
+class StockNote(models.Model):
+    class NoteType(models.TextChoices):
+        MISSING = "missing", "Faltante / Para comprar"
+        CUSTOMER_REQUEST = "customer_request", "Pedido de cliente"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendiente"
+        BOUGHT = "bought", "Comprado / Resuelto"
+        DISMISSED = "dismissed", "Descartado"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="stock_notes",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stock_notes",
+    )
+    item_name = models.CharField(
+        max_length=200,
+    )
+    note_type = models.CharField(
+        max_length=30,
+        choices=NoteType.choices,
+        default=NoteType.MISSING,
+    )
+    customer_name = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+    notes = models.TextField(
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.item_name}"
+
 
 
 

@@ -1,6 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction as db_transaction
+from django.db.models import Q, Sum, Count, F
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -8,10 +9,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import (Category, Client, Product, Provider, Register,
-                     Transaction, TransactionOperationAmount)
+                     StockMovement, StockNote, Transaction,
+                     TransactionOperationAmount, TransactionOperationItem)
 from .serializers import (CategorySerializer, ClientSerializer,
                           ProductSerializer, ProviderSerializer,
-                          RegisterSerializer,
+                          RegisterSerializer, StockAdjustmentSerializer,
+                          StockBatchRestockSerializer, StockMovementSerializer,
+                          StockNoteSerializer,
                           TransactionAmountReceivedSerializer,
                           TransactionSerializer)
 
@@ -604,10 +608,20 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
         search = self.request.query_params.get("search")
         if search:
-            from django.db.models import Q
+            search = search.strip()
+            from django.db.models import Case, When, Value, IntegerField, Q
             queryset = queryset.filter(
                 Q(name__icontains=search) | Q(barcode__iexact=search)
-            )
+            ).annotate(
+                search_priority=Case(
+                    When(name__iexact=search, then=Value(1)),
+                    When(barcode__iexact=search, then=Value(2)),
+                    When(name__istartswith=search, then=Value(3)),
+                    When(name__icontains=f" {search}", then=Value(4)),
+                    default=Value(5),
+                    output_field=IntegerField(),
+                )
+            ).order_by("search_priority", "name")
 
         category_id = self.request.query_params.get("category")
         if category_id:
@@ -798,5 +812,265 @@ class BulkDeleteProductsView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class StockMovementListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        queryset = StockMovement.objects.filter(user=user).select_related("product", "provider")
+
+        product_id = request.query_params.get("product_id")
+        provider_id = request.query_params.get("provider_id")
+        movement_type = request.query_params.get("movement_type")
+        tag = request.query_params.get("tag", "").strip()
+        search = request.query_params.get("search", "").strip()
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        if provider_id:
+            queryset = queryset.filter(provider_id=provider_id)
+        if movement_type:
+            queryset = queryset.filter(movement_type=movement_type)
+        if tag:
+            queryset = queryset.filter(notes__icontains=tag)
+        if search:
+            queryset = queryset.filter(Q(product__name__icontains=search) | Q(notes__icontains=search))
+        if start_date:
+            queryset = queryset.filter(created_at__date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(created_at__date__lte=end_date)
+
+        serializer = StockMovementSerializer(queryset[:300], many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if "items" in request.data:
+            serializer = StockBatchRestockSerializer(data=request.data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            movements = serializer.save()
+            return Response(
+                StockMovementSerializer(movements, many=True).data,
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            item = {
+                "product": request.data.get("product"),
+                "quantity": request.data.get("quantity"),
+                "unit_cost": request.data.get("unit_cost"),
+                "total_cost": request.data.get("total_cost"),
+                "update_product_cost": request.data.get("update_product_cost", True),
+            }
+            batch_data = {
+                "provider": request.data.get("provider"),
+                "notes": request.data.get("notes", ""),
+                "items": [item],
+            }
+            serializer = StockBatchRestockSerializer(data=batch_data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            movements = serializer.save()
+            return Response(
+                StockMovementSerializer(movements[0]).data if movements else {},
+                status=status.HTTP_201_CREATED,
+            )
+
+
+class StockAdjustmentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = StockAdjustmentSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        movement = serializer.save()
+        return Response(
+            StockMovementSerializer(movement).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class StockInsightsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        tag = request.query_params.get("tag", "").strip()
+        product_id = request.query_params.get("product_id")
+        search = request.query_params.get("search", "").strip()
+        start_date = request.query_params.get("start_date")
+        end_date = request.query_params.get("end_date")
+
+        movements = StockMovement.objects.filter(user=user)
+        if tag:
+            movements = movements.filter(notes__icontains=tag)
+        if product_id:
+            movements = movements.filter(product_id=product_id)
+        if search:
+            movements = movements.filter(Q(product__name__icontains=search) | Q(notes__icontains=search))
+        if start_date:
+            movements = movements.filter(created_at__date__gte=start_date)
+        if end_date:
+            movements = movements.filter(created_at__date__lte=end_date)
+
+        product_stats = {}
+        for m in movements.select_related("product", "provider"):
+            pid = m.product_id
+            if pid not in product_stats:
+                product_stats[pid] = {
+                    "product_id": pid,
+                    "product_name": m.product.name,
+                    "unit_type": m.product.unit_type,
+                    "current_stock": m.product.stock,
+                    "min_stock": m.product.min_stock,
+                    "sale_price": m.product.sale_price,
+                    "cost_price": m.product.cost_price,
+                    "total_restocked_qty": Decimal("0.00"),
+                    "total_restocked_cost": Decimal("0.00"),
+                    "total_sold_qty": Decimal("0.00"),
+                    "total_sales_revenue": Decimal("0.00"),
+                    "total_losses_qty": Decimal("0.00"),
+                    "tags": set(),
+                }
+            if m.notes:
+                product_stats[pid]["tags"].add(m.notes)
+
+            if m.movement_type == StockMovement.MovementType.RESTOCK:
+                product_stats[pid]["total_restocked_qty"] += m.quantity
+                if m.total_cost is not None and m.total_cost > Decimal("0"):
+                    product_stats[pid]["total_restocked_cost"] += m.total_cost
+                elif m.unit_cost is not None:
+                    product_stats[pid]["total_restocked_cost"] += m.unit_cost * m.quantity
+            elif m.movement_type == StockMovement.MovementType.SALE:
+                qty_sold = abs(m.quantity)
+                product_stats[pid]["total_sold_qty"] += qty_sold
+                product_stats[pid]["total_sales_revenue"] += qty_sold * m.product.sale_price
+            elif m.movement_type == StockMovement.MovementType.LOSS:
+                product_stats[pid]["total_losses_qty"] += abs(m.quantity)
+
+        items_list = []
+        grand_restocked_qty = Decimal("0.00")
+        grand_restocked_cost = Decimal("0.00")
+        grand_sold_qty = Decimal("0.00")
+        grand_sales_revenue = Decimal("0.00")
+
+        for stat in product_stats.values():
+            stat["tags"] = sorted(list(stat["tags"]))
+            restocked = stat["total_restocked_qty"]
+            sold = stat["total_sold_qty"]
+            stat["surplus_qty"] = max(Decimal("0.00"), restocked - sold)
+            if restocked > 0:
+                stat["sell_through_rate"] = round(float((sold / restocked) * Decimal("100")), 1)
+            else:
+                stat["sell_through_rate"] = 100.0 if sold > 0 else 0.0
+
+            stat["estimated_profit"] = stat["total_sales_revenue"] - stat["total_restocked_cost"]
+
+            grand_restocked_qty += restocked
+            grand_restocked_cost += stat["total_restocked_cost"]
+            grand_sold_qty += sold
+            grand_sales_revenue += stat["total_sales_revenue"]
+
+            items_list.append(stat)
+
+        items_list.sort(key=lambda x: x["total_restocked_qty"], reverse=True)
+
+        overall_sell_through = 0.0
+        if grand_restocked_qty > 0:
+            overall_sell_through = round(float((grand_sold_qty / grand_restocked_qty) * Decimal("100")), 1)
+
+        available_tags = (
+            StockMovement.objects.filter(user=user)
+            .exclude(notes="")
+            .values_list("notes", flat=True)
+            .distinct()[:50]
+        )
+
+        return Response({
+            "summary": {
+                "total_restocked_units": grand_restocked_qty,
+                "total_restocked_cost": grand_restocked_cost,
+                "total_sold_units": grand_sold_qty,
+                "total_sales_revenue": grand_sales_revenue,
+                "overall_sell_through_rate": overall_sell_through,
+                "net_margin": grand_sales_revenue - grand_restocked_cost,
+            },
+            "products": items_list,
+            "available_tags": list(available_tags),
+        })
+
+
+class StockAlertsSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        products = Product.objects.filter(user=user, is_active=True)
+
+        tracked_count = 0
+        low_stock_count = 0
+        out_of_stock_count = 0
+        total_inventory_cost = Decimal("0.00")
+
+        for p in products:
+            if p.stock is not None:
+                tracked_count += 1
+                if p.stock <= Decimal("0"):
+                    out_of_stock_count += 1
+                elif p.min_stock and p.stock <= Decimal(str(p.min_stock)):
+                    low_stock_count += 1
+
+                if p.stock > 0 and p.cost_price and p.cost_price > Decimal("0"):
+                    total_inventory_cost += p.stock * p.cost_price
+
+        pending_notes = StockNote.objects.filter(user=user, status="pending").count()
+
+        return Response({
+            "tracked_count": tracked_count,
+            "low_stock_count": low_stock_count,
+            "out_of_stock_count": out_of_stock_count,
+            "total_alerts": low_stock_count + out_of_stock_count,
+            "total_inventory_cost": total_inventory_cost,
+            "pending_notes_count": pending_notes,
+        })
+
+
+class StockNoteListCreateView(generics.ListCreateAPIView):
+    serializer_class = StockNoteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = StockNote.objects.filter(user=user).select_related("product")
+
+        status_filter = self.request.query_params.get("status")
+        note_type = self.request.query_params.get("note_type")
+        search = self.request.query_params.get("search", "").strip()
+
+        if status_filter and status_filter != "all":
+            queryset = queryset.filter(status=status_filter)
+        if note_type:
+            queryset = queryset.filter(note_type=note_type)
+        if search:
+            queryset = queryset.filter(
+                Q(item_name__icontains=search)
+                | Q(notes__icontains=search)
+                | Q(customer_name__icontains=search)
+            )
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class StockNoteDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = StockNoteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return StockNote.objects.filter(user=self.request.user).select_related("product")
+
 
 

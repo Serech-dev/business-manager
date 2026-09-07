@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
     getProducts,
@@ -9,6 +10,8 @@ import {
     importStarterCatalog,
 } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatStockQty, formatUnitType } from "../utils/formatStock";
+import { filterAndRankProducts } from "../utils/productSearch";
 import ProductModal from "../components/products/ProductModal";
 import CategoryModal from "../components/products/CategoryModal";
 import ProviderModal from "../components/products/ProviderModal";
@@ -88,6 +91,7 @@ function CustomCheckbox({ checked, indeterminate = false, onChange, ariaLabel })
 }
 
 function ProductList() {
+    const navigate = useNavigate();
     const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
 
     const [products, setProducts] = useState([]);
@@ -143,34 +147,12 @@ function ProductList() {
         loadData();
     }, []);
 
-    // Filter products
+    // Filter products with precision search scoring
     const filteredProducts = useMemo(() => {
-        return products.filter((p) => {
-            if (selectedCategory && String(p.category) !== String(selectedCategory)) {
-                return false;
-            }
-            if (selectedProvider && String(p.provider) !== String(selectedProvider)) {
-                return false;
-            }
-            if (statusFilter === "active" && !p.is_active) {
-                return false;
-            }
-            if (statusFilter === "inactive" && p.is_active) {
-                return false;
-            }
-            const q = search.trim().toLowerCase();
-            if (q) {
-                const matchesName = p.name.toLowerCase().includes(q);
-                const matchesBarcode = p.barcode && p.barcode.toLowerCase().includes(q);
-                const matchesProvider =
-                    p.provider_name && p.provider_name.toLowerCase().includes(q);
-                const matchesCategory =
-                    p.category_name && p.category_name.toLowerCase().includes(q);
-                if (!matchesName && !matchesBarcode && !matchesProvider && !matchesCategory) {
-                    return false;
-                }
-            }
-            return true;
+        return filterAndRankProducts(products, search, {
+            categoryId: selectedCategory,
+            providerId: selectedProvider,
+            statusFilter: statusFilter,
         });
     }, [products, selectedCategory, selectedProvider, statusFilter, search]);
 
@@ -216,6 +198,11 @@ function ProductList() {
 
     // Sorted products
     const sortedProducts = useMemo(() => {
+        // If actively searching and using default name sort, maintain search relevance score!
+        if (search.trim() && sortBy === "name_asc") {
+            return filteredProducts;
+        }
+
         const list = [...filteredProducts];
         if (sortBy === "name_asc") {
             list.sort((a, b) => a.name.localeCompare(b.name));
@@ -233,7 +220,7 @@ function ProductList() {
             list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
         }
         return list;
-    }, [filteredProducts, sortBy]);
+    }, [filteredProducts, sortBy, search]);
 
     // Reset pagination to page 1 on filter changes
     useEffect(() => {
@@ -432,6 +419,17 @@ function ProductList() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                        type="button"
+                        onClick={() => navigate("/stock")}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3.5 py-2.5 text-xs font-bold text-[var(--primary)] transition hover:bg-[var(--primary)]/20"
+                    >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                        </svg>
+                        <span>Control de Stock</span>
+                    </button>
+
                     <button
                         type="button"
                         data-tour="products-bulk-price"
@@ -930,6 +928,24 @@ function ProductList() {
                                                     {p.unit_type === "100g" && (
                                                         <span className="rounded-md border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:text-purple-400">
                                                             Por 100g
+                                                        </span>
+                                                    )}
+                                                    {p.stock !== null && p.stock !== undefined && (
+                                                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                                                            Number(p.stock) <= 0
+                                                                ? "bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]"
+                                                                : Number(p.stock) <= (Number(p.min_stock) || 0)
+                                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                                                : "bg-[var(--surface-accent)] text-[var(--text-secondary)] border border-[var(--border)]"
+                                                        }`}>
+                                                            <span className={`h-1.5 w-1.5 rounded-full ${
+                                                                Number(p.stock) <= 0
+                                                                    ? "bg-[var(--danger)]"
+                                                                    : Number(p.stock) <= (Number(p.min_stock) || 0)
+                                                                    ? "bg-amber-500"
+                                                                    : "bg-emerald-500"
+                                                            }`} />
+                                                            {Number(p.stock) <= 0 ? "Sin stock" : `Stock: ${formatStockQty(p.stock, p.unit_type)} ${formatUnitType(p.unit_type, false, p.stock)}`}
                                                         </span>
                                                     )}
                                                     {!p.is_active && (

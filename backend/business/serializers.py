@@ -1,11 +1,13 @@
 from decimal import Decimal
 
 from django.db import transaction as db_transaction
+from django.db.models import F
 from rest_framework import serializers
 
 from .models import (Category, Client, Product, Provider, Register,
-                     Transaction, TransactionOperation,
-                     TransactionOperationAmount)
+                     StockMovement, StockNote, Transaction,
+                     TransactionOperation, TransactionOperationAmount,
+                     TransactionOperationItem)
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -88,11 +90,35 @@ class TransactionOperationAmountSerializer(
         ]
 
 
+class TransactionOperationItemSerializer(
+    serializers.ModelSerializer
+):
+    class Meta:
+        model = TransactionOperationItem
+        fields = [
+            "id",
+            "product",
+            "product_name",
+            "unit_type",
+            "quantity",
+            "unit_price",
+            "subtotal",
+        ]
+        read_only_fields = [
+            "id",
+        ]
+
+
 class TransactionOperationSerializer(
     serializers.ModelSerializer
 ):
     amounts = TransactionOperationAmountSerializer(
         many=True
+    )
+    items = TransactionOperationItemSerializer(
+        many=True,
+        required=False,
+        default=list,
     )
 
     total = serializers.SerializerMethodField()
@@ -108,6 +134,7 @@ class TransactionOperationSerializer(
             "exchange_amount",
             "exchange_fee",
             "amounts",
+            "items",
             "total",
         ]
 
@@ -421,6 +448,10 @@ class TransactionSerializer(
             amounts = operation_data.pop(
                 "amounts"
             )
+            items = operation_data.pop(
+                "items",
+                [],
+            )
 
             operation = TransactionOperation.objects.create(
                 transaction=transaction,
@@ -446,6 +477,34 @@ class TransactionSerializer(
                 )
                 for amount in amounts
             ])
+
+            for item_data in items:
+                prod = item_data.get("product")
+                p_name = item_data.get("product_name") or (prod.name if prod else "Producto")
+                u_type = item_data.get("unit_type") or (prod.unit_type if prod else Product.UnitType.UNIT)
+                qty = item_data.get("quantity", Decimal("1.00"))
+                u_price = item_data.get("unit_price", Decimal("0.00"))
+                subtotal = item_data.get("subtotal", Decimal("0.00"))
+
+                TransactionOperationItem.objects.create(
+                    operation=operation,
+                    product=prod,
+                    product_name=p_name,
+                    unit_type=u_type,
+                    quantity=qty,
+                    unit_price=u_price,
+                    subtotal=subtotal,
+                )
+
+                if prod and prod.stock is not None:
+                    Product.objects.filter(id=prod.id).update(stock=F("stock") - qty)
+                    StockMovement.objects.create(
+                        user=self.context["request"].user,
+                        product=prod,
+                        movement_type=StockMovement.MovementType.SALE,
+                        quantity=-Decimal(str(qty)),
+                        notes=f"Venta #{transaction.id}",
+                    )
 
         return transaction
 
@@ -568,6 +627,8 @@ class RegisterSerializer(
 
     fiado = serializers.SerializerMethodField()
 
+    shift_stock_summary = serializers.SerializerMethodField()
+
     transactions = TransactionSerializer(
         many=True,
         read_only=True,
@@ -609,6 +670,7 @@ class RegisterSerializer(
 
             "fiado",
             "provider",
+            "shift_stock_summary",
             "transactions",
         ]
 
@@ -1113,6 +1175,57 @@ class RegisterSerializer(
             ),
         }
 
+    def get_shift_stock_summary(self, obj):
+        tx_ids = obj.transactions.values_list("id", flat=True)
+        items = (
+            TransactionOperationItem.objects
+            .filter(operation__transaction_id__in=tx_ids)
+            .select_related("product")
+        )
+
+        sold_by_product = {}
+        for it in items:
+            p_id = str(it.product_id) if it.product_id else f"custom_{it.product_name}"
+            if p_id not in sold_by_product:
+                sold_by_product[p_id] = {
+                    "product_id": it.product_id,
+                    "product_name": it.product_name,
+                    "unit_type": it.unit_type,
+                    "quantity": Decimal("0.00"),
+                    "total_amount": Decimal("0.00"),
+                    "current_stock": it.product.stock if it.product else None,
+                    "min_stock": it.product.min_stock if it.product else 0,
+                }
+            sold_by_product[p_id]["quantity"] += it.quantity
+            sold_by_product[p_id]["total_amount"] += it.subtotal
+
+        low_or_out = []
+        user = obj.user
+        tracked_prods = Product.objects.filter(user=user, is_active=True, stock__isnull=False)
+        for p in tracked_prods:
+            if p.stock <= Decimal("0"):
+                low_or_out.append({
+                    "id": p.id,
+                    "name": p.name,
+                    "stock": p.stock,
+                    "min_stock": p.min_stock or 0,
+                    "status": "out_of_stock",
+                })
+            elif p.min_stock and p.stock <= Decimal(str(p.min_stock)):
+                low_or_out.append({
+                    "id": p.id,
+                    "name": p.name,
+                    "stock": p.stock,
+                    "min_stock": p.min_stock,
+                    "status": "low_stock",
+                })
+
+        return {
+            "products_sold": list(sold_by_product.values()),
+            "total_items_sold": sum(it["quantity"] for it in sold_by_product.values()),
+            "critical_stock_alerts": low_or_out,
+        }
+
 
 class TransactionAmountReceivedSerializer(
     serializers.ModelSerializer
@@ -1282,6 +1395,7 @@ class ProductSerializer(serializers.ModelSerializer):
         default=None,
     )
     markup_percentage = serializers.SerializerMethodField()
+    stock_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -1300,6 +1414,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "min_stock",
             "is_active",
             "markup_percentage",
+            "stock_status",
             "created_at",
             "updated_at",
         ]
@@ -1308,6 +1423,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "markup_percentage",
+            "stock_status",
             "category_name",
             "provider_name",
         ]
@@ -1317,3 +1433,180 @@ class ProductSerializer(serializers.ModelSerializer):
             markup = ((obj.sale_price - obj.cost_price) / obj.cost_price) * Decimal("100")
             return round(float(markup), 1)
         return None
+
+    def get_stock_status(self, obj):
+        if obj.stock is None:
+            return "untracked"
+        if obj.stock <= Decimal("0"):
+            return "out_of_stock"
+        if obj.min_stock is not None and obj.stock <= Decimal(str(obj.min_stock)):
+            return "low_stock"
+        return "normal"
+
+
+class StockMovementSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_unit_type = serializers.CharField(source="product.unit_type", read_only=True)
+    provider_name = serializers.CharField(source="provider.name", read_only=True, default=None)
+    movement_type_display = serializers.CharField(source="get_movement_type_display", read_only=True)
+
+    class Meta:
+        model = StockMovement
+        fields = [
+            "id",
+            "product",
+            "product_name",
+            "product_unit_type",
+            "movement_type",
+            "movement_type_display",
+            "quantity",
+            "unit_cost",
+            "total_cost",
+            "provider",
+            "provider_name",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "product_name",
+            "product_unit_type",
+            "provider_name",
+            "movement_type_display",
+        ]
+
+
+class StockRestockItemSerializer(serializers.Serializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    quantity = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
+    unit_cost = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    total_cost = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    update_product_cost = serializers.BooleanField(default=True, required=False)
+
+
+class StockBatchRestockSerializer(serializers.Serializer):
+    provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all(), required=False, allow_null=True)
+    notes = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    items = StockRestockItemSerializer(many=True)
+
+    @db_transaction.atomic
+    def create(self, validated_data):
+        user = self.context["request"].user
+        provider = validated_data.get("provider")
+        notes = validated_data.get("notes", "").strip()
+        items_data = validated_data.get("items", [])
+
+        created_movements = []
+        for item in items_data:
+            product = item["product"]
+            quantity = item["quantity"]
+            unit_cost = item.get("unit_cost")
+            total_cost = item.get("total_cost")
+            if unit_cost is None and total_cost is not None and quantity > 0:
+                unit_cost = total_cost / quantity
+            elif total_cost is None and unit_cost is not None:
+                total_cost = unit_cost * quantity
+
+            update_cost = item.get("update_product_cost", True)
+
+            # Update product stock
+            if product.stock is None:
+                product.stock = quantity
+            else:
+                product.stock = (product.stock or Decimal("0")) + quantity
+
+            if update_cost and unit_cost is not None and unit_cost > Decimal("0"):
+                product.cost_price = unit_cost
+
+            product.save(update_fields=["stock", "cost_price", "updated_at"])
+
+            movement = StockMovement.objects.create(
+                user=user,
+                product=product,
+                movement_type=StockMovement.MovementType.RESTOCK,
+                quantity=quantity,
+                unit_cost=unit_cost,
+                total_cost=total_cost,
+                provider=provider or product.provider,
+                notes=notes,
+            )
+            created_movements.append(movement)
+
+        return created_movements
+
+
+class StockAdjustmentSerializer(serializers.Serializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    new_stock = serializers.DecimalField(max_digits=10, decimal_places=2)
+    min_stock = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+    movement_type = serializers.ChoiceField(
+        choices=[
+            ("adjustment", "Ajuste manual / Recuento"),
+            ("loss", "Pérdida / Rotura / Vencido"),
+            ("restock", "Ingreso directo"),
+        ],
+        default="adjustment",
+    )
+    notes = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    @db_transaction.atomic
+    def create(self, validated_data):
+        user = self.context["request"].user
+        product = validated_data["product"]
+        new_stock = validated_data["new_stock"]
+        movement_type = validated_data.get("movement_type", "adjustment")
+        notes = validated_data.get("notes", "").strip()
+
+        old_stock = product.stock if product.stock is not None else Decimal("0.00")
+        delta = new_stock - old_stock
+
+        product.stock = new_stock
+        update_fields = ["stock", "updated_at"]
+
+        if "min_stock" in validated_data:
+            val = validated_data["min_stock"]
+            product.min_stock = int(val) if val is not None else 0
+            update_fields.append("min_stock")
+
+        product.save(update_fields=update_fields)
+
+        movement = StockMovement.objects.create(
+            user=user,
+            product=product,
+            movement_type=movement_type,
+            quantity=delta,
+            notes=notes or ("Recuento de inventario" if movement_type == "adjustment" else "Ajuste"),
+        )
+        return movement
+
+
+class StockNoteSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name", read_only=True, default=None)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    note_type_display = serializers.CharField(source="get_note_type_display", read_only=True)
+
+    class Meta:
+        model = StockNote
+        fields = [
+            "id",
+            "product",
+            "product_name",
+            "item_name",
+            "note_type",
+            "note_type_display",
+            "customer_name",
+            "notes",
+            "status",
+            "status_display",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "product_name",
+            "status_display",
+            "note_type_display",
+        ]

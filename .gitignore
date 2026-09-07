@@ -1,4 +1,56 @@
+# Dependencies & Virtualenvs
+node_modules/
+*/node_modules/
 .venv/
+*/.venv/
+env/
+venv/
+ENV/
+
+# Python cache & artifacts
 __pycache__/
-*.pyc
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build & outputs
+dist/
+*/dist/
+dist-ssr/
+*.local
+build/
+
+# Vite / Frontend caches
+.vite/
+*/.vite/
+
+# Database & SQLite
+*.sqlite3
+*.db
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment & local secrets
 .env
+.env.*
+!.env.example
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

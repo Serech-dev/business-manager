@@ -326,6 +326,81 @@ export async function bulkDeleteProducts(productIds) {
     return response.data;
 }
 
+export async function getStockMovements(params = {}) {
+    const query = new URLSearchParams();
+    if (params.product_id) query.set("product_id", params.product_id);
+    if (params.provider_id) query.set("provider_id", params.provider_id);
+    if (params.movement_type) query.set("movement_type", params.movement_type);
+    if (params.tag) query.set("tag", params.tag);
+    if (params.search) query.set("search", params.search);
+    if (params.start_date) query.set("start_date", params.start_date);
+    if (params.end_date) query.set("end_date", params.end_date);
+
+    const queryString = query.toString();
+    const response = await api.get(
+        `business/stock-movements/${queryString ? `?${queryString}` : ""}`
+    );
+    return response.data;
+}
+
+export async function createBatchStockRestock(data) {
+    const response = await api.post("business/stock-movements/", data);
+    return response.data;
+}
+
+export async function adjustStock(data) {
+    const response = await api.post("business/stock-adjust/", data);
+    return response.data;
+}
+
+export async function getStockInsights(params = {}) {
+    const query = new URLSearchParams();
+    if (params.tag) query.set("tag", params.tag);
+    if (params.product_id) query.set("product_id", params.product_id);
+    if (params.search) query.set("search", params.search);
+    if (params.start_date) query.set("start_date", params.start_date);
+    if (params.end_date) query.set("end_date", params.end_date);
+
+    const queryString = query.toString();
+    const response = await api.get(
+        `business/stock-insights/${queryString ? `?${queryString}` : ""}`
+    );
+    return response.data;
+}
+
+export async function getStockNotes(params = {}) {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.note_type) query.set("note_type", params.note_type);
+    if (params.search) query.set("search", params.search);
+
+    const queryString = query.toString();
+    const response = await api.get(
+        `business/stock-notes/${queryString ? `?${queryString}` : ""}`
+    );
+    return response.data;
+}
+
+export async function createStockNote(data) {
+    const response = await api.post("business/stock-notes/", data);
+    return response.data;
+}
+
+export async function updateStockNote(id, data) {
+    const response = await api.patch(`business/stock-notes/${id}/`, data);
+    return response.data;
+}
+
+export async function deleteStockNote(id) {
+    await api.delete(`business/stock-notes/${id}/`);
+}
+
+export async function getStockAlertsSummary() {
+    const response = await api.get("business/stock-alerts/");
+    return response.data;
+}
+
+
 
 
 
