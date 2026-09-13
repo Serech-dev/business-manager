@@ -62,14 +62,21 @@ function GuideModal({ isOpen, onClose }) {
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* HEADER */}
-                <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
-                            Centro de Ayuda
-                        </p>
-                        <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                            Guía del Sistema
-                        </h2>
+                <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--surface-accent)]/30">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/25">
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--primary)]">
+                                Centro de Ayuda
+                            </p>
+                            <h2 className="text-base font-bold text-[var(--text-primary)]">
+                                Guía del Sistema
+                            </h2>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -77,10 +84,12 @@ function GuideModal({ isOpen, onClose }) {
                             <button
                                 type="button"
                                 onClick={handleStartCurrentTour}
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)]/10 px-3 py-1.5 text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition"
-                                title="Iniciar recorrido con punteros visuales en esta pantalla"
+                                className="inline-flex items-center gap-1.5 rounded-md bg-[var(--primary)]/10 border border-[var(--primary)]/30 px-3 py-1.5 text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition"
+                                title="Iniciar recorrido interactivo en esta pantalla"
                             >
-                                <span>🎯</span>
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 8.227 4.795-3.886.852ZM3 12a9 9 0 1 1 18 0 9 9 0 0 1-18 0Z" />
+                                </svg>
                                 <span>Ver recorrido interactivo</span>
                             </button>
                         )}
@@ -88,15 +97,17 @@ function GuideModal({ isOpen, onClose }) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                            className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)] transition"
                             aria-label="Cerrar guía"
                         >
-                            ✕
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
                         </button>
                     </div>
                 </div>
 
-                {/* 5 TABS - CLEAN RESPONSIVE ROW */}
+                {/* 5 TABS - CLEAN SHARP RESPONSIVE ROW */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
                     {tabs.map((tab) => (
                         <button
@@ -105,8 +116,8 @@ function GuideModal({ isOpen, onClose }) {
                             onClick={() => setActiveTab(tab.id)}
                             className={`
                                 rounded-md
-                                px-3
-                                py-2
+                                px-2.5
+                                py-1.5
                                 text-xs
                                 font-bold
                                 text-center
@@ -124,11 +135,11 @@ function GuideModal({ isOpen, onClose }) {
                 </div>
 
                 {/* CONTENT */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm text-[var(--text-primary)]">
+                <div className="flex-1 overflow-y-auto p-6 space-y-3.5 text-sm text-[var(--text-primary)]">
                     {activeTab === "caja" && (
-                        <div className="space-y-3.5">
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Apertura y Cierre de Caja
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -136,8 +147,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Reabrir caja para corregir errores
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -145,8 +156,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Transferencias no recibidas
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -157,9 +168,9 @@ function GuideModal({ isOpen, onClose }) {
                     )}
 
                     {activeTab === "ventas" && (
-                        <div className="space-y-3.5">
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Ventas y Pagos Divididos
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -167,8 +178,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Ventas A Cuenta (Libreta / Cuenta Corriente)
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -176,8 +187,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Migración de cuadernos y Pagos a Cuenta
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -188,9 +199,9 @@ function GuideModal({ isOpen, onClose }) {
                     )}
 
                     {activeTab === "stock" && (
-                        <div className="space-y-3.5">
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Descuento Automático y Alertas
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -198,8 +209,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Ingreso de Mercadería en Lote
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -207,8 +218,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Ajustes Rápidos y Mermas
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -216,8 +227,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Libreta de Notas y Faltantes
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -228,9 +239,9 @@ function GuideModal({ isOpen, onClose }) {
                     )}
 
                     {activeTab === "proveedores" && (
-                        <div className="space-y-3.5">
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Ficha Integral y Enlace a WhatsApp
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -238,8 +249,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Vincular Productos en Lote
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -247,8 +258,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Pagos, Compras y Salidas de Caja
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -259,9 +270,9 @@ function GuideModal({ isOpen, onClose }) {
                     )}
 
                     {activeTab === "seguridad" && (
-                        <div className="space-y-3.5">
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Modo Caja (Terminal de Empleados)
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -269,8 +280,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     PIN de Dueño
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -278,8 +289,8 @@ function GuideModal({ isOpen, onClose }) {
                                 </p>
                             </div>
 
-                            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-4 space-y-1.5">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                     Reportes y Franjas Horarias
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -295,10 +306,13 @@ function GuideModal({ isOpen, onClose }) {
                     <button
                         type="button"
                         onClick={handleResetAllTours}
-                        className="text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] transition"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] transition"
                         title="Vuelve a activar las guías visuales automáticas en todas las pantallas"
                     >
-                        🔄 Reiniciar todas las guías visuales
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        <span>Reiniciar todas las guías visuales</span>
                     </button>
 
                     <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useOnboarding } from "../../context/OnboardingContext";
 
 export default function OnboardingTour({
@@ -119,10 +119,9 @@ export default function OnboardingTour({
             });
         }
 
-        // Initial update and subsequent updates
         const timeout = setTimeout(() => {
             updatePosition();
-        }, 100);
+        }, 80);
 
         window.addEventListener("resize", updatePosition);
         window.addEventListener("scroll", updatePosition, true);
@@ -141,14 +140,14 @@ export default function OnboardingTour({
         function handleKeyDown(e) {
             if (e.key === "Escape") {
                 e.preventDefault();
-                dismissTour(tourKey, false); // temporary close
+                dismissTour(tourKey, false);
             } else if (e.key === "ArrowRight" || e.key === "Enter") {
                 if (activeStep < steps.length - 1) {
                     e.preventDefault();
                     nextStep();
                 } else {
                     e.preventDefault();
-                    dismissTour(tourKey, true); // complete and hide permanently
+                    dismissTour(tourKey, true);
                 }
             } else if (e.key === "ArrowLeft" && activeStep > 0) {
                 e.preventDefault();
@@ -166,27 +165,30 @@ export default function OnboardingTour({
 
     return (
         <div className="fixed inset-0 z-50 pointer-events-auto">
-            {/* BACKDROP WITH SPOTLIGHT HOLE CUTOUT FEEL */}
+            {/* CLICKABLE DISMISS BACKDROP (TRANSPARENT WHEN SPOTLIGHT CUTOUT IS ACTIVE) */}
             <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300"
+                className={`fixed inset-0 transition-opacity duration-200 ${
+                    targetRect ? "bg-transparent z-40" : "bg-black/55 z-40"
+                }`}
                 onClick={() => dismissTour(tourKey, false)}
             />
 
-            {/* TARGET HIGHLIGHT SPOTLIGHT BOX */}
+            {/* TARGET HIGHLIGHT SPOTLIGHT CUTOUT (NO BLUR, 100% CRISP AND UNOBSTRUCTED) */}
             {targetRect && (
                 <div
-                    className="fixed pointer-events-none rounded-xl border-2 border-[var(--primary)] ring-4 ring-[var(--primary)]/25 shadow-2xl transition-all duration-300 ease-out z-50"
+                    className="fixed pointer-events-none rounded-md border-2 border-[var(--primary)] transition-all duration-200 ease-out z-40"
                     style={{
                         top: targetRect.top - 4,
                         left: targetRect.left - 4,
                         width: targetRect.width + 8,
                         height: targetRect.height + 8,
+                        boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.55)",
                     }}
                 >
-                    {/* PULSING CORNER BEACON */}
-                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                    {/* CORNER BEACON */}
+                    <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-75" />
-                        <span className="relative inline-flex rounded-full h-4 w-4 bg-[var(--primary)] shadow-sm" />
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[var(--primary)] shadow-sm" />
                     </span>
                 </div>
             )}
@@ -194,7 +196,7 @@ export default function OnboardingTour({
             {/* FLOATING POPOVER CARD */}
             <div
                 ref={popoverRef}
-                className="fixed z-50 w-[340px] max-w-[calc(100vw-32px)] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl space-y-3 transition-all duration-200 ease-out select-none"
+                className="fixed z-50 w-[340px] max-w-[calc(100vw-32px)] rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl space-y-3 transition-all duration-200 ease-out select-none"
                 style={{
                     top: `${popoverPosition.top}px`,
                     left: `${popoverPosition.left}px`,
@@ -204,7 +206,7 @@ export default function OnboardingTour({
                 {/* HEADER: STEP BADGE & CLOSE */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
                     <div className="flex items-center gap-2">
-                        <span className="flex h-5 items-center justify-center rounded-md bg-[var(--primary)]/15 px-2 text-[10px] font-extrabold uppercase tracking-wider text-[var(--primary)]">
+                        <span className="flex h-5 items-center justify-center rounded bg-[var(--primary)]/15 px-2 text-[10px] font-bold uppercase tracking-wider text-[var(--primary)]">
                             Paso {activeStep + 1} de {steps.length}
                         </span>
                         <h4 className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[180px]">
@@ -215,11 +217,13 @@ export default function OnboardingTour({
                     <button
                         type="button"
                         onClick={() => dismissTour(tourKey, false)}
-                        className="rounded-md p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)] transition text-xs font-bold"
-                        title="Cerrar por ahora (se mostrará nuevamente al recargar)"
+                        className="rounded p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)] transition"
+                        title="Cerrar por ahora"
                         aria-label="Cerrar tutorial"
                     >
-                        ✕
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
 
@@ -229,7 +233,7 @@ export default function OnboardingTour({
                 </p>
 
                 {/* FOOTER ACTIONS */}
-                <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
                     <button
                         type="button"
                         onClick={() => dismissTour(tourKey, true)}
@@ -244,7 +248,7 @@ export default function OnboardingTour({
                             <button
                                 type="button"
                                 onClick={prevStep}
-                                className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition"
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition"
                             >
                                 ← Anterior
                             </button>
@@ -259,9 +263,9 @@ export default function OnboardingTour({
                                     nextStep();
                                 }
                             }}
-                            className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] transition active:scale-98"
+                            className="rounded-md bg-[var(--primary)] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] transition active:scale-98"
                         >
-                            {isLastStep ? "¡Entendido! ✓" : "Siguiente →"}
+                            {isLastStep ? "Finalizar" : "Siguiente →"}
                         </button>
                     </div>
                 </div>
