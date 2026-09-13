@@ -145,6 +145,7 @@ class PaymentNotificationSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source="user.email", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     plan_display = serializers.CharField(source="get_plan_display", read_only=True)
+    payment_method_display = serializers.CharField(source="get_payment_method_display", read_only=True)
 
     class Meta:
         model = PaymentNotification
@@ -154,8 +155,13 @@ class PaymentNotificationSerializer(serializers.ModelSerializer):
             "user_email",
             "plan",
             "plan_display",
+            "payment_method",
+            "payment_method_display",
             "amount",
             "reference_code",
+            "mp_preference_id",
+            "mp_payment_id",
+            "mp_status",
             "payer_notes",
             "status",
             "status_display",
@@ -169,6 +175,8 @@ class PaymentNotificationSerializer(serializers.ModelSerializer):
             "user_email",
             "status",
             "status_display",
+            "payment_method_display",
+            "mp_status",
             "admin_notes",
             "created_at",
             "reviewed_at",

@@ -160,3 +160,40 @@ class SubscriptionTests(TestCase):
         self.client.force_authenticate(user=self.user)
         forbidden_res = self.client.get("/api/auth/admin/stores/")
         self.assertEqual(forbidden_res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_checkout_preference_mock_mode(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post(
+            "/api/auth/subscription/create-checkout/",
+            {"plan": "yearly"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("init_point", res.data)
+        self.assertIn("notification_id", res.data)
+        self.assertEqual(res.data["plan"], "yearly")
+
+        # Verify PaymentNotification was created with method mercadopago
+        notif = PaymentNotification.objects.get(id=res.data["notification_id"])
+        self.assertEqual(notif.payment_method, PaymentNotification.PaymentMethod.MERCADOPAGO)
+        self.assertEqual(notif.plan, PaymentNotification.PlanRequested.YEARLY)
+
+    def test_verify_payment_status_mock_simulation(self):
+        sub = Subscription.get_or_create_for_user(self.user)
+        sub.expires_at = timezone.now() - timedelta(days=2)
+        sub.save()
+        self.assertFalse(sub.is_valid)
+
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get(
+            "/api/auth/subscription/verify-payment/?payment_status=mock_simulate&plan=monthly",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["status"], "approved")
+
+        sub.refresh_from_db()
+        self.assertTrue(sub.is_valid)
+        self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
+        self.assertEqual(sub.status, Subscription.Status.ACTIVE)
+        self.assertGreaterEqual(sub.days_remaining, 29)
+

@@ -248,6 +248,10 @@ class PaymentNotification(models.Model):
         APPROVED = "approved", "Aprobado"
         REJECTED = "rejected", "Rechazado"
 
+    class PaymentMethod(models.TextChoices):
+        MERCADOPAGO = "mercadopago", "Mercado Pago (Automático)"
+        MANUAL_TRANSFER = "manual_transfer", "Transferencia Bancaria Manual"
+
     class PlanRequested(models.TextChoices):
         MONTHLY = "monthly", "Plan Mensual ($10.000/mes)"
         YEARLY = "yearly", "Plan Anual ($100.000/año)"
@@ -270,6 +274,12 @@ class PaymentNotification(models.Model):
         default=PlanRequested.MONTHLY,
     )
 
+    payment_method = models.CharField(
+        max_length=50,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.MERCADOPAGO,
+    )
+
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -280,6 +290,32 @@ class PaymentNotification(models.Model):
         max_length=255,
         blank=True,
         help_text="N° de comprobante / referencia de transferencia",
+    )
+
+    mp_preference_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+        help_text="ID de Preferencia de Checkout de Mercado Pago",
+    )
+
+    mp_payment_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+        help_text="ID de Pago de Mercado Pago",
+    )
+
+    mp_status = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Estado de la transacción en Mercado Pago",
+    )
+
+    raw_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Datos crudos del Webhook / Respuesta de MP",
     )
 
     payer_notes = models.TextField(
@@ -323,4 +359,5 @@ class PaymentNotification(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Pago #{self.id} de {self.user.email} - ${self.amount} ({self.get_status_display()})"
+        return f"Pago #{self.id} ({self.get_payment_method_display()}) de {self.user.email} - ${self.amount} ({self.get_status_display()})"
+

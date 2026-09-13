@@ -9,6 +9,8 @@ function SubscriptionModal({ isOpen, onClose }) {
         isTrial,
         daysRemaining,
         refreshSubscription,
+        startCheckout,
+        isProcessingCheckout,
         submitPayment,
         isSubmittingPayment,
         hasPendingPayment,
@@ -16,6 +18,7 @@ function SubscriptionModal({ isOpen, onClose }) {
     } = useSubscription();
 
     const [selectedPlan, setSelectedPlan] = useState("yearly");
+    const [showManualTransfer, setShowManualTransfer] = useState(false);
     const [referenceCode, setReferenceCode] = useState("");
     const [payerNotes, setPayerNotes] = useState("");
     const [copiedField, setCopiedField] = useState(null);
@@ -59,6 +62,14 @@ function SubscriptionModal({ isOpen, onClose }) {
         }
     }
 
+    async function handleAutomatedCheckout() {
+        try {
+            await startCheckout(selectedPlan);
+        } catch {
+            // Error toast handled in context
+        }
+    }
+
     async function handlePaymentSubmit(e) {
         e.preventDefault();
         const amount = selectedPlan === "yearly" ? paymentInfo.yearly_price : paymentInfo.monthly_price;
@@ -72,8 +83,9 @@ function SubscriptionModal({ isOpen, onClose }) {
             });
             setReferenceCode("");
             setPayerNotes("");
+            setShowManualTransfer(false);
         } catch {
-            // Toast is handled in context
+            // Toast handled in context
         }
     }
 
@@ -93,25 +105,25 @@ function SubscriptionModal({ isOpen, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn">
-            <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
+            <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--surface-accent)]">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                             </svg>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-[var(--text-primary)]">Suscripción & Licencia</h2>
-                            <p className="text-xs text-[var(--text-secondary)]">Administración de tu plan de servicio</p>
+                            <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">Suscripción & Licencia</h2>
+                            <p className="text-xs text-[var(--text-secondary)]">Activación automática o renovación del plan</p>
                         </div>
                     </div>
 
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                         aria-label="Cerrar modal"
                     >
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -124,7 +136,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {/* CURRENT STATUS BANNER */}
                     <div
-                        className={`rounded-xl border p-4 transition ${
+                        className={`rounded-md border p-4 transition ${
                             isExpired
                                 ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)]"
                                 : isTrial
@@ -143,7 +155,7 @@ function SubscriptionModal({ isOpen, onClose }) {
 
                                 <p className="mt-1.5 text-sm font-medium text-[var(--text-primary)]">
                                     {isExpired ? (
-                                        "Tu período de acceso ha vencido. Para continuar utilizando el sistema, seleccioná un plan y transferí el importe."
+                                        "Tu período de acceso ha finalizado. Aboná tu plan para continuar utilizando el sistema sin interrupciones."
                                     ) : isTrial ? (
                                         `Estás en el período de prueba gratuita de 14 días. Te quedan ${daysRemaining} días.`
                                     ) : (
@@ -156,7 +168,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                                 type="button"
                                 onClick={handleRefresh}
                                 disabled={isRefreshing}
-                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-accent)] disabled:opacity-50"
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)] shadow-sm hover:bg-[var(--surface-accent)] disabled:opacity-50"
                                 title="Verificar estado actual con el servidor"
                             >
                                 <svg
@@ -175,11 +187,11 @@ function SubscriptionModal({ isOpen, onClose }) {
 
                     {/* PENDING PAYMENT NOTICE IF ANY */}
                     {hasPendingPayment && (
-                        <div className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--text-primary)] flex items-center justify-between gap-3">
+                        <div className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-bg)] p-3 text-xs text-[var(--text-primary)] flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                                 <span className="h-2 w-2 rounded-full bg-[var(--warning)] animate-ping" />
                                 <span className="font-semibold">
-                                    Tenés un aviso de pago pendiente de revisión por el administrador.
+                                    Tenés un aviso de pago pendiente de revisión.
                                 </span>
                             </div>
                             <span className="text-[10px] text-[var(--text-secondary)] font-mono">
@@ -191,16 +203,16 @@ function SubscriptionModal({ isOpen, onClose }) {
                     {/* PRICING PLANS */}
                     <div>
                         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-3">
-                            Seleccioná tu Plan de Renovación
+                            1. Seleccioná tu Plan de Suscripción
                         </h3>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             {/* PLAN MENSUAL */}
                             <div
                                 onClick={() => setSelectedPlan("monthly")}
-                                className={`relative cursor-pointer rounded-xl border p-4 transition ${
+                                className={`relative cursor-pointer rounded-md border p-4 transition ${
                                     selectedPlan === "monthly"
-                                        ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-2 ring-[var(--primary)]/30"
+                                        ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--text-secondary)]"
                                 }`}
                             >
@@ -211,25 +223,25 @@ function SubscriptionModal({ isOpen, onClose }) {
                                     </span>
                                 </div>
                                 <div className="mt-2">
-                                    <span className="text-2xl font-extrabold text-[var(--text-primary)]">$10.000</span>
+                                    <span className="text-2xl font-black text-[var(--text-primary)]">$10.000</span>
                                     <span className="text-xs text-[var(--text-secondary)] font-medium"> / mes</span>
                                 </div>
                                 <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Flexibilidad mes a mes. Acceso completo a stock, caja, métricas y reportes.
+                                    Renovación por 30 días. Acceso total a stock, caja, métricas y reportes.
                                 </p>
                             </div>
 
                             {/* PLAN ANUAL */}
                             <div
                                 onClick={() => setSelectedPlan("yearly")}
-                                className={`relative cursor-pointer rounded-xl border p-4 transition ${
+                                className={`relative cursor-pointer rounded-md border p-4 transition ${
                                     selectedPlan === "yearly"
-                                        ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-2 ring-[var(--primary)]/30"
+                                        ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--text-secondary)]"
                                 }`}
                             >
-                                <div className="absolute -top-2.5 right-4 rounded-full bg-[var(--primary)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
-                                    Ahorrás $20.000
+                                <div className="absolute -top-2.5 right-4 rounded bg-[var(--primary)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                                    2 meses gratis
                                 </div>
 
                                 <div className="flex items-center justify-between">
@@ -239,115 +251,166 @@ function SubscriptionModal({ isOpen, onClose }) {
                                     </span>
                                 </div>
                                 <div className="mt-2">
-                                    <span className="text-2xl font-extrabold text-[var(--text-primary)]">$100.000</span>
+                                    <span className="text-2xl font-black text-[var(--text-primary)]">$100.000</span>
                                     <span className="text-xs text-[var(--text-secondary)] font-medium"> / año</span>
                                 </div>
                                 <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Equivale a <strong>$8.333/mes</strong> (2 meses bonificados). Congelás el precio por 1 año.
+                                    Equivale a <strong>$8.333/mes</strong> (ahorrás $20.000). Congelás el precio por 1 año.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* PAYMENT INSTRUCTIONS / TRANSFER DETAILS */}
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-3">
+                    {/* 1-CLICK AUTOMATED CHECKOUT */}
+                    <div className="rounded-md border-2 border-[var(--primary)]/30 bg-[var(--primary)]/5 p-5 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                                Datos para Transferencia Bancaria / MP
-                            </h4>
-                            <span className="text-[11px] font-semibold text-[var(--primary)]">
-                                Importe a transferir: ${selectedPlan === "yearly" ? "100.000" : "10.000"} ARS
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">
+                                2. Pago Instantáneo & Activación Automática
+                            </h3>
+                            <span className="rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                Activación Inmediata
                             </span>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-xs">
-                            {/* ALIAS */}
-                            <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5">
-                                <div>
-                                    <p className="text-[10px] font-medium text-[var(--text-secondary)] uppercase">Alias Mercado Pago / Banco</p>
-                                    <p className="font-mono font-bold text-sm text-[var(--text-primary)]">{paymentInfo.alias}</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => copyToClipboard(paymentInfo.alias, "Alias")}
-                                    className="rounded border border-[var(--border)] bg-[var(--surface-accent)] px-2 py-1 text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--primary)] hover:text-white transition"
-                                >
-                                    {copiedField === "Alias" ? "Copiado!" : "Copiar"}
-                                </button>
-                            </div>
-
-                            {/* CBU */}
-                            <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5">
-                                <div>
-                                    <p className="text-[10px] font-medium text-[var(--text-secondary)] uppercase">CBU / CVU</p>
-                                    <p className="font-mono font-bold text-xs text-[var(--text-primary)]">{paymentInfo.cbu}</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => copyToClipboard(paymentInfo.cbu, "CBU")}
-                                    className="rounded border border-[var(--border)] bg-[var(--surface-accent)] px-2 py-1 text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--primary)] hover:text-white transition"
-                                >
-                                    {copiedField === "CBU" ? "Copiado!" : "Copiar"}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-[var(--text-secondary)]">
-                            <span>Titular: <strong>{paymentInfo.holder}</strong></span>
-                            <span>Contacto por email: <a href={`mailto:${paymentInfo.email_contact}`} className="text-[var(--primary)] font-medium hover:underline">{paymentInfo.email_contact}</a></span>
-                        </div>
-                    </div>
-
-                    {/* PAYMENT REPORT FORM */}
-                    <form onSubmit={handlePaymentSubmit} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                            Ya transferiste? Notificá tu pago aquí
-                        </h4>
-                        <p className="text-xs text-[var(--text-secondary)]">
-                            Ingresá el número de operación de tu comprobante. Nuestro panel lo revisará para habilitar tu cuenta al instante.
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            Aboná de forma segura con tu cuenta de <strong>Mercado Pago</strong>, <strong>Tarjeta de Débito / Crédito</strong>, o transferencia desde <strong>cualquier Banco o Billetera Virtual</strong> (vía QR interoperable / CVU). Al completarse, tu licencia se activa al instante sin esperas.
                         </p>
 
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div>
-                                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase mb-1">
-                                    N° de Comprobante / Referencia
-                                </label>
-                                <input
-                                    type="text"
-                                    value={referenceCode}
-                                    onChange={(e) => setReferenceCode(e.target.value)}
-                                    placeholder="Ej: 98451234 o Banco Galicia"
-                                    required
-                                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase mb-1">
-                                    Nota adicional (Opcional)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={payerNotes}
-                                    onChange={(e) => setPayerNotes(e.target.value)}
-                                    placeholder="Ej: Transferí desde cuenta de Juan Pérez"
-                                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                />
-                            </div>
-                        </div>
-
                         <button
-                            type="submit"
-                            disabled={isSubmittingPayment}
-                            className="w-full rounded-lg bg-[var(--primary)] py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[var(--primary-hover)] disabled:opacity-50 transition flex items-center justify-center gap-2"
+                            type="button"
+                            onClick={handleAutomatedCheckout}
+                            disabled={isProcessingCheckout}
+                            className="w-full rounded-md bg-[var(--primary)] py-3 text-sm font-bold text-white shadow-md hover:bg-[var(--primary-hover)] disabled:opacity-50 transition flex items-center justify-center gap-2"
                         >
-                            {isSubmittingPayment ? (
-                                <span>Enviando notificación...</span>
+                            {isProcessingCheckout ? (
+                                <>
+                                    <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    <span>Conectando con pasarela de pago...</span>
+                                </>
                             ) : (
-                                <span>Notificar Pago de ${selectedPlan === "yearly" ? "100.000 (Plan Anual)" : "10.000 (Plan Mensual)"}</span>
+                                <>
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                                    </svg>
+                                    <span>Pagar ${selectedPlan === "yearly" ? "100.000 (Plan Anual)" : "10.000 (Plan Mensual)"} con Mercado Pago / Tarjetas</span>
+                                </>
                             )}
                         </button>
-                    </form>
+                    </div>
+
+                    {/* MANUAL TRANSFER ACCORDION */}
+                    <div className="rounded-md border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => setShowManualTransfer(!showManualTransfer)}
+                            className="w-full flex items-center justify-between p-4 text-left transition hover:bg-[var(--surface)]"
+                        >
+                            <div className="flex items-center gap-2">
+                                <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                                </svg>
+                                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                                    O transferir manualmente e informar comprobante
+                                </span>
+                            </div>
+                            <svg
+                                className={`h-4 w-4 text-[var(--text-secondary)] transition-transform duration-200 ${showManualTransfer ? "rotate-180" : ""}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+
+                        {showManualTransfer && (
+                            <div className="border-t border-[var(--border)] p-4 space-y-4 bg-[var(--surface)]">
+                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-xs">
+                                    {/* ALIAS */}
+                                    <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--background)] p-2.5">
+                                        <div>
+                                            <p className="text-[10px] font-medium text-[var(--text-secondary)] uppercase">Alias</p>
+                                            <p className="font-mono font-bold text-xs text-[var(--text-primary)]">{paymentInfo.alias}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(paymentInfo.alias, "Alias")}
+                                            className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2 py-1 text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--primary)] hover:text-white transition"
+                                        >
+                                            {copiedField === "Alias" ? "Copiado!" : "Copiar"}
+                                        </button>
+                                    </div>
+
+                                    {/* CBU */}
+                                    <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--background)] p-2.5">
+                                        <div>
+                                            <p className="text-[10px] font-medium text-[var(--text-secondary)] uppercase">CBU / CVU</p>
+                                            <p className="font-mono font-bold text-xs text-[var(--text-primary)]">{paymentInfo.cbu}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(paymentInfo.cbu, "CBU")}
+                                            className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2 py-1 text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--primary)] hover:text-white transition"
+                                        >
+                                            {copiedField === "CBU" ? "Copiado!" : "Copiar"}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-secondary)]">
+                                    <span>Titular: <strong>{paymentInfo.holder}</strong></span>
+                                    <span>Contacto: <a href={`mailto:${paymentInfo.email_contact}`} className="text-[var(--primary)] font-medium hover:underline">{paymentInfo.email_contact}</a></span>
+                                </div>
+
+                                <form onSubmit={handlePaymentSubmit} className="pt-2 border-t border-[var(--border)] space-y-3">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                        Informar Transferencia
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase mb-1">
+                                                N° de Comprobante / Referencia
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={referenceCode}
+                                                onChange={(e) => setReferenceCode(e.target.value)}
+                                                placeholder="Ej: 98451234 o Banco Galicia"
+                                                required
+                                                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase mb-1">
+                                                Nota adicional (Opcional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={payerNotes}
+                                                onChange={(e) => setPayerNotes(e.target.value)}
+                                                placeholder="Ej: Transferí desde cuenta de Juan Pérez"
+                                                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmittingPayment}
+                                        className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-accent)] py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-50 transition"
+                                    >
+                                        {isSubmittingPayment ? "Enviando aviso..." : "Informar Comprobante para Aprobación Manual"}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* FOOTER */}
@@ -355,7 +418,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition"
+                        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition"
                     >
                         Cerrar
                     </button>
@@ -366,4 +429,5 @@ function SubscriptionModal({ isOpen, onClose }) {
 }
 
 export default SubscriptionModal;
+
 

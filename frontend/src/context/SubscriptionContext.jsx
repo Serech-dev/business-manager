@@ -1,6 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
-import { getSubscription, notifyPayment, getMyPayments } from "../services/auth";
+import {
+    getSubscription,
+    notifyPayment,
+    getMyPayments,
+    createCheckoutPreference,
+    verifyPaymentStatus,
+} from "../services/auth";
 
 const SubscriptionContext = createContext(null);
 
@@ -10,6 +16,7 @@ export function SubscriptionProvider({ children }) {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const [myPayments, setMyPayments] = useState([]);
     const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+    const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
 
     const token = localStorage.getItem("businessManagerAuthToken");
 
@@ -36,6 +43,56 @@ export function SubscriptionProvider({ children }) {
             setIsLoading(false);
         }
     }, []);
+
+    // Handle return from Mercado Pago / Mock checkout URL params
+    useEffect(() => {
+        if (!token) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const paymentStatus = params.get("payment_status") || params.get("status") || params.get("collection_status");
+        const paymentId = params.get("payment_id") || params.get("collection_id");
+        const plan = params.get("plan");
+        const notificationId = params.get("notification_id");
+
+        if (paymentStatus) {
+            // Clean up URL parameters so back/refresh doesn't re-trigger
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            const verify = async () => {
+                const toastId = toast.loading("Verificando estado de la suscripción...");
+                try {
+                    const result = await verifyPaymentStatus({
+                        payment_status: paymentStatus,
+                        payment_id: paymentId,
+                        plan: plan,
+                        notification_id: notificationId,
+                    });
+
+                    if (result.status === "approved" || paymentStatus === "approved" || paymentStatus === "success" || paymentStatus === "mock_simulate") {
+                        toast.success(result.detail || "¡Pago acreditado! Tu licencia fue activada con éxito.", { id: toastId });
+                    } else if (paymentStatus === "pending") {
+                        toast.loading("Tu pago está en proceso de acreditación.", { id: toastId });
+                    } else if (paymentStatus === "failure" || paymentStatus === "rejected") {
+                        toast.error("El pago no se pudo completar o fue cancelado.", { id: toastId });
+                    } else {
+                        toast.dismiss(toastId);
+                    }
+                } catch (err) {
+                    console.error("Error al verificar pago:", err);
+                    if (paymentStatus === "approved" || paymentStatus === "success" || paymentStatus === "mock_simulate") {
+                        toast.success("¡Licencia activada!", { id: toastId });
+                    } else {
+                        toast.dismiss(toastId);
+                    }
+                } finally {
+                    await refreshSubscription();
+                }
+            };
+
+            verify();
+        }
+    }, [token, refreshSubscription]);
 
     useEffect(() => {
         if (token) {
@@ -66,6 +123,30 @@ export function SubscriptionProvider({ children }) {
     const closeSubscriptionModal = useCallback(() => {
         setIsSubscriptionModalOpen(false);
     }, []);
+
+    const startCheckout = useCallback(
+        async (plan = "yearly") => {
+            setIsProcessingCheckout(true);
+            try {
+                const preference = await createCheckoutPreference({ plan });
+                if (preference.init_point) {
+                    // Redirect to Mercado Pago / Mock simulator
+                    window.location.href = preference.init_point;
+                    return preference;
+                } else {
+                    throw new Error("No se pudo obtener el link de pago.");
+                }
+            } catch (error) {
+                console.error("Error al iniciar checkout:", error);
+                const msg = error.response?.data?.detail || error.message || "Error al conectar con la pasarela de pago.";
+                toast.error(msg);
+                throw error;
+            } finally {
+                setIsProcessingCheckout(false);
+            }
+        },
+        []
+    );
 
     const submitPayment = useCallback(
         async (paymentData) => {
@@ -111,10 +192,12 @@ export function SubscriptionProvider({ children }) {
                 myPayments,
                 hasPendingPayment,
                 isSubmittingPayment,
+                isProcessingCheckout,
                 isSubscriptionModalOpen,
                 openSubscriptionModal,
                 closeSubscriptionModal,
                 refreshSubscription,
+                startCheckout,
                 submitPayment,
             }}
         >

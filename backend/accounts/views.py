@@ -1,5 +1,10 @@
+try:
+    import mercadopago
+except ImportError:
+    mercadopago = None
 from datetime import timedelta
 from decimal import Decimal
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -110,6 +115,296 @@ class MyPaymentNotificationsView(generics.ListAPIView):
 
     def get_queryset(self):
         return PaymentNotification.objects.filter(user=self.request.user)
+
+
+class CreateCheckoutPreferenceView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        plan = request.data.get("plan", "monthly")
+        if plan not in settings.SUBSCRIPTION_PRICES:
+            plan = "monthly"
+
+        plan_info = settings.SUBSCRIPTION_PRICES[plan]
+        user = request.user
+        subscription = Subscription.get_or_create_for_user(user)
+
+        notification = PaymentNotification.objects.create(
+            user=user,
+            subscription=subscription,
+            plan=plan,
+            payment_method=PaymentNotification.PaymentMethod.MERCADOPAGO,
+            amount=plan_info["amount"],
+            status=PaymentNotification.Status.PENDING,
+            payer_notes=f"Checkout iniciado por {user.email} para {plan_info['title']}",
+        )
+
+        access_token = getattr(settings, "MERCADOPAGO_ACCESS_TOKEN", "").strip()
+
+        if access_token:
+            try:
+                sdk = mercadopago.SDK(access_token)
+                frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173").rstrip("/")
+                backend_url = getattr(settings, "BACKEND_URL", "").rstrip("/")
+
+                preference_data = {
+                    "items": [
+                        {
+                            "id": f"sub_{plan}_{user.id}",
+                            "title": plan_info["title"],
+                            "quantity": 1,
+                            "currency_id": "ARS",
+                            "unit_price": float(plan_info["amount"]),
+                        }
+                    ],
+                    "payer": {
+                        "email": user.email,
+                    },
+                    "back_urls": {
+                        "success": f"{frontend_url}/?payment_status=success&plan={plan}&notification_id={notification.id}",
+                        "pending": f"{frontend_url}/?payment_status=pending&plan={plan}&notification_id={notification.id}",
+                        "failure": f"{frontend_url}/?payment_status=failure&plan={plan}&notification_id={notification.id}",
+                    },
+                    "auto_return": "approved",
+                    "external_reference": f"bm_sub_{notification.id}_{user.id}_{plan}",
+                    "metadata": {
+                        "notification_id": notification.id,
+                        "user_id": user.id,
+                        "plan": plan,
+                        "days": plan_info["days"],
+                    },
+                    "statement_descriptor": "BUSINESS MANAGER",
+                }
+
+                if backend_url:
+                    preference_data["notification_url"] = f"{backend_url}/api/auth/subscription/webhook/"
+
+                preference_response = sdk.preference().create(preference_data)
+                preference = preference_response.get("response", {})
+
+                pref_id = preference.get("id")
+                notification.mp_preference_id = pref_id or ""
+                notification.save(update_fields=["mp_preference_id"])
+
+                init_point = preference.get("init_point") or preference.get("sandbox_init_point")
+                return Response({
+                    "init_point": init_point,
+                    "preference_id": pref_id,
+                    "notification_id": notification.id,
+                    "mode": "live",
+                    "plan": plan,
+                    "amount": float(plan_info["amount"]),
+                })
+            except Exception as e:
+                notification.payer_notes += f" (Error MP SDK: {str(e)})"
+                notification.save(update_fields=["payer_notes"])
+
+        # Dev / Sandbox fallback when no access token is configured
+        mock_pref_id = f"mock_pref_{notification.id}_{int(timezone.now().timestamp())}"
+        notification.mp_preference_id = mock_pref_id
+        notification.save(update_fields=["mp_preference_id"])
+
+        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173").rstrip("/")
+        mock_init_point = f"{frontend_url}/?payment_status=mock_simulate&plan={plan}&notification_id={notification.id}"
+
+        return Response({
+            "init_point": mock_init_point,
+            "preference_id": mock_pref_id,
+            "notification_id": notification.id,
+            "mode": "mock",
+            "plan": plan,
+            "amount": float(plan_info["amount"]),
+            "message": "Modo de prueba local (sin token MP configurado). Redirigirá a la simulación de confirmación inmediata.",
+        })
+
+
+class MercadoPagoWebhookView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"status": "ok", "service": "Business Manager Mercado Pago Webhook"})
+
+    def post(self, request):
+        data = request.data
+        payment_id = (
+            request.query_params.get("data.id")
+            or request.query_params.get("id")
+            or data.get("data", {}).get("id")
+            or data.get("id")
+        )
+
+        if not payment_id:
+            return Response({"status": "ignored", "reason": "No payment ID found"}, status=status.HTTP_200_OK)
+
+        access_token = getattr(settings, "MERCADOPAGO_ACCESS_TOKEN", "").strip()
+        if not access_token:
+            return Response({"status": "ignored", "reason": "No MP access token configured"}, status=status.HTTP_200_OK)
+
+        try:
+            sdk = mercadopago.SDK(access_token)
+            payment_info = sdk.payment().get(str(payment_id))
+            payment = payment_info.get("response", {})
+
+            mp_status = payment.get("status")
+            external_reference = payment.get("external_reference", "")
+            metadata = payment.get("metadata", {})
+            amount = payment.get("transaction_amount")
+
+            user_id = metadata.get("user_id")
+            plan = metadata.get("plan", "monthly")
+            notification_id = metadata.get("notification_id")
+
+            # Fallback user_id parse from external_reference: bm_sub_{notif_id}_{user_id}_{plan}
+            if not user_id and external_reference and external_reference.startswith("bm_sub_"):
+                parts = external_reference.split("_")
+                if len(parts) >= 4:
+                    try:
+                        notification_id = int(parts[2]) if not notification_id else notification_id
+                        user_id = int(parts[3])
+                        plan = parts[4] if len(parts) > 4 else plan
+                    except (ValueError, IndexError):
+                        pass
+
+            if not user_id:
+                return Response({"status": "error", "reason": "User ID not identified"}, status=status.HTTP_200_OK)
+
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({"status": "error", "reason": f"User {user_id} not found"}, status=status.HTTP_200_OK)
+
+            subscription = Subscription.get_or_create_for_user(user)
+
+            # Find or update PaymentNotification
+            notification = None
+            if notification_id:
+                notification = PaymentNotification.objects.filter(id=notification_id).first()
+            if not notification:
+                notification = PaymentNotification.objects.filter(mp_payment_id=str(payment_id)).first()
+            if not notification:
+                notification = PaymentNotification.objects.create(
+                    user=user,
+                    subscription=subscription,
+                    plan=plan,
+                    payment_method=PaymentNotification.PaymentMethod.MERCADOPAGO,
+                    amount=Decimal(str(amount or "10000.00")),
+                    mp_payment_id=str(payment_id),
+                )
+
+            notification.mp_payment_id = str(payment_id)
+            notification.mp_status = mp_status or ""
+            notification.raw_data = payment
+
+            if mp_status == "approved":
+                days = 365 if plan == "yearly" else 30
+                target_plan = Subscription.Plan.YEARLY if plan == "yearly" else Subscription.Plan.MONTHLY
+                subscription.extend(
+                    days=days,
+                    plan=target_plan,
+                    amount=amount,
+                    reference=f"Mercado Pago #{payment_id}",
+                )
+                notification.status = PaymentNotification.Status.APPROVED
+                notification.reviewed_at = timezone.now()
+                notification.admin_notes = f"Aprobado automáticamente por Webhook de Mercado Pago (Payment ID: {payment_id})"
+            elif mp_status in ["rejected", "cancelled"]:
+                notification.status = PaymentNotification.Status.REJECTED
+                notification.reviewed_at = timezone.now()
+                notification.admin_notes = f"Rechazado por Mercado Pago: {payment.get('status_detail', mp_status)}"
+
+            notification.save()
+            return Response({"status": "success", "payment_status": mp_status}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class VerifyPaymentStatusView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        subscription = Subscription.get_or_create_for_user(user)
+        payment_id = request.query_params.get("payment_id")
+        plan = request.query_params.get("plan", "monthly")
+        notification_id = request.query_params.get("notification_id")
+        is_mock_simulation = request.query_params.get("payment_status") == "mock_simulate"
+
+        # Mock simulation for development environment
+        if is_mock_simulation:
+            days = 365 if plan == "yearly" else 30
+            target_plan = Subscription.Plan.YEARLY if plan == "yearly" else Subscription.Plan.MONTHLY
+            plan_info = settings.SUBSCRIPTION_PRICES.get(plan, settings.SUBSCRIPTION_PRICES["monthly"])
+
+            subscription.extend(
+                days=days,
+                plan=target_plan,
+                amount=plan_info["amount"],
+                reference="Simulación de prueba (Local)",
+            )
+
+            if notification_id:
+                notif = PaymentNotification.objects.filter(id=notification_id, user=user).first()
+                if notif:
+                    notif.status = PaymentNotification.Status.APPROVED
+                    notif.mp_status = "approved"
+                    notif.reviewed_at = timezone.now()
+                    notif.admin_notes = "Aprobado en simulación de prueba local"
+                    notif.save()
+
+            return Response({
+                "status": "approved",
+                "simulated": True,
+                "subscription": subscription.get_summary(),
+                "detail": "¡Licencia activada con éxito en modo de prueba!",
+            })
+
+        # Live verification via Mercado Pago SDK
+        access_token = getattr(settings, "MERCADOPAGO_ACCESS_TOKEN", "").strip()
+        if payment_id and access_token:
+            try:
+                sdk = mercadopago.SDK(access_token)
+                payment_res = sdk.payment().get(str(payment_id))
+                payment = payment_res.get("response", {})
+                mp_status = payment.get("status")
+
+                if mp_status == "approved":
+                    days = 365 if plan == "yearly" else 30
+                    target_plan = Subscription.Plan.YEARLY if plan == "yearly" else Subscription.Plan.MONTHLY
+                    amount = payment.get("transaction_amount")
+                    subscription.extend(
+                        days=days,
+                        plan=target_plan,
+                        amount=amount,
+                        reference=f"Mercado Pago #{payment_id}",
+                    )
+
+                    if notification_id:
+                        notif = PaymentNotification.objects.filter(id=notification_id, user=user).first()
+                        if notif:
+                            notif.status = PaymentNotification.Status.APPROVED
+                            notif.mp_payment_id = str(payment_id)
+                            notif.mp_status = "approved"
+                            notif.raw_data = payment
+                            notif.reviewed_at = timezone.now()
+                            notif.admin_notes = f"Aprobado por verificación directa (Payment ID: {payment_id})"
+                            notif.save()
+
+                    return Response({
+                        "status": "approved",
+                        "subscription": subscription.get_summary(),
+                        "detail": "¡Pago confirmado y licencia activada con éxito!",
+                    })
+            except Exception as e:
+                pass
+
+        return Response({
+            "status": "pending",
+            "subscription": subscription.get_summary(),
+            "detail": "Verificando acreditación del pago...",
+        })
 
 
 # ==========================================

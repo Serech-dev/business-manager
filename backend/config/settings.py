@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+from decimal import Decimal
 from pathlib import Path
 
 import dj_database_url
@@ -145,3 +146,24 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+
+# Mercado Pago Integration Settings
+MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY", "")
+MERCADOPAGO_WEBHOOK_SECRET = os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+BACKEND_URL = os.getenv("BACKEND_URL", "").rstrip("/")
+
+# Subscription Pricing (ARS)
+SUBSCRIPTION_PRICES = {
+    "monthly": {
+        "title": "Business Manager - Plan Mensual (30 días)",
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_MONTHLY", "10000.00")),
+        "days": 30,
+    },
+    "yearly": {
+        "title": "Business Manager - Plan Anual (1 año)",
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_YEARLY", "100000.00")),
+        "days": 365,
+    },
+}

@@ -15,6 +15,17 @@ export async function getSubscription() {
     return response.data;
 }
 
+export async function createCheckoutPreference(payload) {
+    const response = await api.post("auth/subscription/create-checkout/", payload);
+    return response.data;
+}
+
+export async function verifyPaymentStatus(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const response = await api.get(`auth/subscription/verify-payment/?${query}`);
+    return response.data;
+}
+
 export async function notifyPayment(payload) {
     const response = await api.post("auth/subscription/notify-payment/", payload);
     return response.data;

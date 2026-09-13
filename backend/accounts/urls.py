@@ -3,14 +3,19 @@ from django.urls import path
 from .views import (AdminManageSubscriptionView,
                     AdminPaymentNotificationsListView,
                     AdminReviewPaymentNotificationView, AdminStoresListView,
-                    LoginView, LogoutView, MyPaymentNotificationsView,
-                    NotifyPaymentView, RegisterView, SubscriptionView)
+                    CreateCheckoutPreferenceView, LoginView, LogoutView,
+                    MercadoPagoWebhookView, MyPaymentNotificationsView,
+                    NotifyPaymentView, RegisterView, SubscriptionView,
+                    VerifyPaymentStatusView)
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("register/", RegisterView.as_view(), name="register"),
     path("subscription/", SubscriptionView.as_view(), name="subscription"),
+    path("subscription/create-checkout/", CreateCheckoutPreferenceView.as_view(), name="create-checkout-preference"),
+    path("subscription/webhook/", MercadoPagoWebhookView.as_view(), name="mercadopago-webhook"),
+    path("subscription/verify-payment/", VerifyPaymentStatusView.as_view(), name="verify-payment-status"),
     path("subscription/notify-payment/", NotifyPaymentView.as_view(), name="notify-payment"),
     path("subscription/my-payments/", MyPaymentNotificationsView.as_view(), name="my-payments"),
 
