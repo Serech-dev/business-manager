@@ -92,6 +92,44 @@ export function StoreSettingsProvider({ children }) {
         [settings.exchange_fee_type, settings.exchange_fee_value]
     );
 
+    const calculateSubeFee = useCallback(
+        (rechargeAmount) => {
+            const num = Number(rechargeAmount) || 0;
+            if (num <= 0) return { fee: 0, totalToCharge: 0 };
+
+            const feeValue = Number(settings.sube_fee_value) || 0;
+            let fee = 0;
+
+            if (settings.sube_fee_type === "percentage") {
+                fee = Math.round(num * (feeValue / 100));
+            } else {
+                fee = Math.round(feeValue);
+            }
+
+            return { fee, totalToCharge: num + fee, rechargeAmount: num };
+        },
+        [settings.sube_fee_type, settings.sube_fee_value]
+    );
+
+    const calculatePhoneFee = useCallback(
+        (rechargeAmount) => {
+            const num = Number(rechargeAmount) || 0;
+            if (num <= 0) return { fee: 0, totalToCharge: 0 };
+
+            const feeValue = Number(settings.phone_fee_value) || 0;
+            let fee = 0;
+
+            if (settings.phone_fee_type === "percentage") {
+                fee = Math.round(num * (feeValue / 100));
+            } else {
+                fee = Math.round(feeValue);
+            }
+
+            return { fee, totalToCharge: num + fee, rechargeAmount: num };
+        },
+        [settings.phone_fee_type, settings.phone_fee_value]
+    );
+
     const calculateDebtSurcharge = useCallback(
         (amount) => {
             const num = Number(amount) || 0;
@@ -136,6 +174,8 @@ export function StoreSettingsProvider({ children }) {
                 isLoading,
                 updateSettings,
                 calculateExchangeFee,
+                calculateSubeFee,
+                calculatePhoneFee,
                 calculateDebtSurcharge,
                 isSettingsModalOpen,
                 openSettingsModal,

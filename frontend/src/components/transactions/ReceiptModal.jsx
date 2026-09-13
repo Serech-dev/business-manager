@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import ReceiptTicket from "./ReceiptTicket";
+import { useStoreSettings } from "../../context/StoreSettingsContext";
 
 function ReceiptModal({
     isOpen,
@@ -7,13 +8,21 @@ function ReceiptModal({
     transaction,
     items = null,
 }) {
+    const { settings } = useStoreSettings();
     const [businessName, setBusinessName] = useState(() => {
-        return localStorage.getItem("bm_receipt_business_name") || "Mi Negocio";
+        return localStorage.getItem("bm_receipt_business_name") || settings?.store_name || "Mi Negocio";
     });
     const [paperWidth, setPaperWidth] = useState(() => {
         return localStorage.getItem("bm_receipt_paper_width") || "58mm";
     });
     const [isEditingName, setIsEditingName] = useState(false);
+
+    // Sync business name if store settings change and no explicit local override
+    useEffect(() => {
+        if (settings?.store_name && !localStorage.getItem("bm_receipt_business_name")) {
+            setBusinessName(settings.store_name);
+        }
+    }, [settings?.store_name]);
 
     useEffect(() => {
         if (isOpen) {
@@ -51,7 +60,7 @@ function ReceiptModal({
             />
 
             {/* Modal Card */}
-            <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+            <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
                 {/* MODAL HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5 shrink-0 bg-[var(--surface-accent)]/40">
                     <div className="flex items-center gap-2">
@@ -166,7 +175,7 @@ function ReceiptModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         Cerrar
                     </button>
@@ -174,7 +183,7 @@ function ReceiptModal({
                     <button
                         type="button"
                         onClick={handlePrint}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-98"
+                        className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-6 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-98"
                     >
                         <svg
                             className="h-4 w-4"

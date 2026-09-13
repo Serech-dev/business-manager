@@ -13,6 +13,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 
 import TransactionClient from "../components/transactions/TransactionClient";
 import TransactionExchange from "../components/transactions/TransactionExchange";
+import TransactionRecharge from "../components/transactions/TransactionRecharge";
 import TransactionAmounts from "../components/transactions/TransactionAmounts";
 import SaleProductSelector from "../components/transactions/SaleProductSelector";
 import ReceiptModal from "../components/transactions/ReceiptModal";
@@ -57,6 +58,7 @@ function createNewOperation() {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: "sale",
         exchangeAmount: "",
+        rechargeAmount: "",
         manualAmount: "",
         items: [],
         amounts: [
@@ -70,7 +72,7 @@ function createNewOperation() {
 
 function NewTransaction() {
     const navigate = useNavigate();
-    const { calculateExchangeFee } = useStoreSettings();
+    const { calculateExchangeFee, calculateSubeFee, calculatePhoneFee } = useStoreSettings();
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -127,10 +129,13 @@ function NewTransaction() {
                     [field]: value,
                 };
 
-                // If type changed, reset inapplicable exchange fields
+                // If type changed, reset inapplicable exchange/recharge fields
                 if (field === "type") {
                     if (value !== "exchange") {
                         updated.exchangeAmount = "";
+                    }
+                    if (value !== "sube" && value !== "phone") {
+                        updated.rechargeAmount = "";
                     }
                 }
 
@@ -140,6 +145,17 @@ function NewTransaction() {
                         {
                             method: op.amounts[0]?.method || "cash",
                             amount: value,
+                        },
+                    ];
+                }
+
+                // If recharge amount changed in a SUBE or phone recharge operation, sync total with fee
+                if (field === "rechargeAmount" && (op.type === "sube" || op.type === "phone")) {
+                    const feeInfo = op.type === "sube" ? calculateSubeFee(value) : calculatePhoneFee(value);
+                    updated.amounts = [
+                        {
+                            method: op.amounts[0]?.method || "cash",
+                            amount: feeInfo.totalToCharge > 0 ? String(feeInfo.totalToCharge) : "",
                         },
                     ];
                 }
@@ -309,7 +325,7 @@ function NewTransaction() {
                 });
             }
 
-            // Auto-generate description from cart items if no custom description is provided
+            // Auto-generate description from cart items / services if no custom description is provided
             let finalDescription = description.trim();
             if (!finalDescription) {
                 const itemSummaries = [];
@@ -333,6 +349,17 @@ function NewTransaction() {
                         if (Number(op.manualAmount) > 0) {
                             itemSummaries.push(`Varios (${formatCurrency(Number(op.manualAmount))})`);
                         }
+                    } else if (op.type === "sube") {
+                        const amt = Number(op.rechargeAmount) || 0;
+                        itemSummaries.push(`Carga SUBE${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
+                    } else if (op.type === "phone") {
+                        const amt = Number(op.rechargeAmount) || 0;
+                        itemSummaries.push(`Recarga Celular${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
+                    } else if (op.type === "exchange") {
+                        const amt = Number(op.exchangeAmount) || 0;
+                        itemSummaries.push(`Cambio de Dinero${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
+                    } else if (op.type === "payment") {
+                        itemSummaries.push("Pago a cuenta");
                     }
                 }
                 if (itemSummaries.length > 0) {
@@ -392,6 +419,7 @@ function NewTransaction() {
             setIsSubmitting(false);
         }
     }, [
+        calculateExchangeFee,
         client,
         description,
         grandTotal,
@@ -424,7 +452,6 @@ function NewTransaction() {
         setClient(null);
         setDescription("");
         setReceivedCash("");
-        setShowExtraDetails(false);
         setCompletedSale(null);
         setShowSuccessModal(false);
         setShowReceiptModal(false);
@@ -444,7 +471,7 @@ function NewTransaction() {
                         </span>
                     </div>
                     <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                        Atajos: <kbd className="rounded bg-[var(--surface-accent)] px-1.5 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">/</kbd> Buscar · <kbd className="rounded bg-[var(--surface-accent)] px-1.5 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">Ctrl+Enter</kbd> Cobrar
+                        Atajos: <kbd className="rounded-sm bg-[var(--surface-accent)] px-1.5 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">/</kbd> Buscar · <kbd className="rounded-sm bg-[var(--surface-accent)] px-1.5 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">Ctrl+Enter</kbd> Cobrar
                     </p>
                 </div>
 
@@ -462,11 +489,23 @@ function NewTransaction() {
                 <div className="space-y-5">
                     {operations.map((op, index) => {
                         const isExchange = op.type === "exchange";
+                        const isRecharge = op.type === "sube" || op.type === "phone";
+
+                        let opTargetTotal = 0;
+                        if (op.type === "sale") {
+                            opTargetTotal = (op.items || []).reduce((s, it) => s + it.subtotal, 0) + (Number(op.manualAmount) || 0);
+                        } else if (op.type === "exchange") {
+                            opTargetTotal = Number(op.exchangeAmount) || 0;
+                        } else if (op.type === "sube") {
+                            opTargetTotal = calculateSubeFee(op.rechargeAmount || "").totalToCharge;
+                        } else if (op.type === "phone") {
+                            opTargetTotal = calculatePhoneFee(op.rechargeAmount || "").totalToCharge;
+                        }
 
                         return (
                             <article
                                 key={op.id}
-                                className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs space-y-4 p-4 sm:p-5"
+                                className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs space-y-4 p-4 sm:p-5"
                             >
                                 {/* OPERATION HEADER (WHEN MULTIPLE OPERATIONS) */}
                                 {operations.length > 1 && (
@@ -545,6 +584,21 @@ function NewTransaction() {
                                     </div>
                                 )}
 
+                                {/* RECHARGE DETAILS (SUBE / PHONE) */}
+                                {isRecharge && (
+                                    <TransactionRecharge
+                                        type={op.type}
+                                        rechargeAmount={op.rechargeAmount || ""}
+                                        onChangeRechargeAmount={(val) =>
+                                            handleUpdateOperation(
+                                                index,
+                                                "rechargeAmount",
+                                                val
+                                            )
+                                        }
+                                    />
+                                )}
+
                                 {/* EXCHANGE DETAILS (IF APPLICABLE) */}
                                 {isExchange && (
                                     <TransactionExchange
@@ -563,11 +617,7 @@ function NewTransaction() {
                                 <div data-tour="sale-payment-amounts">
                                     <TransactionAmounts
                                         amounts={op.amounts}
-                                        targetTotal={
-                                            op.type === "sale"
-                                                ? (op.items || []).reduce((s, it) => s + it.subtotal, 0) + (Number(op.manualAmount) || 0)
-                                                : (op.type === "exchange" ? Number(op.exchangeAmount) || 0 : 0)
-                                        }
+                                        targetTotal={opTargetTotal}
                                         onAmountsChange={(amounts) =>
                                             handleUpdateOperation(
                                                 index,
@@ -633,7 +683,7 @@ function NewTransaction() {
                 </div>
 
                 {/* BOTTOM CHECKOUT BAR (STICKY) */}
-                <div data-tour="sale-submit-bar" className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:px-5 sm:py-3.5 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+                <div data-tour="sale-submit-bar" className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:px-5 sm:py-3.5 shadow-xl sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-baseline justify-between gap-3 sm:block">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                             Total a cobrar
@@ -713,7 +763,7 @@ function NewTransaction() {
                                     ? "Registrando..."
                                     : `Cobrar ${formatCurrency(grandTotal)}`}
                             </span>
-                            <kbd className="hidden sm:inline-block rounded bg-white/20 px-1 py-0.2 font-mono text-[9px] text-white">
+                            <kbd className="hidden sm:inline-block rounded-sm bg-white/20 px-1 py-0.2 font-mono text-[9px] text-white">
                                 Ctrl+Enter
                             </kbd>
                         </button>
@@ -728,7 +778,7 @@ function NewTransaction() {
                         className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
                         onClick={() => navigate("/")}
                     />
-                    <div className="relative w-full max-w-sm overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">
+                    <div className="relative w-full max-w-sm overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">
                         <div className="text-center space-y-2">
                             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
                                 <svg

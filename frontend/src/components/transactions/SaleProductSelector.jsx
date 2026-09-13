@@ -49,6 +49,14 @@ function SaleProductSelector({
         setSelectedResultIndex(0);
     }, [searchResults]);
 
+    // Focus search input on mount for zero-click scanning / typing
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            searchInputRef.current?.focus();
+        }, 50);
+        return () => clearTimeout(timer);
+    }, []);
+
     // Close search dropdown on click outside
     useEffect(() => {
         function handleClickOutside(e) {
@@ -517,7 +525,7 @@ function SaleProductSelector({
                         <button
                             type="button"
                             onClick={() => onManualAmountChange?.("")}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[10px] font-bold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] transition"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md bg-[var(--surface-accent)] text-[10px] font-bold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] transition"
                             title="Limpiar monto manual"
                         >
                             ✕
@@ -536,7 +544,7 @@ function SaleProductSelector({
                     />
 
                     {/* Dialog Card */}
-                    <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
+                    <div className="relative w-full max-w-md overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
                         {/* Header */}
                         <div className="flex items-start justify-between border-b border-[var(--border)] pb-3">
                             <div>
@@ -653,7 +661,7 @@ function SaleProductSelector({
                                             key={preset.g}
                                             type="button"
                                             onClick={() => setWeightGrams(String(preset.g))}
-                                            className={`rounded-lg border px-1.5 py-1.5 text-xs font-bold transition ${
+                                            className={`rounded-md border px-1.5 py-1.5 text-xs font-bold transition ${
                                                 String(weightGrams) === String(preset.g)
                                                     ? "border-[var(--primary)] bg-[var(--primary)] text-white"
                                                     : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-primary)] hover:border-[var(--primary)]/50"
@@ -704,7 +712,7 @@ function SaleProductSelector({
                                             key={amt}
                                             type="button"
                                             onClick={() => setTargetMoney(String(amt))}
-                                            className={`rounded-lg border px-2 py-1.5 text-xs font-bold transition ${
+                                            className={`rounded-md border px-2 py-1.5 text-xs font-bold transition ${
                                                 String(targetMoney) === String(amt)
                                                     ? "border-[var(--primary)] bg-[var(--primary)] text-white"
                                                     : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-primary)] hover:border-[var(--primary)]/50"
@@ -801,12 +809,12 @@ function SaleProductSelector({
                                                 {item.product.name}
                                             </span>
                                             {item.unitType === "kg" && (
-                                                <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                                <span className="shrink-0 rounded-sm bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
                                                     kg
                                                 </span>
                                             )}
                                             {item.unitType === "100g" && (
-                                                <span className="shrink-0 rounded bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                                <span className="shrink-0 rounded-sm bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
                                                     100g
                                                 </span>
                                             )}
@@ -908,7 +916,7 @@ function SaleProductSelector({
                         No hay productos agregados al carrito.
                     </p>
                     <p className="text-[11px] text-[var(--text-secondary)]/70 mt-0.5">
-                        Escaneá un código de barras o buscá con <kbd className="rounded border border-[var(--border)] bg-[var(--surface)] px-1 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">/</kbd>.
+                        Escaneá un código de barras o buscá con <kbd className="rounded-sm border border-[var(--border)] bg-[var(--surface)] px-1 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">/</kbd>.
                     </p>
                 </div>
             )}
