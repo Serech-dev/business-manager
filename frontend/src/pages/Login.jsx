@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import api, { getApiError } from "../services/api";
@@ -69,7 +69,7 @@ function Login() {
                 <button
                     type="button"
                     onClick={toggleTheme}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                    className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     aria-label="Cambiar tema"
                 >
                     <span>{isDark ? "Tema Oscuro" : "Tema Claro"}</span>
@@ -79,13 +79,13 @@ function Login() {
 
             {/* MAIN LOGIN CARD */}
             <main className="relative z-10 flex-1 flex items-center justify-center my-6">
-                <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-2xl transition-all duration-200">
+                <div className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl transition-all duration-200">
                     {/* BRAND HEADER */}
                     <div className="text-center space-y-3 mb-8">
-                        <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/10 text-[var(--primary)] shadow-inner">
+                        <div className="inline-flex h-12 w-12 items-center justify-center rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 text-[var(--primary)] shadow-sm">
                             {/* STORE / SAFE ICON */}
                             <svg
-                                className="h-7 w-7"
+                                className="h-6 w-6"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 strokeWidth="2"
@@ -100,7 +100,7 @@ function Login() {
                         </div>
 
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+                            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
                                 Business Manager
                             </h1>
                             <p className="mt-1 text-xs text-[var(--text-secondary)]">
@@ -110,7 +110,7 @@ function Login() {
                     </div>
 
                     {/* FORM */}
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         {/* EMAIL */}
                         <div className="space-y-1.5">
                             <label
@@ -146,7 +146,7 @@ function Login() {
                                     autoFocus
                                     required
                                     placeholder="usuario@comercio.com"
-                                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] pl-10 pr-4 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 placeholder:text-[var(--text-secondary)]/50"
+                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-4 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] placeholder:text-[var(--text-secondary)]/50"
                                 />
                             </div>
                         </div>
@@ -185,7 +185,7 @@ function Login() {
                                     autoComplete="current-password"
                                     required
                                     placeholder="••••••••"
-                                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] pl-10 pr-10 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 placeholder:text-[var(--text-secondary)]/50"
+                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-10 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] placeholder:text-[var(--text-secondary)]/50"
                                 />
 
                                 <button
@@ -203,7 +203,7 @@ function Login() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full rounded-xl bg-[var(--primary)] py-3 px-4 text-sm font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] focus:ring-2 focus:ring-[var(--primary)]/30 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
+                            className="w-full rounded-md bg-[var(--primary)] py-2.5 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)] focus:ring-2 focus:ring-[var(--primary)]/30 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? (
                                 <>
@@ -232,6 +232,22 @@ function Login() {
                                 <span>Iniciar sesión</span>
                             )}
                         </button>
+
+                        {/* REGISTER LINK */}
+                        <div className="pt-4 text-center border-t border-[var(--border)]">
+                            <p className="text-xs text-[var(--text-secondary)]">
+                                ¿No tenés una cuenta?{" "}
+                                <Link
+                                    to="/register"
+                                    className="font-bold text-[var(--primary)] hover:underline"
+                                >
+                                    Registrate gratis
+                                </Link>
+                            </p>
+                            <p className="mt-1 text-[10px] text-[var(--text-secondary)]/70">
+                                14 días de prueba sin costo · Sin tarjeta de crédito
+                            </p>
+                        </div>
                     </form>
                 </div>
             </main>

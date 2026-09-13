@@ -1,8 +1,10 @@
-import api, { getApiError } from "../services/api";
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
+import api, { getApiError } from "../services/api";
+import { getSavedTheme, setTheme } from "../utils/theme";
+import { APP_VERSION } from "../utils/version";
 
 function Register() {
     const navigate = useNavigate();
@@ -10,11 +12,24 @@ function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [passwordConfirm, setPasswordConfirm] = useState("");
-
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [currentTheme, setCurrentTheme] = useState(getSavedTheme());
+
+    function toggleTheme() {
+        const newTheme = currentTheme === "dark" ? "light" : "dark";
+        setTheme(newTheme);
+        setCurrentTheme(newTheme);
+    }
 
     async function handleSubmit(event) {
         event.preventDefault();
+
+        if (password.length < 8) {
+            toast.error("La contraseña debe tener al menos 8 caracteres.");
+            return;
+        }
 
         if (password !== passwordConfirm) {
             toast.error("Las contraseñas no coinciden.");
@@ -24,25 +39,35 @@ function Register() {
         setIsSubmitting(true);
 
         try {
-            await api.post(
-                "auth/register/",
-                {
-                    email,
-                    password,
-                    password_confirm: passwordConfirm,
+            const response = await api.post("auth/register/", {
+                email: email.trim(),
+                password,
+                password_confirm: passwordConfirm,
+            });
+
+            // Auto-login upon registration
+            if (response.data?.token) {
+                localStorage.setItem(
+                    "businessManagerAuthToken",
+                    response.data.token
+                );
+
+                if (response.data.user) {
+                    localStorage.setItem(
+                        "businessManagerAuthUser",
+                        JSON.stringify(response.data.user)
+                    );
                 }
-            );
+            }
 
-            toast.success("Cuenta creada.");
-
-            navigate("/login");
+            toast.success("¡Cuenta creada con éxito! Tu período de prueba de 14 días ya está activo.");
+            navigate("/");
         } catch (error) {
             console.error(error);
-
             toast.error(
                 getApiError(
                     error,
-                    "No se pudo crear la cuenta."
+                    "No se pudo crear la cuenta. Verificá los datos ingresados."
                 )
             );
         } finally {
@@ -52,154 +77,263 @@ function Register() {
 
     useEffect(() => {
         const token = localStorage.getItem("businessManagerAuthToken");
-
         if (token) {
             navigate("/", { replace: true });
         }
     }, [navigate]);
 
-    return (
-        <div className="min-h-screen bg-[var(--surface)] px-4 py-8">
-            <div className="mx-auto flex min-h-[80vh] max-w-md items-center justify-center">
-                <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-accent)] p-6 shadow-sm">
-                    <div className="mb-6">
-                        <h1 className="text-3xl font-bold text-[var(--text-primary)]">
-                            Market Manager
-                        </h1>
+    const isDark = currentTheme === "dark";
 
-                        <p className="mt-1 text-[var(--text-secondary)]">
-                            Crear una cuenta.
-                        </p>
+    return (
+        <div className="min-h-screen bg-[var(--background)] flex flex-col justify-between p-4 selection:bg-[var(--primary)] selection:text-white transition-colors duration-200">
+            {/* TOP BAR / THEME SWITCHER */}
+            <header className="relative z-10 flex items-center justify-end px-2 sm:px-6 py-2">
+                <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                    aria-label="Cambiar tema"
+                >
+                    <span>{isDark ? "Tema Oscuro" : "Tema Claro"}</span>
+                    <span className="text-sm">{isDark ? "☾" : "☀"}</span>
+                </button>
+            </header>
+
+            {/* MAIN REGISTER CARD */}
+            <main className="relative z-10 flex-1 flex items-center justify-center my-6">
+                <div className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] p-8 shadow-xl transition-all duration-200">
+                    {/* BRAND HEADER */}
+                    <div className="text-center space-y-3 mb-6">
+                        <div className="inline-flex h-12 w-12 items-center justify-center rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 text-[var(--primary)] shadow-sm">
+                            <svg
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z"
+                                />
+                            </svg>
+                        </div>
+
+                        <div>
+                            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
+                                Crear Cuenta
+                            </h1>
+                            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                                Comenzá a gestionar tu negocio en minutos
+                            </p>
+                        </div>
                     </div>
 
-                    <form
-                        onSubmit={handleSubmit}
-                        className="space-y-5"
-                    >
-                        <div className="space-y-2">
+                    {/* 14-DAY TRIAL BADGE */}
+                    <div className="mb-6 rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3 text-center">
+                        <span className="text-xs font-bold text-[var(--primary)] block">
+                            14 días de prueba gratis
+                        </span>
+                        <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
+                            Acceso total e instantáneo a todas las funciones sin tarjeta.
+                        </span>
+                    </div>
+
+                    {/* FORM */}
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* EMAIL */}
+                        <div className="space-y-1.5">
                             <label
                                 htmlFor="email"
-                                className="block text-sm font-medium text-[var(--text-primary)]"
+                                className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]"
                             >
                                 Email
                             </label>
 
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(event) => setEmail(event.target.value)}
-                                autoComplete="email"
-                                required
-                                className="
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--background)]
-                                    px-4
-                                    py-3
-                                    text-[var(--text-primary)]
-                                    outline-none
-                                    transition
-                                    focus:border-[var(--primary)]
-                                    focus:ring-2
-                                    focus:ring-[var(--primary)]/20
-                                "
-                            />
+                            <div className="relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[var(--text-secondary)]">
+                                    <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth="2"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                                        />
+                                    </svg>
+                                </div>
+
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(event) => setEmail(event.target.value)}
+                                    autoComplete="email"
+                                    autoFocus
+                                    required
+                                    placeholder="usuario@comercio.com"
+                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-4 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] placeholder:text-[var(--text-secondary)]/50"
+                                />
+                            </div>
                         </div>
 
-                        <div className="space-y-2">
+                        {/* PASSWORD */}
+                        <div className="space-y-1.5">
                             <label
                                 htmlFor="password"
-                                className="block text-sm font-medium text-[var(--text-primary)]"
+                                className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]"
                             >
                                 Contraseña
                             </label>
 
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(event) => setPassword(event.target.value)}
-                                autoComplete="new-password"
-                                required
-                                className="
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--background)]
-                                    px-4
-                                    py-3
-                                    text-[var(--text-primary)]
-                                    outline-none
-                                    transition
-                                    focus:border-[var(--primary)]
-                                    focus:ring-2
-                                    focus:ring-[var(--primary)]/20
-                                "
-                            />
+                            <div className="relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[var(--text-secondary)]">
+                                    <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth="2"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+                                        />
+                                    </svg>
+                                </div>
+
+                                <input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(event) => setPassword(event.target.value)}
+                                    autoComplete="new-password"
+                                    required
+                                    placeholder="Mínimo 8 caracteres"
+                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-10 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] placeholder:text-[var(--text-secondary)]/50"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                    aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                                >
+                                    {showPassword ? "Ocultar" : "Ver"}
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-2">
+                        {/* PASSWORD CONFIRM */}
+                        <div className="space-y-1.5">
                             <label
                                 htmlFor="password-confirm"
-                                className="block text-sm font-medium text-[var(--text-primary)]"
+                                className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]"
                             >
-                                Repetir contraseña
+                                Confirmar Contraseña
                             </label>
 
-                            <input
-                                id="password-confirm"
-                                type="password"
-                                value={passwordConfirm}
-                                onChange={(event) => setPasswordConfirm(event.target.value)}
-                                autoComplete="new-password"
-                                required
-                                className="
-                                    w-full
-                                    rounded-xl
-                                    border
-                                    border-[var(--border)]
-                                    bg-[var(--background)]
-                                    px-4
-                                    py-3
-                                    text-[var(--text-primary)]
-                                    outline-none
-                                    transition
-                                    focus:border-[var(--primary)]
-                                    focus:ring-2
-                                    focus:ring-[var(--primary)]/20
-                                "
-                            />
+                            <div className="relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[var(--text-secondary)]">
+                                    <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth="2"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+                                        />
+                                    </svg>
+                                </div>
+
+                                <input
+                                    id="password-confirm"
+                                    type={showPasswordConfirm ? "text" : "password"}
+                                    value={passwordConfirm}
+                                    onChange={(event) => setPasswordConfirm(event.target.value)}
+                                    autoComplete="new-password"
+                                    required
+                                    placeholder="Repetí la contraseña"
+                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-10 py-2.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] placeholder:text-[var(--text-secondary)]/50"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                    aria-label={showPasswordConfirm ? "Ocultar confirmación" : "Ver confirmación"}
+                                >
+                                    {showPasswordConfirm ? "Ocultar" : "Ver"}
+                                </button>
+                            </div>
                         </div>
 
+                        {/* SUBMIT BUTTON */}
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="
-                                w-full
-                                rounded-xl
-                                bg-[var(--primary)]
-                                px-4
-                                py-3
-                                font-semibold
-                                text-white
-                                shadow-sm
-                                transition
-                                hover:bg-[var(--primary-hover)]
-                                disabled:cursor-not-allowed
-                                disabled:opacity-60
-                            "
+                            className="w-full rounded-md bg-[var(--primary)] py-2.5 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)] focus:ring-2 focus:ring-[var(--primary)]/30 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
                         >
-                            {isSubmitting
-                                ? "Creando cuenta..."
-                                : "Crear cuenta"}
+                            {isSubmitting ? (
+                                <>
+                                    <svg
+                                        className="h-4 w-4 animate-spin text-white"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        />
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        />
+                                    </svg>
+                                    <span>Creando cuenta...</span>
+                                </>
+                            ) : (
+                                <span>Crear cuenta y comenzar</span>
+                            )}
                         </button>
+
+                        {/* LOGIN LINK */}
+                        <div className="pt-4 text-center border-t border-[var(--border)]">
+                            <p className="text-xs text-[var(--text-secondary)]">
+                                ¿Ya tenés una cuenta?{" "}
+                                <Link
+                                    to="/login"
+                                    className="font-bold text-[var(--primary)] hover:underline"
+                                >
+                                    Iniciar sesión
+                                </Link>
+                            </p>
+                        </div>
                     </form>
                 </div>
-            </div>
+            </main>
+
+            {/* FOOTER */}
+            <footer className="relative z-10 text-center py-2">
+                <p className="text-[11px] text-[var(--text-secondary)]/70">
+                    Business Manager {APP_VERSION} · Sesión cifrada
+                </p>
+            </footer>
         </div>
     );
 }
