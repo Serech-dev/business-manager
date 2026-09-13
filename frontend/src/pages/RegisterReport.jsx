@@ -117,10 +117,6 @@ function RegisterReport() {
         }
     }
 
-    function handlePrint() {
-        window.print();
-    }
-
     // Filter transactions in operations tab
     const filteredTransactions = useMemo(() => {
         if (!register?.transactions) return [];
@@ -196,9 +192,9 @@ function RegisterReport() {
     const netMovement = Number(register.net_movement || 0);
 
     return (
-        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 space-y-6 pb-24 print:p-0">
+        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 space-y-6 pb-24">
             {/* HEADER */}
-            <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-5 sm:flex-row sm:items-end sm:justify-between print:border-none">
+            <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <div className="flex items-center gap-2">
                         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
@@ -220,18 +216,7 @@ function RegisterReport() {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 print:hidden">
-                    <button
-                        type="button"
-                        onClick={handlePrint}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-accent)]"
-                    >
-                        <svg className="h-3.5 w-3.5 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24-1.04-.37-2.12-.37-3.229 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.109-.13 2.19-.37 3.229M6.72 13.829l-1.92 8.32a.75.75 0 0 0 .96.88l3.48-1.16 3.48 1.16a.75.75 0 0 0 .48 0l3.48-1.16 3.48 1.16a.75.75 0 0 0 .96-.88l-1.92-8.32" />
-                        </svg>
-                        <span>Imprimir Cierre</span>
-                    </button>
-
+                <div className="flex flex-wrap items-center gap-2">
                     {!currentRegister && (
                         <button
                             type="button"
