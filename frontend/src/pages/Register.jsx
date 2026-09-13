@@ -61,7 +61,7 @@ function Register() {
             }
 
             toast.success("¡Cuenta creada con éxito! Tu período de prueba de 14 días ya está activo.");
-            navigate("/");
+            window.location.href = "/";
         } catch (error) {
             console.error(error);
             toast.error(

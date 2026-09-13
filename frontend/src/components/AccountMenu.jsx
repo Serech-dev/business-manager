@@ -12,7 +12,6 @@ function AccountMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [isPinModalOpen, setIsPinModalOpen] = useState(false);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
-    const [user, setUser] = useState(null);
     const menuRef = useRef(null);
 
     const navigate = useNavigate();
@@ -26,17 +25,15 @@ function AccountMenu() {
         openSubscriptionModal,
     } = useSubscription();
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem("businessManagerAuthUser");
-
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch (error) {
-                console.error("No se pudo leer el usuario guardado.", error);
-            }
+    let user = null;
+    const storedUser = localStorage.getItem("businessManagerAuthUser");
+    if (storedUser) {
+        try {
+            user = JSON.parse(storedUser);
+        } catch {
+            user = null;
         }
-    }, []);
+    }
 
     // Click outside and escape key handler
     useEffect(() => {

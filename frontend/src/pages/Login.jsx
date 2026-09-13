@@ -42,7 +42,7 @@ function Login() {
             );
 
             toast.success("Sesión iniciada.");
-            navigate("/");
+            window.location.href = "/";
         } catch (error) {
             console.error(error);
             toast.error(
