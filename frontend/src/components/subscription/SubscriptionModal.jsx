@@ -7,6 +7,7 @@ function SubscriptionModal({ isOpen, onClose }) {
         subscription,
         isExpired,
         isTrial,
+        isSuperuser,
         daysRemaining,
         refreshSubscription,
         startCheckout,
@@ -156,8 +157,12 @@ function SubscriptionModal({ isOpen, onClose }) {
                                 <p className="mt-1.5 text-sm font-medium text-[var(--text-primary)]">
                                     {isExpired ? (
                                         "Tu período de acceso ha finalizado. Aboná tu plan para continuar utilizando el sistema sin interrupciones."
+                                    ) : isSuperuser ? (
+                                        "Tenés acceso total ilimitado como Administrador del sistema."
                                     ) : isTrial ? (
-                                        `Estás en el período de prueba gratuita de 14 días. Te quedan ${daysRemaining} días.`
+                                        `Estás en el período de prueba gratuita de 14 días. Te quedan ${daysRemaining ?? 0} días.`
+                                    ) : subscription?.plan === "lifetime" ? (
+                                        "Tu cuenta cuenta con una Licencia Vitalicia activa sin fecha de vencimiento."
                                     ) : (
                                         `Tu licencia está activa (${subscription?.plan_display}). Vence el ${formatDate(subscription?.expires_at)}.`
                                     )}

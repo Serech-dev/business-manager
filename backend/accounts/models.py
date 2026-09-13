@@ -125,9 +125,9 @@ class Subscription(models.Model):
 
     @property
     def days_remaining(self):
-        """Returns integer remaining days until expiration, or None for lifetime."""
+        """Returns integer remaining days until expiration, or None for lifetime / superuser."""
         if self.plan == self.Plan.LIFETIME or self.user.is_superuser:
-            return 9999
+            return None
 
         if not self.expires_at:
             return 0

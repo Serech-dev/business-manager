@@ -61,6 +61,9 @@ function Dashboard() {
             setRegister(currentRegister);
             setTransactions(transactionData);
         } catch (error) {
+            if (error.response?.status === 401) {
+                return;
+            }
             console.error(error);
             toast.error("No se pudo cargar la información.");
         } finally {

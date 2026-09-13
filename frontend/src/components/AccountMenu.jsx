@@ -60,9 +60,10 @@ function AccountMenu() {
         };
     }, [isOpen]);
 
-    function handleLogout() {
-        logout();
-        navigate("/login");
+    async function handleLogout() {
+        setIsOpen(false);
+        await logout();
+        navigate("/login", { replace: true });
     }
 
     const isUserSuper = isSuperuser || user?.is_superuser;
@@ -133,11 +134,13 @@ function AccountMenu() {
                                         <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">
                                             {isExpired
                                                 ? "Licencia Vencida"
+                                                : isUserSuper
+                                                ? "Acceso Total / Admin"
                                                 : isTrial
-                                                ? `Prueba (${daysRemaining}d restantes)`
+                                                ? `Prueba (${daysRemaining ?? 0}d restantes)`
                                                 : subscription?.plan === "lifetime"
                                                 ? "Licencia Vitalicia"
-                                                : `Plan Activo (${daysRemaining}d)`}
+                                                : `Plan Activo (${daysRemaining ?? 0}d)`}
                                         </span>
                                     </div>
 
@@ -395,7 +398,7 @@ function AccountMenu() {
                                         : "bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success-border)]"
                                 }`}
                             >
-                                {isExpired ? "Vencida" : isTrial ? `${daysRemaining}d` : "Activa"}
+                                {isExpired ? "Vencida" : isUserSuper ? "Admin" : isTrial ? `${daysRemaining ?? 0}d` : "Activa"}
                             </span>
                         )}
 

@@ -1,13 +1,19 @@
 import api from "./api";
 
 export async function logout() {
-    try {
-        await api.post("auth/logout/");
-    } catch {
-        // Continue clearing client storage regardless
-    }
+    const token = localStorage.getItem("businessManagerAuthToken");
     localStorage.removeItem("businessManagerAuthToken");
     localStorage.removeItem("businessManagerAuthUser");
+
+    if (token) {
+        try {
+            await api.post("auth/logout/", {}, {
+                headers: { Authorization: `Token ${token}` },
+            });
+        } catch {
+            // Server already expired or unreachable
+        }
+    }
 }
 
 export async function getSubscription() {
