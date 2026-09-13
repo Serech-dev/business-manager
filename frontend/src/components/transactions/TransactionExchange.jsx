@@ -1,13 +1,19 @@
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
+import { useStoreSettings } from "../../context/StoreSettingsContext";
 
 function TransactionExchange({
     exchangeAmount,
     onChangeExchangeAmount,
 }) {
+    const { settings, calculateExchangeFee } = useStoreSettings();
     const numericAmount = Number(exchangeAmount) || 0;
-    const fee = Math.round(numericAmount * 0.10);
-    const clientAmount = Math.max(0, numericAmount - fee);
+    const { fee, clientAmount } = calculateExchangeFee(numericAmount);
+
+    const feeLabel =
+        settings.exchange_fee_type === "percentage"
+            ? `${Number(settings.exchange_fee_value)}%`
+            : formatCurrency(Number(settings.exchange_fee_value));
 
     return (
         <section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
@@ -17,7 +23,7 @@ function TransactionExchange({
                     Cambio de dinero (Virtual a Efectivo)
                 </span>
                 <span className="rounded bg-sky-500/15 px-2 py-0.5 text-xs font-bold text-sky-600 dark:text-sky-400">
-                    Comisión 10%
+                    Comisión {feeLabel}
                 </span>
             </div>
 
@@ -51,7 +57,7 @@ function TransactionExchange({
                     <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3.5 space-y-2.5 animate-in fade-in duration-150">
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-[var(--text-secondary)]">
-                                Comisión ganada (10%):
+                                Comisión ganada ({feeLabel}):
                             </span>
                             <strong className="font-bold text-[var(--text-primary)] tabular-nums">
                                 +{formatCurrency(fee)}

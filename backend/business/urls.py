@@ -13,6 +13,7 @@ from .views import (AnalyticsView, BulkAssignProductProviderView,
                     StockAdjustmentView, StockAlertsSummaryView,
                     StockInsightsView, StockMovementListCreateView,
                     StockNoteDetailView, StockNoteListCreateView,
+                    StoreSettingsView,
                     TransactionAmountReceivedView, TransactionDetailView,
                     TransactionListCreateView)
 
@@ -192,5 +193,11 @@ urlpatterns = [
         "stock-alerts/",
         StockAlertsSummaryView.as_view(),
         name="stock-alerts-summary",
+    ),
+
+    path(
+        "settings/",
+        StoreSettingsView.as_view(),
+        name="store-settings",
     ),
 ]

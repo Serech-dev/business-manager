@@ -5,7 +5,7 @@ from django.db.models import F
 from rest_framework import serializers
 
 from .models import (Category, Client, Product, Provider, Register,
-                     StockMovement, StockNote, Transaction,
+                     StockMovement, StockNote, StoreSettings, Transaction,
                      TransactionOperation, TransactionOperationAmount,
                      TransactionOperationItem)
 
@@ -1610,3 +1610,42 @@ class StockNoteSerializer(serializers.ModelSerializer):
             "status_display",
             "note_type_display",
         ]
+
+
+class StoreSettingsSerializer(serializers.ModelSerializer):
+    exchange_fee_type_display = serializers.CharField(source="get_exchange_fee_type_display", read_only=True)
+    phone_fee_type_display = serializers.CharField(source="get_phone_fee_type_display", read_only=True)
+    sube_fee_type_display = serializers.CharField(source="get_sube_fee_type_display", read_only=True)
+    debt_surcharge_type_display = serializers.CharField(source="get_debt_surcharge_type_display", read_only=True)
+
+    class Meta:
+        model = StoreSettings
+        fields = [
+            "id",
+            "store_name",
+            "store_address",
+            "store_phone",
+            "ticket_footer",
+            "exchange_fee_type",
+            "exchange_fee_type_display",
+            "exchange_fee_value",
+            "phone_fee_type",
+            "phone_fee_type_display",
+            "phone_fee_value",
+            "sube_fee_type",
+            "sube_fee_type_display",
+            "sube_fee_value",
+            "debt_surcharge_enabled",
+            "debt_surcharge_type",
+            "debt_surcharge_type_display",
+            "debt_surcharge_value",
+            "is_setup_completed",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+        ]
+

@@ -12,6 +12,8 @@ import {
 import AccountMenu from "./AccountMenu";
 import ConfirmDialog from "./ConfirmDialog";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useStoreSettings } from "../context/StoreSettingsContext";
 
 
 function Sidebar({
@@ -20,6 +22,15 @@ function Sidebar({
 }) {
     const navigate = useNavigate();
     const location = useLocation();
+
+    const { settings } = useStoreSettings();
+
+    const {
+        isSuperuser,
+        isExpiringSoon,
+        daysRemaining,
+        openSubscriptionModal,
+    } = useSubscription();
 
     const {
         isKioskDevice,
@@ -143,8 +154,9 @@ function Sidebar({
                     font-bold
                     tracking-tight
                     text-[var(--text-primary)]
-                ">
-                    Mi Negocio
+                    truncate
+                " title={settings?.store_name || "Mi Negocio"}>
+                    {settings?.store_name || "Mi Negocio"}
                 </h1>
             </div>
 
@@ -481,8 +493,69 @@ function Sidebar({
                     )}
                 </button>
 
+                {isSuperuser && (
+                    <button
+                        type="button"
+                        onClick={() => navigate("/admin-panel")}
+                        className={`
+                            flex
+                            w-full
+                            items-center
+                            justify-between
+                            rounded-lg
+                            border-l-2
+                            px-4
+                            py-2.5
+                            text-left
+                            text-sm
+                            transition
+                            ${
+                                isActive("/admin-panel")
+                                    ? `
+                                        border-[var(--primary)]
+                                        bg-[var(--surface-accent)]
+                                        font-bold
+                                        text-[var(--primary)]
+                                    `
+                                    : `
+                                        border-transparent
+                                        font-semibold
+                                        text-[var(--primary)]
+                                        hover:bg-[var(--surface-accent)]
+                                    `
+                            }
+                        `}
+                    >
+                        <div className="flex items-center gap-2">
+                            <span>Panel de Dueño</span>
+                        </div>
+                        <span className="rounded bg-[var(--primary)]/15 px-1.5 py-0.2 text-[9px] font-bold text-[var(--primary)] border border-[var(--primary)]/30 uppercase">
+                            Admin
+                        </span>
+                    </button>
+                )}
+
             </nav>
 
+            {/* EXPIRING SOON BANNER */}
+            {isExpiringSoon && (
+                <div className="mx-3 mb-1 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-2.5 text-xs text-[var(--text-primary)]">
+                    <div className="flex items-center justify-between">
+                        <span className="font-bold text-[var(--warning)]">Aviso de Licencia</span>
+                        <span className="text-[10px] font-bold text-[var(--text-secondary)]">{daysRemaining}d restantes</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[var(--text-secondary)] leading-tight">
+                        Tu período de acceso finaliza pronto.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={openSubscriptionModal}
+                        className="mt-2 w-full rounded-lg bg-[var(--primary)] py-1 text-[11px] font-bold text-white shadow-sm hover:bg-[var(--primary-hover)] transition"
+                    >
+                        Renovar Licencia
+                    </button>
+                </div>
+            )}
 
             {/* CURRENT REGISTER STATUS */}
 

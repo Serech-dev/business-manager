@@ -17,6 +17,7 @@ import TransactionAmounts from "../components/transactions/TransactionAmounts";
 import SaleProductSelector from "../components/transactions/SaleProductSelector";
 import ReceiptModal from "../components/transactions/ReceiptModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
+import { useStoreSettings } from "../context/StoreSettingsContext";
 
 const NEW_SALE_TOUR_STEPS = [
     {
@@ -69,6 +70,7 @@ function createNewOperation() {
 
 function NewTransaction() {
     const navigate = useNavigate();
+    const { calculateExchangeFee } = useStoreSettings();
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -276,8 +278,7 @@ function NewTransaction() {
 
                 const isExchange = op.type === "exchange";
                 const exchangeNum = Number(op.exchangeAmount) || 0;
-                const exchangeFee = Math.round(exchangeNum * 0.1);
-                const exchangeClientAmount = Math.max(0, exchangeNum - exchangeFee);
+                const { clientAmount: exchangeClientAmount } = calculateExchangeFee(exchangeNum);
 
                 const resolvedItems = [];
                 if (op.type === "sale" && op.items && op.items.length > 0) {

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
+import { useStoreSettings } from "../../context/StoreSettingsContext";
 
 function TransactionAmounts({
     amounts,
@@ -12,6 +13,7 @@ function TransactionAmounts({
     receivedCash = "",
     onReceivedCashChange,
 }) {
+    const { settings, calculateDebtSurcharge } = useStoreSettings();
     const isSingleMethod = amounts.length === 1;
 
     function handleSelectSingleMethod(method) {
@@ -19,10 +21,20 @@ function TransactionAmounts({
             onRequireClient?.();
         }
 
+        let defaultAmount = amounts[0]?.amount || "";
+        if (targetTotal > 0) {
+            if (method === "debt" && settings.debt_surcharge_enabled) {
+                const surchargeInfo = calculateDebtSurcharge(targetTotal);
+                defaultAmount = String(surchargeInfo.totalWithSurcharge);
+            } else {
+                defaultAmount = String(targetTotal);
+            }
+        }
+
         onAmountsChange([
             {
                 method,
-                amount: targetTotal > 0 ? String(targetTotal) : amounts[0]?.amount || "",
+                amount: defaultAmount,
             },
         ]);
     }
@@ -212,6 +224,27 @@ function TransactionAmounts({
                                 className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                             />
                         </div>
+
+                        {amounts[0]?.method === "debt" && settings.debt_surcharge_enabled && (
+                            <div className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-300 space-y-1">
+                                <div className="flex items-center justify-between font-bold">
+                                    <span>
+                                        Recargo por cuenta corriente ({settings.debt_surcharge_type === "percentage" ? `${Number(settings.debt_surcharge_value)}%` : formatCurrency(Number(settings.debt_surcharge_value))}):
+                                    </span>
+                                    {targetTotal > 0 && (
+                                        <span className="tabular-nums">
+                                            +{formatCurrency(calculateDebtSurcharge(targetTotal).surcharge)}
+                                        </span>
+                                    )}
+                                </div>
+                                {targetTotal > 0 && (
+                                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                                        <span>Base: {formatCurrency(targetTotal)}</span>
+                                        <span>Total sugerido con recargo: {formatCurrency(calculateDebtSurcharge(targetTotal).totalWithSurcharge)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {amounts[0]?.method === "debt" && !hasClient && (
                             <div className="rounded-lg bg-[var(--warning)]/10 p-2.5 text-xs font-medium text-[var(--warning)]">

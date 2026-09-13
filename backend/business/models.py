@@ -594,5 +594,156 @@ class StockNote(models.Model):
         return f"[{self.get_status_display()}] {self.item_name}"
 
 
+class StoreSettings(models.Model):
+    class FeeType(models.TextChoices):
+        PERCENTAGE = "percentage", "Porcentaje (%)"
+        FIXED = "fixed", "Monto Fijo ($)"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="store_settings",
+    )
+
+    store_name = models.CharField(
+        max_length=150,
+        default="Mi Negocio",
+        help_text="Nombre del comercio o local",
+    )
+
+    store_address = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Dirección física del local (para tickets)",
+    )
+
+    store_phone = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Teléfono de contacto (para tickets)",
+    )
+
+    ticket_footer = models.CharField(
+        max_length=255,
+        default="¡Gracias por su compra!",
+        blank=True,
+        help_text="Mensaje al pie del ticket térmico",
+    )
+
+    # Virtual / Cash Exchange Fee
+    exchange_fee_type = models.CharField(
+        max_length=20,
+        choices=FeeType.choices,
+        default=FeeType.PERCENTAGE,
+    )
+
+    exchange_fee_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("10.00"),
+    )
+
+    # Phone Recharge Fee
+    phone_fee_type = models.CharField(
+        max_length=20,
+        choices=FeeType.choices,
+        default=FeeType.PERCENTAGE,
+    )
+
+    phone_fee_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("10.00"),
+    )
+
+    # SUBE Recharge Fee
+    sube_fee_type = models.CharField(
+        max_length=20,
+        choices=FeeType.choices,
+        default=FeeType.PERCENTAGE,
+    )
+
+    sube_fee_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("10.00"),
+    )
+
+    # Debt / Tab (Fiado) Surcharge
+    debt_surcharge_enabled = models.BooleanField(
+        default=False,
+        help_text="Indica si se aplica recargo al vender fiado / en libreta",
+    )
+
+    debt_surcharge_type = models.CharField(
+        max_length=20,
+        choices=FeeType.choices,
+        default=FeeType.PERCENTAGE,
+    )
+
+    debt_surcharge_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("10.00"),
+    )
+
+    is_setup_completed = models.BooleanField(
+        default=False,
+        help_text="True si el usuario ya completó el asistente inicial de configuración",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = "Configuración del Comercio"
+        verbose_name_plural = "Configuraciones de Comercios"
+
+    def __str__(self):
+        return f"Configuración de {self.store_name} ({self.user.email})"
+
+    def calculate_exchange_fee(self, amount):
+        if not amount:
+            return Decimal("0")
+        amount = Decimal(str(amount))
+        if self.exchange_fee_type == self.FeeType.PERCENTAGE:
+            return (amount * (self.exchange_fee_value / Decimal("100"))).quantize(Decimal("1"))
+        return self.exchange_fee_value
+
+    def calculate_debt_surcharge(self, amount):
+        if not self.debt_surcharge_enabled or not amount:
+            return Decimal("0")
+        amount = Decimal(str(amount))
+        if self.debt_surcharge_type == self.FeeType.PERCENTAGE:
+            return (amount * (self.debt_surcharge_value / Decimal("100"))).quantize(Decimal("1"))
+        return self.debt_surcharge_value
+
+    @classmethod
+    def get_or_create_for_user(cls, user):
+        settings_obj, _ = cls.objects.get_or_create(
+            user=user,
+            defaults={
+                "store_name": "Mi Negocio",
+                "exchange_fee_type": cls.FeeType.PERCENTAGE,
+                "exchange_fee_value": Decimal("10.00"),
+                "phone_fee_type": cls.FeeType.PERCENTAGE,
+                "phone_fee_value": Decimal("10.00"),
+                "sube_fee_type": cls.FeeType.PERCENTAGE,
+                "sube_fee_value": Decimal("10.00"),
+                "debt_surcharge_enabled": False,
+                "debt_surcharge_type": cls.FeeType.PERCENTAGE,
+                "debt_surcharge_value": Decimal("10.00"),
+                "is_setup_completed": False,
+            },
+        )
+        return settings_obj
+
+
+
 
 

@@ -27,6 +27,15 @@ api.interceptors.response.use(
             if (window.location.pathname !== "/login") {
                 window.location.href = "/login";
             }
+        } else if (
+            error.response?.status === 403 &&
+            error.response?.data?.code === "subscription_expired"
+        ) {
+            window.dispatchEvent(
+                new CustomEvent("bm_subscription_expired", {
+                    detail: error.response.data,
+                })
+            );
         }
 
         return Promise.reject(error);

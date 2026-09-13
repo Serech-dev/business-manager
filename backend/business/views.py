@@ -4,18 +4,18 @@ from django.db import transaction as db_transaction
 from django.db.models import Q, Sum, Count, F
 from django.utils import timezone
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import HasActiveSubscription
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import (Category, Client, Product, Provider, Register,
-                     StockMovement, StockNote, Transaction,
+                     StockMovement, StockNote, StoreSettings, Transaction,
                      TransactionOperationAmount, TransactionOperationItem)
 from .serializers import (CategorySerializer, ClientSerializer,
                           ProductSerializer, ProviderSerializer,
                           RegisterSerializer, StockAdjustmentSerializer,
                           StockBatchRestockSerializer, StockMovementSerializer,
-                          StockNoteSerializer,
+                          StockNoteSerializer, StoreSettingsSerializer,
                           TransactionAmountReceivedSerializer,
                           TransactionSerializer)
 
@@ -24,7 +24,7 @@ class ClientListCreateView(
     generics.ListCreateAPIView
 ):
     serializer_class = ClientSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         queryset = (
@@ -56,7 +56,7 @@ class ClientDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = ClientSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return Client.objects.filter(
@@ -68,7 +68,7 @@ class TransactionListCreateView(
     generics.ListCreateAPIView
 ):
     serializer_class = TransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         queryset = (
@@ -105,7 +105,7 @@ class TransactionAmountReceivedView(
         TransactionAmountReceivedSerializer
     )
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -143,7 +143,7 @@ class TransactionAmountReceivedView(
 
 
 class ResolveTransferView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request, pk):
@@ -231,7 +231,7 @@ class TransactionDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = TransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -300,7 +300,7 @@ class CurrentTransactionListView(
     generics.ListAPIView
 ):
     serializer_class = TransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -322,7 +322,7 @@ class CurrentTransactionListView(
 
 
 class CurrentRegisterView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get(self, request):
         register = (
@@ -349,7 +349,7 @@ class CurrentRegisterView(APIView):
 
 
 class OpenRegisterView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request):
@@ -387,7 +387,7 @@ class OpenRegisterView(APIView):
 
 
 class CloseRegisterView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request):
@@ -422,7 +422,7 @@ class CloseRegisterView(APIView):
 
 
 class ReopenLastRegisterView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request):
@@ -474,7 +474,7 @@ class RegisterListView(
     generics.ListAPIView
 ):
     serializer_class = RegisterSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -494,7 +494,7 @@ class RegisterDetailView(
     generics.RetrieveAPIView
 ):
     serializer_class = RegisterSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -513,7 +513,7 @@ class ProviderListCreateView(
     generics.ListCreateAPIView
 ):
     serializer_class = ProviderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -537,7 +537,7 @@ class ProviderDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = ProviderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -552,7 +552,7 @@ class ProviderDetailView(
 
 
 class AnalyticsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get(self, request):
         from .analytics import calculate_analytics
@@ -572,7 +572,7 @@ class AnalyticsView(APIView):
 
 class CategoryListCreateView(generics.ListCreateAPIView):
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -588,7 +588,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return Category.objects.filter(user=self.request.user)
@@ -596,7 +596,7 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         queryset = (
@@ -644,7 +644,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return (
@@ -655,7 +655,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ImportStarterCatalogView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def post(self, request):
         from .starter_catalog import import_starter_catalog_for_user
@@ -695,7 +695,7 @@ def calculate_adjusted_price(current_val, adjustment_type, adjustment_value, rou
 
 
 class BulkUpdateProductPricesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request):
@@ -789,7 +789,7 @@ class BulkUpdateProductPricesView(APIView):
 
 
 class BulkDeleteProductsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request):
@@ -815,7 +815,7 @@ class BulkDeleteProductsView(APIView):
 
 
 class BulkAssignProductProviderView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     @db_transaction.atomic
     def post(self, request):
@@ -859,7 +859,7 @@ class BulkAssignProductProviderView(APIView):
 
 
 class StockMovementListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get(self, request):
         user = request.user
@@ -923,7 +923,7 @@ class StockMovementListCreateView(APIView):
 
 
 class StockAdjustmentView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def post(self, request):
         serializer = StockAdjustmentSerializer(data=request.data, context={"request": request})
@@ -936,7 +936,7 @@ class StockAdjustmentView(APIView):
 
 
 class StockInsightsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get(self, request):
         user = request.user
@@ -1046,7 +1046,7 @@ class StockInsightsView(APIView):
 
 
 class StockAlertsSummaryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get(self, request):
         user = request.user
@@ -1082,7 +1082,7 @@ class StockAlertsSummaryView(APIView):
 
 class StockNoteListCreateView(generics.ListCreateAPIView):
     serializer_class = StockNoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         user = self.request.user
@@ -1111,10 +1111,31 @@ class StockNoteListCreateView(generics.ListCreateAPIView):
 
 class StockNoteDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = StockNoteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
         return StockNote.objects.filter(user=self.request.user).select_related("product")
+
+
+class StoreSettingsView(APIView):
+    permission_classes = [HasActiveSubscription]
+
+    def get(self, request):
+        settings_obj = StoreSettings.get_or_create_for_user(request.user)
+        serializer = StoreSettingsSerializer(settings_obj)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        settings_obj = StoreSettings.get_or_create_for_user(request.user)
+        serializer = StoreSettingsSerializer(
+            settings_obj,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
 
 
 

@@ -1,5 +1,6 @@
 import { formatCurrency } from "../../utils/formatCurrency";
 import { getTransactionLabel, getMethodLabel } from "../../services/business";
+import { useStoreSettings } from "../../context/StoreSettingsContext";
 
 function formatDateTicket(value) {
     if (!value) {
@@ -23,10 +24,16 @@ function formatDateTicket(value) {
 function ReceiptTicket({
     transaction,
     items = null,
-    businessName = "Mi Negocio",
+    businessName = null,
     paperWidth = "58mm",
 }) {
+    const { settings } = useStoreSettings();
     if (!transaction) return null;
+
+    const effectiveBusinessName = businessName || settings?.store_name || "Mi Negocio";
+    const storeAddress = settings?.store_address;
+    const storePhone = settings?.store_phone;
+    const ticketFooter = settings?.ticket_footer || "¡Muchas gracias por su compra!";
 
     const operations = transaction.operations || [];
     const clientName = transaction.client?.name || (typeof transaction.client === "string" ? transaction.client : null);
@@ -95,8 +102,14 @@ function ReceiptTicket({
             {/* HEADER */}
             <div className="text-center space-y-1 pb-2 border-b border-dashed border-gray-400">
                 <h2 className="text-sm font-bold uppercase tracking-wider">
-                    {businessName || "MI NEGOCIO"}
+                    {effectiveBusinessName}
                 </h2>
+                {storeAddress && (
+                    <p className="text-[10px] text-gray-700">{storeAddress}</p>
+                )}
+                {storePhone && (
+                    <p className="text-[10px] text-gray-700">Tel: {storePhone}</p>
+                )}
                 <p className="text-[10px] text-gray-700">Comprobante de Venta</p>
                 <div className="flex justify-between text-[10px] text-gray-800 pt-1">
                     <span>Ticket #{ticketId}</span>
@@ -242,7 +255,7 @@ function ReceiptTicket({
                 <p className="font-bold tracking-wider text-black">
                     *** COMPROBANTE NO FISCAL ***
                 </p>
-                <p>¡Muchas gracias por su compra!</p>
+                <p>{ticketFooter}</p>
             </div>
         </div>
     );

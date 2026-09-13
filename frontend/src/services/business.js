@@ -408,6 +408,17 @@ export async function getStockAlertsSummary() {
     return response.data;
 }
 
+export async function getStoreSettings() {
+    const response = await api.get("business/settings/");
+    return response.data;
+}
+
+export async function updateStoreSettings(data) {
+    const response = await api.patch("business/settings/", data);
+    return response.data;
+}
+
+
 
 
 
