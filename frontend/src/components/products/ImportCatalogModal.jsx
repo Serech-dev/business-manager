@@ -144,11 +144,11 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
             />
 
             {/* Modal Box */}
-            <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+            <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-accent)]/50 px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                             </svg>
@@ -166,7 +166,7 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     >
                         ✕
                     </button>
@@ -209,7 +209,7 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                                     key={preset.id}
                                     onClick={() => handleTogglePreset(preset.id)}
                                     className={`
-                                        group relative flex cursor-pointer flex-col justify-between rounded-xl border p-4 transition select-none
+                                        group relative flex cursor-pointer flex-col justify-between rounded-lg border p-4 transition select-none
                                         ${
                                             isSelected
                                                 ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]/30"
@@ -222,7 +222,7 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                                             <div className="flex items-center gap-2.5">
                                                 <span
                                                     className={`
-                                                        flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition
+                                                        flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition
                                                         ${
                                                             isSelected
                                                                 ? "bg-[var(--primary)] text-white"
@@ -262,16 +262,16 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                                     </div>
 
                                     <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-[var(--border)]/50">
-                                        <span className="rounded bg-[var(--surface-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-primary)]">
+                                        <span className="rounded-md bg-[var(--surface-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-primary)]">
                                             {preset.count}
                                         </span>
                                         {preset.hasBarcodes && (
-                                            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-500">
+                                            <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-500">
                                                 Códigos EAN-13
                                             </span>
                                         )}
                                         {preset.hasWeight && (
-                                            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
+                                            <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
                                                 Venta por peso / kg
                                             </span>
                                         )}
@@ -282,7 +282,7 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                     </div>
 
                     {/* SAFETY NOTICE */}
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3 text-[11px] text-[var(--text-secondary)] space-y-1">
+                    <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3 text-[11px] text-[var(--text-secondary)] space-y-1">
                         <div className="flex items-center gap-1.5 font-bold text-[var(--primary)]">
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
@@ -301,7 +301,7 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                         type="button"
                         onClick={onClose}
                         disabled={isSubmitting}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         Cancelar
                     </button>
@@ -310,7 +310,7 @@ function ImportCatalogModal({ isOpen, onClose, onSuccess }) {
                         type="button"
                         onClick={handleConfirm}
                         disabled={isSubmitting || selectedPresets.length === 0}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-6 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             "Importando catálogo..."

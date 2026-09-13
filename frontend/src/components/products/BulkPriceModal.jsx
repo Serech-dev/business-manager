@@ -155,14 +155,14 @@ function BulkPriceModal({
             />
 
             <div
-                className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl space-y-5"
+                className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl space-y-5"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* HEADER */}
                 <div className="flex items-start justify-between border-b border-[var(--border)] pb-4">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--primary)]/10 text-[var(--primary)]">
                                 <svg
                                     className="h-4 w-4"
                                     fill="none"
@@ -189,7 +189,7 @@ function BulkPriceModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     >
                         <svg
                             className="h-4 w-4"
@@ -219,7 +219,7 @@ function BulkPriceModal({
                                 <button
                                     type="button"
                                     onClick={() => setScope("selected")}
-                                    className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                    className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                         scope === "selected"
                                             ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                             : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -235,7 +235,7 @@ function BulkPriceModal({
                             <button
                                 type="button"
                                 onClick={() => setScope("provider")}
-                                className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                     scope === "provider"
                                         ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -250,7 +250,7 @@ function BulkPriceModal({
                             <button
                                 type="button"
                                 onClick={() => setScope("category")}
-                                className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                     scope === "category"
                                         ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -265,7 +265,7 @@ function BulkPriceModal({
                             <button
                                 type="button"
                                 onClick={() => setScope("all")}
-                                className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                     scope === "all"
                                         ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -280,7 +280,7 @@ function BulkPriceModal({
 
                         {/* SUB-SELECTOR: PROVIDER */}
                         {scope === "provider" && (
-                            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3 space-y-1.5">
+                            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3 space-y-1.5">
                                 <label className="text-xs font-semibold text-[var(--text-primary)]">
                                     Seleccioná el proveedor:
                                 </label>
@@ -288,7 +288,7 @@ function BulkPriceModal({
                                     <select
                                         value={selectedProviderId}
                                         onChange={(e) => setSelectedProviderId(e.target.value)}
-                                        className="h-10 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                        className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                     >
                                         <option value="">-- Seleccionar proveedor --</option>
                                         {providers.map((pr) => {
@@ -313,7 +313,7 @@ function BulkPriceModal({
 
                         {/* SUB-SELECTOR: CATEGORY */}
                         {scope === "category" && (
-                            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3 space-y-1.5">
+                            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3 space-y-1.5">
                                 <label className="text-xs font-semibold text-[var(--text-primary)]">
                                     Seleccioná la categoría:
                                 </label>
@@ -321,7 +321,7 @@ function BulkPriceModal({
                                     <select
                                         value={selectedCategoryId}
                                         onChange={(e) => setSelectedCategoryId(e.target.value)}
-                                        className="h-10 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                        className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                     >
                                         <option value="">-- Seleccionar categoría --</option>
                                         {categories.map((c) => {
@@ -353,11 +353,11 @@ function BulkPriceModal({
 
                         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
                             {/* Percentage vs Fixed Toggle */}
-                            <div className="flex rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/50 p-1">
+                            <div className="flex rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/50 p-1">
                                 <button
                                     type="button"
                                     onClick={() => setAdjustmentType("percentage")}
-                                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
                                         adjustmentType === "percentage"
                                             ? "bg-[var(--primary)] text-white shadow-xs"
                                             : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -368,7 +368,7 @@ function BulkPriceModal({
                                 <button
                                     type="button"
                                     onClick={() => setAdjustmentType("fixed")}
-                                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
                                         adjustmentType === "fixed"
                                             ? "bg-[var(--primary)] text-white shadow-xs"
                                             : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -389,7 +389,7 @@ function BulkPriceModal({
                                     value={adjustmentValue}
                                     onChange={(e) => setAdjustmentValue(e.target.value)}
                                     placeholder={adjustmentType === "percentage" ? "10" : "500"}
-                                    className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] py-2 pl-8 pr-4 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-8 pr-4 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                     required
                                 />
                             </div>
@@ -406,7 +406,7 @@ function BulkPriceModal({
                                         key={pct}
                                         type="button"
                                         onClick={() => setAdjustmentValue(String(pct))}
-                                        className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition ${
+                                        className={`rounded-md border px-2.5 py-1 text-xs font-bold transition ${
                                             adjustmentValue === String(pct)
                                                 ? "border-[var(--primary)] bg-[var(--primary)] text-white"
                                                 : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--primary)]/50 hover:text-[var(--text-primary)]"
@@ -430,7 +430,7 @@ function BulkPriceModal({
                                 <select
                                     value={targetField}
                                     onChange={(e) => setTargetField(e.target.value)}
-                                    className="h-10 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 >
                                     <option value="sale">Precio de Venta</option>
                                     <option value="cost">Precio de Costo</option>
@@ -453,7 +453,7 @@ function BulkPriceModal({
                                 <select
                                     value={rounding}
                                     onChange={(e) => setRounding(e.target.value)}
-                                    className="h-10 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 >
                                     <option value="50">Al $50 más cercano</option>
                                     <option value="100">Al $100 más cercano</option>
@@ -470,7 +470,7 @@ function BulkPriceModal({
                     </div>
 
                     {/* LIVE PREVIEW SECTION */}
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3.5 space-y-2.5">
+                    <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[var(--text-primary)]">
                                 Vista previa ({affectedProducts.length} producto{affectedProducts.length === 1 ? "" : "s"} a modificar)
@@ -489,7 +489,7 @@ function BulkPriceModal({
                                 Seleccioná un proveedor o categoría para previsualizar los cambios.
                             </p>
                         ) : (
-                            <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)]">
+                            <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] divide-y divide-[var(--border)]">
                                 {previewSamples.map((p) => {
                                     const currentPrice =
                                         targetField === "cost" ? p.cost_price : p.sale_price;
@@ -555,7 +555,7 @@ function BulkPriceModal({
                             type="button"
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                            className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                         >
                             Cancelar
                         </button>
@@ -563,7 +563,7 @@ function BulkPriceModal({
                         <button
                             type="submit"
                             disabled={isSubmitting || affectedProducts.length === 0}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                         >
                             {isSubmitting
                                 ? "Aplicando..."

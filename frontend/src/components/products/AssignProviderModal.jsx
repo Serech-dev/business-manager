@@ -52,11 +52,11 @@ function AssignProviderModal({
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl transition-all">
+            <div className="relative w-full max-w-md overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl transition-all">
                 {/* Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
                             <svg
                                 className="h-5 w-5"
                                 fill="none"
@@ -84,7 +84,7 @@ function AssignProviderModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -99,7 +99,7 @@ function AssignProviderModal({
                         <button
                             type="button"
                             onClick={() => setActionType("assign")}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-xs font-semibold transition ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-3 text-center text-xs font-semibold transition ${
                                 actionType === "assign"
                                     ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                     : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -114,7 +114,7 @@ function AssignProviderModal({
                         <button
                             type="button"
                             onClick={() => setActionType("unassign")}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-xs font-semibold transition ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-3 text-center text-xs font-semibold transition ${
                                 actionType === "unassign"
                                     ? "border-[var(--danger)] bg-[var(--danger)]/10 text-[var(--danger)] ring-1 ring-[var(--danger)]"
                                     : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -151,7 +151,7 @@ function AssignProviderModal({
                             </div>
 
                             {providers.length === 0 ? (
-                                <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-center">
+                                <div className="rounded-md border border-dashed border-[var(--border)] p-4 text-center">
                                     <p className="text-xs text-[var(--text-secondary)]">
                                         No tenés proveedores registrados aún.
                                     </p>
@@ -173,7 +173,7 @@ function AssignProviderModal({
                                     id="assign-provider-select"
                                     value={selectedProviderId}
                                     onChange={(e) => setSelectedProviderId(e.target.value)}
-                                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 >
                                     {providers.map((p) => (
                                         <option key={p.id} value={p.id}>
@@ -186,7 +186,7 @@ function AssignProviderModal({
                     )}
 
                     {actionType === "unassign" && (
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/50 p-3.5 text-xs text-[var(--text-secondary)]">
+                        <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/50 p-3.5 text-xs text-[var(--text-secondary)]">
                             Se removerá el proveedor asignado a los <span className="font-bold text-[var(--text-primary)]">{selectedIds.length}</span> productos seleccionados. Los productos seguirán existiendo en tu catálogo.
                         </div>
                     )}
@@ -196,14 +196,14 @@ function AssignProviderModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                            className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || (actionType === "assign" && providers.length === 0)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <>

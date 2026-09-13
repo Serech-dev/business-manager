@@ -150,7 +150,7 @@ function ProductModal({
                 onClick={onClose}
             />
 
-            <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+            <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4.5 bg-[var(--surface)] shrink-0">
                     <div>
@@ -165,7 +165,7 @@ function ProductModal({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     >
                         ✕
                     </button>
@@ -189,7 +189,7 @@ function ProductModal({
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Ej: Milanesas de Pollo, Coca Cola 500ml, Pan Francés..."
                             maxLength={150}
-                            className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none placeholder:font-normal placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none placeholder:font-normal placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                         />
                     </div>
 
@@ -202,7 +202,7 @@ function ProductModal({
                             <button
                                 type="button"
                                 onClick={() => setUnitType("unit")}
-                                className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                     unitType === "unit"
                                         ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -215,7 +215,7 @@ function ProductModal({
                             <button
                                 type="button"
                                 onClick={() => setUnitType("kg")}
-                                className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                     unitType === "kg"
                                         ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -228,7 +228,7 @@ function ProductModal({
                             <button
                                 type="button"
                                 onClick={() => setUnitType("100g")}
-                                className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border p-2.5 text-center text-xs font-semibold transition ${
+                                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
                                     unitType === "100g"
                                         ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]"
                                         : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -258,7 +258,7 @@ function ProductModal({
                                     value={salePrice}
                                     onChange={(e) => setSalePrice(e.target.value)}
                                     placeholder="0"
-                                    className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] py-2.5 pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--success)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] py-2.5 pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--success)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 />
                             </div>
                         </div>
@@ -278,7 +278,7 @@ function ProductModal({
                                     value={costPrice}
                                     onChange={(e) => setCostPrice(e.target.value)}
                                     placeholder="0"
-                                    className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] py-2.5 pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] py-2.5 pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 />
                             </div>
                         </div>
@@ -286,7 +286,7 @@ function ProductModal({
 
                     {/* LIVE MARGIN BADGE */}
                     {numCost > 0 && numSale > 0 && (
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/60 px-3.5 py-2 text-xs">
+                        <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/60 px-3.5 py-2 text-xs">
                             <span className="text-[var(--text-secondary)]">
                                 Ganancia estimada: <strong className="text-[var(--text-primary)]">{formatCurrency(profit)}</strong>
                             </span>
@@ -318,7 +318,7 @@ function ProductModal({
                                 <select
                                     value={categoryId}
                                     onChange={(e) => setCategoryId(e.target.value)}
-                                    className="h-11 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-11 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 >
                                     <option value="">Sin categoría</option>
                                     {categories.map((cat) => (
@@ -355,7 +355,7 @@ function ProductModal({
                                 <select
                                     value={providerId}
                                     onChange={(e) => setProviderId(e.target.value)}
-                                    className="h-11 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-11 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 >
                                     <option value="">Sin proveedor asignado</option>
                                     {providers.map((p) => (
@@ -378,7 +378,7 @@ function ProductModal({
                         <button
                             type="button"
                             onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/40 px-3.5 py-2.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                            className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 px-3.5 py-2.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                         >
                             <div className="flex items-center gap-2">
                                 <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -392,7 +392,7 @@ function ProductModal({
                         </button>
 
                         {showAdvanced && (
-                            <div className="mt-2.5 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/20 p-3.5">
+                            <div className="mt-2.5 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/20 p-3.5">
                                 {/* BARCODE */}
                                 <div>
                                     <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -403,7 +403,7 @@ function ProductModal({
                                         value={barcode}
                                         onChange={(e) => setBarcode(e.target.value)}
                                         placeholder="Escaneá o escribí el código..."
-                                        className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                        className="mt-1 h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                                     />
                                 </div>
 
@@ -419,7 +419,7 @@ function ProductModal({
                                             value={stock}
                                             onChange={(e) => setStock(e.target.value)}
                                             placeholder="0"
-                                            className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                            className="mt-1 h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                                         />
                                     </div>
                                     <div>
@@ -432,7 +432,7 @@ function ProductModal({
                                             value={minStock}
                                             onChange={(e) => setMinStock(e.target.value)}
                                             placeholder="1"
-                                            className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                            className="mt-1 h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                                         />
                                     </div>
                                 </div>
@@ -446,7 +446,7 @@ function ProductModal({
                             role="switch"
                             aria-checked={isActive}
                             onClick={() => setIsActive(!isActive)}
-                            className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/50 px-3.5 py-2.5 text-left transition hover:bg-[var(--surface-accent)]"
+                            className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/50 px-3.5 py-2.5 text-left transition hover:bg-[var(--surface-accent)]"
                         >
                             <div>
                                 <p className="text-xs font-bold text-[var(--text-primary)]">
@@ -472,14 +472,14 @@ function ProductModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                            className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={isSaving}
-                            className="rounded-xl bg-[var(--primary)] px-6 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                            className="rounded-lg bg-[var(--primary)] px-6 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                         >
                             {isSaving ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear producto"}
                         </button>

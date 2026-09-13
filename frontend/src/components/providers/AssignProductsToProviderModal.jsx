@@ -179,11 +179,11 @@ function AssignProductsToProviderModal({
                 onClick={onClose}
             />
 
-            <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl transition-all">
+            <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl transition-all">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 5.625a1.875 1.875 0 1 1 3.75 0 1.875 1.875 0 0 1-3.75 0Zm1.125 7.5a1.875 1.875 0 1 1 3.75 0 1.875 1.875 0 0 1-3.75 0Zm-3.75 7.5a1.875 1.875 0 1 1 3.75 0 1.875 1.875 0 0 1-3.75 0Z" />
                             </svg>
@@ -222,7 +222,7 @@ function AssignProductsToProviderModal({
                                 placeholder="Buscar por nombre o código..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2 pl-9 pr-8 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] py-2 pl-9 pr-8 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                             />
                             {search && (
                                 <button
@@ -239,7 +239,7 @@ function AssignProductsToProviderModal({
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                         >
                             <option value="">Todas las Categorías</option>
                             {categories.map((c) => (
@@ -250,11 +250,11 @@ function AssignProductsToProviderModal({
                         </select>
 
                         {/* Provider Filter Segment */}
-                        <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0.5 text-xs">
+                        <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] p-0.5 text-xs">
                             <button
                                 type="button"
                                 onClick={() => setProviderFilter("all")}
-                                className={`rounded-lg px-2.5 py-1.5 font-medium transition ${
+                                className={`rounded-md px-2.5 py-1.5 font-medium transition ${
                                     providerFilter === "all"
                                         ? "bg-[var(--primary)] text-white"
                                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -265,7 +265,7 @@ function AssignProductsToProviderModal({
                             <button
                                 type="button"
                                 onClick={() => setProviderFilter("unassigned")}
-                                className={`rounded-lg px-2.5 py-1.5 font-medium transition ${
+                                className={`rounded-md px-2.5 py-1.5 font-medium transition ${
                                     providerFilter === "unassigned"
                                         ? "bg-[var(--primary)] text-white"
                                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -276,7 +276,7 @@ function AssignProductsToProviderModal({
                             <button
                                 type="button"
                                 onClick={() => setProviderFilter("current")}
-                                className={`rounded-lg px-2.5 py-1.5 font-medium transition ${
+                                className={`rounded-md px-2.5 py-1.5 font-medium transition ${
                                     providerFilter === "current"
                                         ? "bg-[var(--primary)] text-white"
                                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -343,7 +343,7 @@ function AssignProductsToProviderModal({
                                                         {product.name}
                                                     </p>
                                                     {product.barcode && (
-                                                        <span className="hidden rounded bg-[var(--surface-accent)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-secondary)] sm:inline">
+                                                        <span className="hidden rounded-sm bg-[var(--surface-accent)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-secondary)] sm:inline">
                                                             {product.barcode}
                                                         </span>
                                                     )}
@@ -404,7 +404,7 @@ function AssignProductsToProviderModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                            className="rounded-lg border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                         >
                             Cancelar
                         </button>
@@ -412,7 +412,7 @@ function AssignProductsToProviderModal({
                             type="button"
                             onClick={handleSubmit}
                             disabled={isSubmitting}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <>

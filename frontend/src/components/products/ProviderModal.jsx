@@ -61,7 +61,7 @@ function ProviderModal({ isOpen, onClose, providers = [], onProvidersChange }) {
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl">
+            <div className="relative w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl">
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
                     <div>
                         <h2 className="text-lg font-bold text-[var(--text-primary)]">
@@ -75,7 +75,7 @@ function ProviderModal({ isOpen, onClose, providers = [], onProvidersChange }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     >
                         ✕
                     </button>
@@ -91,7 +91,7 @@ function ProviderModal({ isOpen, onClose, providers = [], onProvidersChange }) {
                             placeholder="Nombre (ej: Distribuidora Norte, Arcor...)"
                             maxLength={150}
                             required
-                            className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)]"
+                            className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)]"
                         />
                         <input
                             type="text"
@@ -99,12 +99,12 @@ function ProviderModal({ isOpen, onClose, providers = [], onProvidersChange }) {
                             onChange={(e) => setPhone(e.target.value)}
                             placeholder="Tel / WhatsApp (opc.)"
                             maxLength={50}
-                            className="w-40 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)]"
+                            className="w-40 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)]"
                         />
                         <button
                             type="submit"
                             disabled={isCreating || !name.trim()}
-                            className="shrink-0 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                            className="shrink-0 rounded-lg bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                         >
                             {isCreating ? "..." : "+ Agregar"}
                         </button>
@@ -121,7 +121,7 @@ function ProviderModal({ isOpen, onClose, providers = [], onProvidersChange }) {
                         providers.map((prov) => (
                             <div
                                 key={prov.id}
-                                className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/50 px-3.5 py-2.5"
+                                className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/50 px-3.5 py-2.5"
                             >
                                 <div className="flex items-center gap-2.5 truncate">
                                     <span className="text-sm font-semibold text-[var(--text-primary)] truncate">
@@ -154,7 +154,7 @@ function ProviderModal({ isOpen, onClose, providers = [], onProvidersChange }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
                     >
                         Cerrar
                     </button>

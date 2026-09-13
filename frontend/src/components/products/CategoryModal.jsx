@@ -49,7 +49,7 @@ function CategoryModal({ isOpen, onClose, categories, onCategoriesChange }) {
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl">
+            <div className="relative w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl">
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
                     <div>
                         <h2 className="text-lg font-bold text-[var(--text-primary)]">
@@ -63,7 +63,7 @@ function CategoryModal({ isOpen, onClose, categories, onCategoriesChange }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                        className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                     >
                         ✕
                     </button>
@@ -77,12 +77,12 @@ function CategoryModal({ isOpen, onClose, categories, onCategoriesChange }) {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Nombre (ej: Bebidas, Golosinas...)"
                         maxLength={100}
-                        className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)]"
+                        className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)]"
                     />
                     <button
                         type="submit"
                         disabled={isCreating || !name.trim()}
-                        className="rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                        className="rounded-lg bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                     >
                         {isCreating ? "..." : "+ Agregar"}
                     </button>
@@ -98,13 +98,13 @@ function CategoryModal({ isOpen, onClose, categories, onCategoriesChange }) {
                         categories.map((cat) => (
                             <div
                                 key={cat.id}
-                                className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-accent)]/50 px-3.5 py-2.5"
+                                className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/50 px-3.5 py-2.5"
                             >
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-semibold text-[var(--text-primary)]">
                                         {cat.name}
                                     </span>
-                                    <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-secondary)]">
+                                    <span className="rounded-md bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-secondary)]">
                                         {cat.products_count ?? 0} prods
                                     </span>
                                 </div>
@@ -127,7 +127,7 @@ function CategoryModal({ isOpen, onClose, categories, onCategoriesChange }) {
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
                     >
                         Cerrar
                     </button>
