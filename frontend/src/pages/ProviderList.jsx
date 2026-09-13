@@ -7,7 +7,35 @@ import {
 } from "../services/business";
 
 import ProviderMovementModal from "../components/providers/ProviderMovementModal";
+import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { formatCurrency } from "../utils/formatCurrency";
+
+const PROVIDERS_TOUR_STEPS = [
+    {
+        target: '[data-tour="providers-create-btn"]',
+        title: "Nuevo Proveedor",
+        content: "Registrá distribuidores y vendedores con sus datos de contacto y notas comerciales.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="providers-movement-btn"]',
+        title: "Compras y Pagos",
+        content: "Registrá compras de mercadería al contado o a pagar, y pagos de deudas pendientes.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="providers-search"]',
+        title: "Búsqueda Rápida",
+        content: "Buscá proveedores por nombre comercial o número de teléfono.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="providers-list"]',
+        title: "Ficha del Proveedor",
+        content: "Hacé clic en cualquier proveedor para ver su saldo deudor ('Debo'), historial y vincular productos en lote.",
+        position: "top",
+    },
+];
 
 
 function ProviderList() {
@@ -111,6 +139,7 @@ function ProviderList() {
                 <div className="flex items-center gap-3 shrink-0">
                     <button
                         type="button"
+                        data-tour="providers-create-btn"
                         onClick={() =>
                             navigate("/providers/new")
                         }
@@ -133,6 +162,7 @@ function ProviderList() {
 
                     <button
                         type="button"
+                        data-tour="providers-movement-btn"
                         onClick={() => setIsMovementModalOpen(true)}
                         className="
                             rounded-lg
@@ -155,7 +185,9 @@ function ProviderList() {
 
             {/* SEARCH */}
 
-            <div className="
+            <div
+                data-tour="providers-search"
+                className="
                 mt-8
                 flex
                 items-center
@@ -242,7 +274,9 @@ function ProviderList() {
 
             ) : (
 
-                <section className="
+                <section
+                    data-tour="providers-list"
+                    className="
                     mt-5
                     overflow-hidden
                     border
@@ -382,6 +416,12 @@ function ProviderList() {
                 isOpen={isMovementModalOpen}
                 onClose={() => setIsMovementModalOpen(false)}
                 onSuccess={loadProviders}
+            />
+
+            {/* ONBOARDING TOUR */}
+            <OnboardingTour
+                tourKey="providers"
+                steps={PROVIDERS_TOUR_STEPS}
             />
 
         </div>

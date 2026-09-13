@@ -18,8 +18,30 @@ import {
 import ConfirmDialog from "../components/ConfirmDialog";
 import ProviderMovementModal from "../components/providers/ProviderMovementModal";
 import AssignProductsToProviderModal from "../components/providers/AssignProductsToProviderModal";
+import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatStockQty, formatUnitType } from "../utils/formatStock";
+
+const PROVIDER_DETAIL_TOUR_STEPS = [
+    {
+        target: '[data-tour="provider-kpis"]',
+        title: "Métricas del Proveedor",
+        content: "Revisá el saldo adeudado ('Debo'), los artículos provistos y su valuación a precio de costo, junto a los gastos del turno actual.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="provider-tabs"]',
+        title: "Pestañas de Gestión",
+        content: "Navegá entre los productos suministrados, el historial de compras/pagos o editá los datos de contacto y notas comerciales.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="provider-assign-btn"]',
+        title: "Vincular Productos en Lote",
+        content: "Asigná o cambiá en 1 clic los artículos que te provee este distribuidor para mantener tus costos y stock sincronizados.",
+        position: "bottom",
+    },
+];
 
 function ProviderDetail({ isNewProvider = false }) {
     const { id } = useParams();
@@ -365,7 +387,7 @@ function ProviderDetail({ isNewProvider = false }) {
 
             {/* KPI OVERVIEW METRICS */}
             {!isNewProvider && (
-                <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <section data-tour="provider-kpis" className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {/* CARD 1: Saldo Adeudado */}
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition hover:border-[var(--primary)]/40">
                         <div className="flex items-center justify-between">
@@ -475,7 +497,7 @@ function ProviderDetail({ isNewProvider = false }) {
             {/* SEGMENTED TABS (Only for existing providers) */}
             {!isNewProvider ? (
                 <div className="mt-8">
-                    <div className="flex border-b border-[var(--border)] gap-2">
+                    <div data-tour="provider-tabs" className="flex border-b border-[var(--border)] gap-2">
                         <button
                             type="button"
                             onClick={() => setActiveTab("products")}
@@ -556,6 +578,7 @@ function ProviderDetail({ isNewProvider = false }) {
 
                                 <button
                                     type="button"
+                                    data-tour="provider-assign-btn"
                                     onClick={() => setIsAssignModalOpen(true)}
                                     className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                                 >
@@ -923,6 +946,14 @@ function ProviderDetail({ isNewProvider = false }) {
                 categories={categories}
                 onSuccess={loadData}
             />
+
+            {/* ONBOARDING TOUR */}
+            {!isNewProvider && (
+                <OnboardingTour
+                    tourKey="provider-detail"
+                    steps={PROVIDER_DETAIL_TOUR_STEPS}
+                />
+            )}
         </div>
     );
 }
