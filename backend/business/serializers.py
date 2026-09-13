@@ -594,6 +594,189 @@ class TransactionSerializer(
         return representation
 
 
+class RegisterListSerializer(serializers.ModelSerializer):
+    is_open = serializers.BooleanField(read_only=True)
+
+    transaction_count = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
+
+    money_in = serializers.SerializerMethodField()
+    money_out = serializers.SerializerMethodField()
+    net_movement = serializers.SerializerMethodField()
+
+    cash_in = serializers.SerializerMethodField()
+    cash_out = serializers.SerializerMethodField()
+    expected_cash = serializers.SerializerMethodField()
+
+    bank_in = serializers.SerializerMethodField()
+    bank_out = serializers.SerializerMethodField()
+    expected_bank = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Register
+        fields = [
+            "id",
+            "opened_at",
+            "closed_at",
+            "is_open",
+            "initial_cash",
+            "initial_bank",
+            "transaction_count",
+            "total",
+            "money_in",
+            "money_out",
+            "net_movement",
+            "cash_in",
+            "cash_out",
+            "expected_cash",
+            "bank_in",
+            "bank_out",
+            "expected_bank",
+        ]
+        read_only_fields = fields
+
+    def _get_transactions(self, obj):
+        if not hasattr(obj, "_cached_tx_list"):
+            if hasattr(obj, "_prefetched_objects_cache") and "transactions" in obj._prefetched_objects_cache:
+                obj._cached_tx_list = list(obj.transactions.all())
+            else:
+                obj._cached_tx_list = list(
+                    obj.transactions
+                    .prefetch_related("operations__amounts")
+                    .all()
+                )
+        return obj._cached_tx_list
+
+    def _is_money_movement(self, amount):
+        if amount.method == TransactionOperationAmount.Method.DEBT:
+            return False
+        if amount.method == TransactionOperationAmount.Method.TRANSFER and not amount.received:
+            return False
+        return True
+
+    def _is_outgoing(self, operation):
+        return operation.type in [
+            TransactionOperation.Type.PROVIDER,
+            TransactionOperation.Type.EXPENSE,
+            TransactionOperation.Type.LOSS,
+        ]
+
+    def _get_operation_money_amount(self, operation):
+        money_amount = sum(
+            amount.amount
+            for amount in operation.amounts.all()
+            if self._is_money_movement(amount)
+        )
+        if operation.type == TransactionOperation.Type.EXCHANGE:
+            money_amount -= (operation.exchange_amount or Decimal("0"))
+        return money_amount
+
+    def _compute_summary(self, obj):
+        if hasattr(obj, "_cached_summary"):
+            return obj._cached_summary
+
+        total = Decimal("0")
+        money_in = Decimal("0")
+        money_out = Decimal("0")
+        cash_in = Decimal("0")
+        cash_out = Decimal("0")
+        bank_in = Decimal("0")
+        bank_out = Decimal("0")
+
+        txs = self._get_transactions(obj)
+
+        for tx in txs:
+            for op in tx.operations.all():
+                is_out = self._is_outgoing(op)
+                op_money = self._get_operation_money_amount(op)
+
+                if is_out:
+                    money_out += op_money
+                else:
+                    money_in += op_money
+
+                if op.type == TransactionOperation.Type.EXCHANGE:
+                    fee = op.exchange_fee or Decimal("0")
+                    total += fee
+                    for amount in op.amounts.all():
+                        if not self._is_money_movement(amount):
+                            continue
+                        if amount.method == TransactionOperationAmount.Method.CASH:
+                            cash_in += fee
+                        elif amount.method in [
+                            TransactionOperationAmount.Method.TRANSFER,
+                            TransactionOperationAmount.Method.CARD,
+                        ]:
+                            bank_in += fee
+                        break
+                else:
+                    for amount in op.amounts.all():
+                        total += amount.amount
+                        if not self._is_money_movement(amount):
+                            continue
+                        if amount.method == TransactionOperationAmount.Method.CASH:
+                            if is_out:
+                                cash_out += amount.amount
+                            else:
+                                cash_in += amount.amount
+                        elif amount.method in [
+                            TransactionOperationAmount.Method.TRANSFER,
+                            TransactionOperationAmount.Method.CARD,
+                        ]:
+                            if is_out:
+                                bank_out += amount.amount
+                            else:
+                                bank_in += amount.amount
+
+        obj._cached_summary = {
+            "count": len(txs),
+            "total": total,
+            "money_in": money_in,
+            "money_out": money_out,
+            "net_movement": money_in - money_out,
+            "cash_in": cash_in,
+            "cash_out": cash_out,
+            "expected_cash": (obj.initial_cash or Decimal("0")) + cash_in - cash_out,
+            "bank_in": bank_in,
+            "bank_out": bank_out,
+            "expected_bank": (obj.initial_bank or Decimal("0")) + bank_in - bank_out,
+        }
+        return obj._cached_summary
+
+    def get_transaction_count(self, obj):
+        return self._compute_summary(obj)["count"]
+
+    def get_total(self, obj):
+        return self._compute_summary(obj)["total"]
+
+    def get_money_in(self, obj):
+        return self._compute_summary(obj)["money_in"]
+
+    def get_money_out(self, obj):
+        return self._compute_summary(obj)["money_out"]
+
+    def get_net_movement(self, obj):
+        return self._compute_summary(obj)["net_movement"]
+
+    def get_cash_in(self, obj):
+        return self._compute_summary(obj)["cash_in"]
+
+    def get_cash_out(self, obj):
+        return self._compute_summary(obj)["cash_out"]
+
+    def get_expected_cash(self, obj):
+        return self._compute_summary(obj)["expected_cash"]
+
+    def get_bank_in(self, obj):
+        return self._compute_summary(obj)["bank_in"]
+
+    def get_bank_out(self, obj):
+        return self._compute_summary(obj)["bank_out"]
+
+    def get_expected_bank(self, obj):
+        return self._compute_summary(obj)["expected_bank"]
+
+
 class RegisterSerializer(
     serializers.ModelSerializer
 ):
@@ -677,18 +860,23 @@ class RegisterSerializer(
         read_only_fields = fields
 
     def _get_transactions(self, obj):
-        return (
-            obj.transactions
-            .select_related(
-                "client"
-            )
-            .prefetch_related(
-                "operations__amounts",
-                "operations__provider",
-            )
-            .order_by("-created_at", "-id")
-            .all()
-        )
+        if not hasattr(obj, "_cached_tx_list"):
+            if hasattr(obj, "_prefetched_objects_cache") and "transactions" in obj._prefetched_objects_cache:
+                obj._cached_tx_list = list(obj.transactions.all())
+            else:
+                obj._cached_tx_list = list(
+                    obj.transactions
+                    .select_related(
+                        "client"
+                    )
+                    .prefetch_related(
+                        "operations__amounts",
+                        "operations__provider",
+                    )
+                    .order_by("-created_at", "-id")
+                    .all()
+                )
+        return obj._cached_tx_list
 
     def _is_money_movement(self, amount):
         """

@@ -196,12 +196,12 @@ body {
 }
 
 /* ==========================================================================
-   THERMAL POS RECEIPT PRINT MEDIA
-   Isolates #printable-receipt on 58mm/80mm roll printers or regular print
+   PRINT MEDIA STYLES
+   Supports both standard full-page reports (RegisterReport) and thermal receipts
    ========================================================================== */
 @media print {
   @page {
-    margin: 0;
+    margin: 8mm;
     size: auto;
   }
 
@@ -215,17 +215,17 @@ body {
     height: auto !important;
   }
 
-  /* Hide everything on the page except the printable receipt */
-  body * {
-    visibility: hidden;
+  /* When printing a thermal POS receipt specifically (body has class has-thermal-receipt) */
+  body.has-thermal-receipt * {
+    visibility: hidden !important;
   }
 
-  #printable-receipt,
-  #printable-receipt * {
-    visibility: visible;
+  body.has-thermal-receipt #printable-receipt,
+  body.has-thermal-receipt #printable-receipt * {
+    visibility: visible !important;
   }
 
-  #printable-receipt {
+  body.has-thermal-receipt #printable-receipt {
     position: absolute;
     left: 0;
     top: 0;
@@ -237,5 +237,36 @@ body {
     color: #000000 !important;
     box-shadow: none !important;
     border: none !important;
+  }
+
+  /* General print utility classes */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print\:border-none {
+    border: none !important;
+  }
+
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+
+  .print\:ml-0 {
+    margin-left: 0 !important;
+  }
+
+  /* High contrast colors for paper printing */
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --background: #ffffff !important;
+    --surface: #ffffff !important;
+    --surface-accent: #f8fafc !important;
+    --surface-muted: #f1f5f9 !important;
+    --text-primary: #0f172a !important;
+    --text-secondary: #475569 !important;
+    --border: #cbd5e1 !important;
+    --bg-gradient: none !important;
   }
 }

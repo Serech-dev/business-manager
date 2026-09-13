@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReceiptTicket from "./ReceiptTicket";
 
 function ReceiptModal({
@@ -14,6 +14,17 @@ function ReceiptModal({
         return localStorage.getItem("bm_receipt_paper_width") || "58mm";
     });
     const [isEditingName, setIsEditingName] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.classList.add("has-thermal-receipt");
+        } else {
+            document.body.classList.remove("has-thermal-receipt");
+        }
+        return () => {
+            document.body.classList.remove("has-thermal-receipt");
+        };
+    }, [isOpen]);
 
     if (!isOpen || !transaction) return null;
 

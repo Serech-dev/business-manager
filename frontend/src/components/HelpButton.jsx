@@ -31,6 +31,7 @@ function HelpButton() {
                     hover:border-[var(--primary)]
                     hover:bg-[var(--surface-accent)]
                     hover:text-[var(--primary)]
+                    print:hidden
                 "
                 title="Centro de ayuda y tutorial"
                 aria-label="Abrir guía y ayuda"

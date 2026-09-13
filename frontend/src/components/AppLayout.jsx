@@ -23,12 +23,14 @@ function AppLayout() {
 
     return (
         <div className="min-h-screen text-[var(--text-primary)]">
-            <Sidebar
-                register={register}
-                setRegister={setRegister}
-            />
+            <div className="print:hidden">
+                <Sidebar
+                    register={register}
+                    setRegister={setRegister}
+                />
+            </div>
 
-            <main className="ml-64 min-h-screen">
+            <main className="ml-64 min-h-screen print:ml-0 print:p-0">
                 <Outlet
                     context={{
                         register,
@@ -38,7 +40,9 @@ function AppLayout() {
                 />
             </main>
 
-            <HelpButton />
+            <div className="print:hidden">
+                <HelpButton />
+            </div>
         </div>
     );
 }

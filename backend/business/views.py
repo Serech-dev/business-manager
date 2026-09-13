@@ -13,7 +13,8 @@ from .models import (Category, Client, Product, Provider, Register,
                      TransactionOperationAmount, TransactionOperationItem)
 from .serializers import (CategorySerializer, ClientSerializer,
                           ProductSerializer, ProviderSerializer,
-                          RegisterSerializer, StockAdjustmentSerializer,
+                          RegisterListSerializer, RegisterSerializer,
+                          StockAdjustmentSerializer,
                           StockBatchRestockSerializer, StockMovementSerializer,
                           StockNoteSerializer, StoreSettingsSerializer,
                           TransactionAmountReceivedSerializer,
@@ -473,7 +474,7 @@ class ReopenLastRegisterView(APIView):
 class RegisterListView(
     generics.ListAPIView
 ):
-    serializer_class = RegisterSerializer
+    serializer_class = RegisterListSerializer
     permission_classes = [HasActiveSubscription]
 
     def get_queryset(self):
