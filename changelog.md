@@ -1,3 +1,22 @@
+v1.4.0 (Phase 2 - Virtual Licensing, Automated Mercado Pago Checkout & UX Polish)
+
+- Virtual Licensing & Automated Checkout Gateway (Módulo de Licencias Virtuales v1):
+  - Full Mercado Pago Checkout Pro integration (`createCheckoutPreference`, `VerifyPaymentStatusView`, `MercadoPagoWebhookView`) supporting Monthly and Yearly licensing plans.
+  - In-modal dynamic QR Code generation with `qrcode.react` for direct mobile phone checkout, alongside dedicated "Abrir en nueva pestaña" action.
+  - Real-time 4-second background accreditation polling (`refreshSubscription`) with instant screen unblocking upon payment approval.
+  - Enriched Mercado Pago preference payloads (store branding, product icons, descriptions, and category identification).
+  - Dynamic 7-day free trial on signup, expiration countdown badges, and persistent lifetime superuser access.
+  - Enhanced `LoginSerializer` supporting authentication via either email or username.
+- Store Configuration & First-Time Onboarding:
+  - 3-step first-time setup wizard (`FirstTimeSetupModal.jsx`) covering store identity, service commission rates (money exchange, SUBE, phone recharges), and credit surcharge (fiado).
+  - Standardized Argentine currency whole-number values (removed decimal steps from fee and money inputs).
+  - Cleaned setup toast feedback: single crisp success notification (`"¡Tu comercio está listo!"`) on completion and zero noise on skip (`"Omitir por ahora"`).
+  - Modernized dropdown controls: replaced native OS white-box controls with custom `appearance-none` containers and themed SVG chevrons.
+- Security & Expired State Polish:
+  - Global suppression of cascading 403 error toasts on license expiration, keeping user focus on the clean `SubscriptionExpiredOverlay`.
+  - Immediate dismissal of expired screen overlays and full context state reset upon user logout.
+  - Added token and route guards preventing modals and overlays from mounting on `/login` and `/register`.
+
 v1.3.0 (Phase 2 - Stock Control, Smart Inventory & Provider Hub)
 
 - Stock Control & Smart Inventory Module (Módulo de Control de Stock v1):
