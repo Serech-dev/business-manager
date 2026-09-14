@@ -1,7 +1,26 @@
 import axios from "axios";
+import toast from "react-hot-toast";
 
 const AUTH_TOKEN_KEY = "businessManagerAuthToken"; 
 const AUTH_USER_KEY = "businessManagerAuthUser";
+
+// Wrap toast.error to suppress redundant noise when subscription is expired
+const originalToastError = toast.error.bind(toast);
+toast.error = (message, options) => {
+    // If subscription is expired and caller didn't explicitly permit toasts (e.g. checkout errors)
+    if (window.__BM_SUBSCRIPTION_EXPIRED__ && !options?.allowWhileExpired) {
+        return null;
+    }
+    // If message is related to subscription expired, suppress generic popups
+    if (
+        typeof message === "string" &&
+        message.toLowerCase().includes("suscripción") &&
+        message.toLowerCase().includes("expirad")
+    ) {
+        return null;
+    }
+    return originalToastError(message, options);
+};
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -31,11 +50,15 @@ api.interceptors.response.use(
             error.response?.status === 403 &&
             error.response?.data?.code === "subscription_expired"
         ) {
+            window.__BM_SUBSCRIPTION_EXPIRED__ = true;
+            // Dismiss any lingering error toasts
+            toast.dismiss();
             window.dispatchEvent(
                 new CustomEvent("bm_subscription_expired", {
                     detail: error.response.data,
                 })
             );
+            error.isSubscriptionExpired = true;
         }
 
         return Promise.reject(error);
@@ -46,6 +69,13 @@ export function getApiError(
     error,
     fallback = "Ocurrió un error."
 ) {
+    if (
+        error?.response?.status === 403 &&
+        error?.response?.data?.code === "subscription_expired"
+    ) {
+        return "";
+    }
+
     const data = error.response?.data;
 
     if (!data) {
@@ -69,4 +99,4 @@ export function getApiError(
     return fallback;
 }
 
-export default api;
+export default api;

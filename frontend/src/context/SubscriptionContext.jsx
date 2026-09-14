@@ -33,8 +33,11 @@ export function SubscriptionProvider({ children }) {
                 getSubscription(),
                 getMyPayments().catch(() => []),
             ]);
-            setSubscription(subData.summary || subData);
+            const sub = subData.summary || subData;
+            setSubscription(sub);
             setMyPayments(paymentsData || []);
+            const valid = Boolean(sub?.is_superuser || sub?.is_valid);
+            window.__BM_SUBSCRIPTION_EXPIRED__ = !valid;
             return subData;
         } catch (error) {
             console.error("No se pudo cargar la suscripción:", error);
@@ -70,17 +73,19 @@ export function SubscriptionProvider({ children }) {
                     });
 
                     if (result.status === "approved" || paymentStatus === "approved" || paymentStatus === "success" || paymentStatus === "mock_simulate") {
+                        window.__BM_SUBSCRIPTION_EXPIRED__ = false;
                         toast.success(result.detail || "¡Pago acreditado! Tu licencia fue activada con éxito.", { id: toastId });
                     } else if (paymentStatus === "pending") {
                         toast.loading("Tu pago está en proceso de acreditación.", { id: toastId });
                     } else if (paymentStatus === "failure" || paymentStatus === "rejected") {
-                        toast.error("El pago no se pudo completar o fue cancelado.", { id: toastId });
+                        toast.error("El pago no se pudo completar o fue cancelado.", { id: toastId, allowWhileExpired: true });
                     } else {
                         toast.dismiss(toastId);
                     }
                 } catch (err) {
                     console.error("Error al verificar pago:", err);
                     if (paymentStatus === "approved" || paymentStatus === "success" || paymentStatus === "mock_simulate") {
+                        window.__BM_SUBSCRIPTION_EXPIRED__ = false;
                         toast.success("¡Licencia activada!", { id: toastId });
                     } else {
                         toast.dismiss(toastId);
@@ -105,6 +110,7 @@ export function SubscriptionProvider({ children }) {
     // Handle 403 subscription_expired custom event from API interceptor
     useEffect(() => {
         function handleExpiredEvent(event) {
+            window.__BM_SUBSCRIPTION_EXPIRED__ = true;
             if (event.detail?.subscription) {
                 setSubscription(event.detail.subscription);
             } else {
@@ -140,7 +146,7 @@ export function SubscriptionProvider({ children }) {
             } catch (error) {
                 console.error("Error al iniciar checkout:", error);
                 const msg = error.response?.data?.error || error.response?.data?.detail || error.message || "Error al conectar con la pasarela de pago.";
-                toast.error(msg);
+                toast.error(msg, { allowWhileExpired: true });
                 throw error;
             } finally {
                 setIsProcessingCheckout(false);
@@ -160,7 +166,7 @@ export function SubscriptionProvider({ children }) {
             } catch (error) {
                 console.error("Error al notificar pago:", error);
                 const msg = error.response?.data?.detail || "No se pudo enviar el aviso de pago.";
-                toast.error(msg);
+                toast.error(msg, { allowWhileExpired: true });
                 throw error;
             } finally {
                 setIsSubmittingPayment(false);

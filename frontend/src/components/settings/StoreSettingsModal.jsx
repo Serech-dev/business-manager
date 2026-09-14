@@ -15,17 +15,17 @@ function StoreSettingsModal({ isOpen, onClose }) {
     const [ticketFooter, setTicketFooter] = useState("");
 
     const [exchangeFeeType, setExchangeFeeType] = useState("percentage");
-    const [exchangeFeeValue, setExchangeFeeValue] = useState("10.00");
+    const [exchangeFeeValue, setExchangeFeeValue] = useState("10");
 
     const [phoneFeeType, setPhoneFeeType] = useState("percentage");
-    const [phoneFeeValue, setPhoneFeeValue] = useState("10.00");
+    const [phoneFeeValue, setPhoneFeeValue] = useState("10");
 
     const [subeFeeType, setSubeFeeType] = useState("percentage");
-    const [subeFeeValue, setSubeFeeValue] = useState("10.00");
+    const [subeFeeValue, setSubeFeeValue] = useState("10");
 
     const [debtSurchargeEnabled, setDebtSurchargeEnabled] = useState(false);
     const [debtSurchargeType, setDebtSurchargeType] = useState("percentage");
-    const [debtSurchargeValue, setDebtSurchargeValue] = useState("10.00");
+    const [debtSurchargeValue, setDebtSurchargeValue] = useState("10");
 
     useEffect(() => {
         if (settings) {
@@ -34,14 +34,14 @@ function StoreSettingsModal({ isOpen, onClose }) {
             setStorePhone(settings.store_phone || "");
             setTicketFooter(settings.ticket_footer || "¡Gracias por su compra!");
             setExchangeFeeType(settings.exchange_fee_type || "percentage");
-            setExchangeFeeValue(settings.exchange_fee_value || "10.00");
+            setExchangeFeeValue(settings.exchange_fee_value ? String(Math.round(Number(settings.exchange_fee_value))) : "10");
             setPhoneFeeType(settings.phone_fee_type || "percentage");
-            setPhoneFeeValue(settings.phone_fee_value || "10.00");
+            setPhoneFeeValue(settings.phone_fee_value ? String(Math.round(Number(settings.phone_fee_value))) : "10");
             setSubeFeeType(settings.sube_fee_type || "percentage");
-            setSubeFeeValue(settings.sube_fee_value || "10.00");
+            setSubeFeeValue(settings.sube_fee_value ? String(Math.round(Number(settings.sube_fee_value))) : "10");
             setDebtSurchargeEnabled(Boolean(settings.debt_surcharge_enabled));
             setDebtSurchargeType(settings.debt_surcharge_type || "percentage");
-            setDebtSurchargeValue(settings.debt_surcharge_value || "10.00");
+            setDebtSurchargeValue(settings.debt_surcharge_value ? String(Math.round(Number(settings.debt_surcharge_value))) : "10");
         }
     }, [settings, isOpen]);
 
@@ -213,7 +213,8 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </select>
                                     <input
                                         type="number"
-                                        step="0.1"
+                                        step="1"
+                                        min="0"
                                         value={exchangeFeeValue}
                                         onChange={(e) => setExchangeFeeValue(e.target.value)}
                                         className="w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
@@ -245,7 +246,8 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </select>
                                     <input
                                         type="number"
-                                        step="0.1"
+                                        step="1"
+                                        min="0"
                                         value={phoneFeeValue}
                                         onChange={(e) => setPhoneFeeValue(e.target.value)}
                                         className="w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
@@ -277,7 +279,8 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </select>
                                     <input
                                         type="number"
-                                        step="0.1"
+                                        step="1"
+                                        min="0"
                                         value={subeFeeValue}
                                         onChange={(e) => setSubeFeeValue(e.target.value)}
                                         className="w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
@@ -334,13 +337,14 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                         </select>
                                         <input
                                             type="number"
-                                            step="0.1"
+                                            step="1"
+                                            min="0"
                                             value={debtSurchargeValue}
                                             onChange={(e) => setDebtSurchargeValue(e.target.value)}
                                             className="w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
                                         />
                                         <span className="text-xs font-bold text-[var(--primary)]">
-                                            {debtSurchargeType === "percentage" ? "+% sobre el importe" : "+$ fijos por venta"}
+                                            {debtSurchargeType === "percentage" ? `+${debtSurchargeValue || "0"}% sobre el importe` : `+$${debtSurchargeValue || "0"} fijos por venta`}
                                         </span>
                                     </div>
                                 </div>

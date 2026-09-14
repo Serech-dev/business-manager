@@ -10,14 +10,14 @@ const DEFAULT_SETTINGS = {
     store_phone: "",
     ticket_footer: "¡Gracias por su compra!",
     exchange_fee_type: "percentage",
-    exchange_fee_value: "10.00",
+    exchange_fee_value: "10",
     phone_fee_type: "percentage",
-    phone_fee_value: "10.00",
+    phone_fee_value: "10",
     sube_fee_type: "percentage",
-    sube_fee_value: "10.00",
+    sube_fee_value: "10",
     debt_surcharge_enabled: false,
     debt_surcharge_type: "percentage",
-    debt_surcharge_value: "10.00",
+    debt_surcharge_value: "10",
     is_setup_completed: false,
 };
 
@@ -59,11 +59,27 @@ export function StoreSettingsProvider({ children }) {
         }
     }, [token, loadSettings]);
 
-    const updateSettings = useCallback(async (partialData) => {
+    const updateSettings = useCallback(async (partialData, { silent = false } = {}) => {
         try {
-            const updated = await updateStoreSettings(partialData);
+            const cleanData = { ...partialData };
+            if (cleanData.exchange_fee_value !== undefined) {
+                cleanData.exchange_fee_value = String(Math.round(Number(cleanData.exchange_fee_value) || 0));
+            }
+            if (cleanData.phone_fee_value !== undefined) {
+                cleanData.phone_fee_value = String(Math.round(Number(cleanData.phone_fee_value) || 0));
+            }
+            if (cleanData.sube_fee_value !== undefined) {
+                cleanData.sube_fee_value = String(Math.round(Number(cleanData.sube_fee_value) || 0));
+            }
+            if (cleanData.debt_surcharge_value !== undefined) {
+                cleanData.debt_surcharge_value = String(Math.round(Number(cleanData.debt_surcharge_value) || 0));
+            }
+
+            const updated = await updateStoreSettings(cleanData);
             setSettings(updated);
-            toast.success("Configuración del comercio guardada.");
+            if (!silent) {
+                toast.success("Configuración del comercio guardada.");
+            }
             return updated;
         } catch (error) {
             console.error("Error guardando configuración:", error);
