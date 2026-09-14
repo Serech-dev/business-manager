@@ -204,14 +204,19 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <select
-                                        value={exchangeFeeType}
-                                        onChange={(e) => setExchangeFeeType(e.target.value)}
-                                        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                    >
-                                        <option value="percentage">Porcentaje (%)</option>
-                                        <option value="fixed">Monto Fijo ($)</option>
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={exchangeFeeType}
+                                            onChange={(e) => setExchangeFeeType(e.target.value)}
+                                            className="appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-7 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] cursor-pointer"
+                                        >
+                                            <option value="percentage">Porcentaje (%)</option>
+                                            <option value="fixed">Monto Fijo ($)</option>
+                                        </select>
+                                        <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                    </div>
                                     <input
                                         type="number"
                                         step="1"
@@ -237,14 +242,19 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <select
-                                        value={phoneFeeType}
-                                        onChange={(e) => setPhoneFeeType(e.target.value)}
-                                        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                    >
-                                        <option value="percentage">Porcentaje (%)</option>
-                                        <option value="fixed">Monto Fijo ($)</option>
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={phoneFeeType}
+                                            onChange={(e) => setPhoneFeeType(e.target.value)}
+                                            className="appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-7 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] cursor-pointer"
+                                        >
+                                            <option value="percentage">Porcentaje (%)</option>
+                                            <option value="fixed">Monto Fijo ($)</option>
+                                        </select>
+                                        <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                    </div>
                                     <input
                                         type="number"
                                         step="1"
@@ -270,14 +280,19 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <select
-                                        value={subeFeeType}
-                                        onChange={(e) => setSubeFeeType(e.target.value)}
-                                        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                    >
-                                        <option value="percentage">Porcentaje (%)</option>
-                                        <option value="fixed">Monto Fijo ($)</option>
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={subeFeeType}
+                                            onChange={(e) => setSubeFeeType(e.target.value)}
+                                            className="appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-7 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] cursor-pointer"
+                                        >
+                                            <option value="percentage">Porcentaje (%)</option>
+                                            <option value="fixed">Monto Fijo ($)</option>
+                                        </select>
+                                        <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                    </div>
                                     <input
                                         type="number"
                                         step="1"
@@ -328,14 +343,19 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                         Valor del Recargo por Fiado
                                     </label>
                                     <div className="flex items-center gap-3">
-                                        <select
-                                            value={debtSurchargeType}
-                                            onChange={(e) => setDebtSurchargeType(e.target.value)}
-                                            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                        >
-                                            <option value="percentage">Porcentaje (+%)</option>
-                                            <option value="fixed">Monto Fijo (+$)</option>
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={debtSurchargeType}
+                                                onChange={(e) => setDebtSurchargeType(e.target.value)}
+                                                className="appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-7 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] cursor-pointer"
+                                            >
+                                                <option value="percentage">Porcentaje (+%)</option>
+                                                <option value="fixed">Monto Fijo (+$)</option>
+                                            </select>
+                                            <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </div>
                                         <input
                                             type="number"
                                             step="1"
