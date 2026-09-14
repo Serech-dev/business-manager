@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -10,17 +11,17 @@ User = get_user_model()
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.CharField()
     password = serializers.CharField(
         write_only=True,
     )
 
     def validate(self, attrs):
-        email = attrs["email"].lower().strip()
+        identifier = attrs["email"].strip()
         password = attrs["password"]
 
         user = User.objects.filter(
-            email__iexact=email
+            Q(email__iexact=identifier) | Q(username__iexact=identifier)
         ).first()
 
         if user is None:

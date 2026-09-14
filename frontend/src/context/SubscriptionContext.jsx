@@ -125,20 +125,21 @@ export function SubscriptionProvider({ children }) {
     }, []);
 
     const startCheckout = useCallback(
-        async (plan = "yearly") => {
+        async (plan = "yearly", { openInNewTab = false } = {}) => {
             setIsProcessingCheckout(true);
             try {
                 const preference = await createCheckoutPreference({ plan });
                 if (preference.init_point) {
-                    // Redirect to Mercado Pago / Mock simulator
-                    window.location.href = preference.init_point;
+                    if (openInNewTab) {
+                        window.open(preference.init_point, "_blank", "noopener,noreferrer");
+                    }
                     return preference;
                 } else {
                     throw new Error("No se pudo obtener el link de pago.");
                 }
             } catch (error) {
                 console.error("Error al iniciar checkout:", error);
-                const msg = error.response?.data?.detail || error.message || "Error al conectar con la pasarela de pago.";
+                const msg = error.response?.data?.error || error.response?.data?.detail || error.message || "Error al conectar con la pasarela de pago.";
                 toast.error(msg);
                 throw error;
             } finally {

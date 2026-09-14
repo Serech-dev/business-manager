@@ -1,7 +1,8 @@
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -161,6 +162,7 @@ class SubscriptionTests(TestCase):
         forbidden_res = self.client.get("/api/auth/admin/stores/")
         self.assertEqual(forbidden_res.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN="")
     def test_create_checkout_preference_mock_mode(self):
         self.client.force_authenticate(user=self.user)
         res = self.client.post(
@@ -172,11 +174,36 @@ class SubscriptionTests(TestCase):
         self.assertIn("init_point", res.data)
         self.assertIn("notification_id", res.data)
         self.assertEqual(res.data["plan"], "yearly")
+        self.assertEqual(res.data["mode"], "mock")
 
         # Verify PaymentNotification was created with method mercadopago
         notif = PaymentNotification.objects.get(id=res.data["notification_id"])
         self.assertEqual(notif.payment_method, PaymentNotification.PaymentMethod.MERCADOPAGO)
         self.assertEqual(notif.plan, PaymentNotification.PlanRequested.YEARLY)
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN="TEST-1234567890")
+    @patch("mercadopago.SDK")
+    def test_create_checkout_preference_live_mode(self, mock_sdk_class):
+        mock_sdk_instance = MagicMock()
+        mock_sdk_class.return_value = mock_sdk_instance
+        mock_sdk_instance.preference().create.return_value = {
+            "status": 201,
+            "response": {
+                "id": "mp_test_pref_12345",
+                "init_point": "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=mp_test_pref_12345",
+            },
+        }
+
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post(
+            "/api/auth/subscription/create-checkout/",
+            {"plan": "monthly"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["mode"], "live")
+        self.assertIn("mercadopago.com.ar", res.data["init_point"])
+        self.assertEqual(res.data["preference_id"], "mp_test_pref_12345")
 
     def test_verify_payment_status_mock_simulation(self):
         sub = Subscription.get_or_create_for_user(self.user)
@@ -195,5 +222,43 @@ class SubscriptionTests(TestCase):
         self.assertTrue(sub.is_valid)
         self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
         self.assertEqual(sub.status, Subscription.Status.ACTIVE)
+        self.assertGreaterEqual(sub.days_remaining, 29)
+
+    @override_settings(MERCADOPAGO_ACCESS_TOKEN="TEST-1234567890")
+    @patch("mercadopago.SDK")
+    def test_webhook_payment_approved(self, mock_sdk_class):
+        mock_sdk_instance = MagicMock()
+        mock_sdk_class.return_value = mock_sdk_instance
+        mock_sdk_instance.payment().get.return_value = {
+            "status": 200,
+            "response": {
+                "id": 9988776655,
+                "status": "approved",
+                "status_detail": "accredited",
+                "payment_method_id": "account_money",
+                "payment_type_id": "account_money",
+                "transaction_amount": 15000.0,
+                "metadata": {
+                    "user_id": self.user.id,
+                    "plan": "monthly",
+                    "days": 30,
+                },
+            },
+        }
+
+        webhook_res = self.client.post(
+            "/api/auth/subscription/webhook/",
+            {
+                "type": "payment",
+                "data": {"id": "9988776655"},
+            },
+            format="json",
+        )
+        self.assertEqual(webhook_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(webhook_res.data["status"], "success")
+
+        sub = Subscription.objects.get(user=self.user)
+        self.assertTrue(sub.is_valid)
+        self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
         self.assertGreaterEqual(sub.days_remaining, 29)
 

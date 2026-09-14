@@ -17,10 +17,12 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env from backend directory and current directory
+load_dotenv(BASE_DIR / ".env")
+load_dotenv()
 
 
 # Quick-start development settings - unsuitable for production
@@ -32,7 +34,13 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
+    if h.strip()
+]
+if "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("testserver")
 
 
 # Application definition
@@ -158,11 +166,23 @@ BACKEND_URL = os.getenv("BACKEND_URL", "").rstrip("/")
 SUBSCRIPTION_PRICES = {
     "monthly": {
         "title": "Business Manager - Plan Mensual (30 días)",
+        "description": "Licencia de uso del sistema Business Manager por 30 días (gestión de ventas, caja, stock y reportes).",
+        "category_id": "services",
+        "picture_url": os.getenv(
+            "SUBSCRIPTION_LOGO_URL",
+            "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
+        ),
         "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_MONTHLY", "10000.00")),
         "days": 30,
     },
     "yearly": {
         "title": "Business Manager - Plan Anual (1 año)",
+        "description": "Licencia de uso del sistema Business Manager por 365 días (acceso total a todas las herramientas con precio congelado).",
+        "category_id": "services",
+        "picture_url": os.getenv(
+            "SUBSCRIPTION_LOGO_URL",
+            "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
+        ),
         "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_YEARLY", "100000.00")),
         "days": 365,
     },

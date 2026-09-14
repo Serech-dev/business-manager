@@ -148,16 +148,20 @@ class CreateCheckoutPreferenceView(APIView):
                 frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173").rstrip("/")
                 backend_url = getattr(settings, "BACKEND_URL", "").rstrip("/")
 
+                item_data = {
+                    "id": f"sub_{plan}_{user.id}",
+                    "title": plan_info["title"],
+                    "description": plan_info.get("description", "Licencia de uso del sistema Business Manager."),
+                    "category_id": plan_info.get("category_id", "services"),
+                    "quantity": 1,
+                    "currency_id": "ARS",
+                    "unit_price": float(plan_info["amount"]),
+                }
+                if plan_info.get("picture_url") and plan_info["picture_url"].startswith("https://"):
+                    item_data["picture_url"] = plan_info["picture_url"]
+
                 preference_data = {
-                    "items": [
-                        {
-                            "id": f"sub_{plan}_{user.id}",
-                            "title": plan_info["title"],
-                            "quantity": 1,
-                            "currency_id": "ARS",
-                            "unit_price": float(plan_info["amount"]),
-                        }
-                    ],
+                    "items": [item_data],
                     "payer": {
                         "email": user.email,
                     },
@@ -166,7 +170,6 @@ class CreateCheckoutPreferenceView(APIView):
                         "pending": f"{frontend_url}/?payment_status=pending&plan={plan}&notification_id={notification.id}",
                         "failure": f"{frontend_url}/?payment_status=failure&plan={plan}&notification_id={notification.id}",
                     },
-                    "auto_return": "approved",
                     "external_reference": f"bm_sub_{notification.id}_{user.id}_{plan}",
                     "metadata": {
                         "notification_id": notification.id,
@@ -177,30 +180,47 @@ class CreateCheckoutPreferenceView(APIView):
                     "statement_descriptor": "BUSINESS MANAGER",
                 }
 
-                if backend_url:
+                if frontend_url.startswith("https://"):
+                    preference_data["auto_return"] = "approved"
+
+                if backend_url and backend_url.startswith("https://") and "localhost" not in backend_url and "127.0.0.1" not in backend_url:
                     preference_data["notification_url"] = f"{backend_url}/api/auth/subscription/webhook/"
 
                 preference_response = sdk.preference().create(preference_data)
                 preference = preference_response.get("response", {})
 
                 pref_id = preference.get("id")
-                notification.mp_preference_id = pref_id or ""
-                notification.save(update_fields=["mp_preference_id"])
-
                 init_point = preference.get("init_point") or preference.get("sandbox_init_point")
-                return Response({
-                    "init_point": init_point,
-                    "preference_id": pref_id,
-                    "notification_id": notification.id,
-                    "mode": "live",
-                    "plan": plan,
-                    "amount": float(plan_info["amount"]),
-                })
-            except Exception as e:
-                notification.payer_notes += f" (Error MP SDK: {str(e)})"
-                notification.save(update_fields=["payer_notes"])
 
-        # Dev / Sandbox fallback when no access token is configured
+                if init_point:
+                    notification.mp_preference_id = pref_id or ""
+                    notification.save(update_fields=["mp_preference_id"])
+
+                    return Response({
+                        "init_point": init_point,
+                        "preference_id": pref_id,
+                        "notification_id": notification.id,
+                        "mode": "live",
+                        "plan": plan,
+                        "amount": float(plan_info["amount"]),
+                    })
+                else:
+                    error_msg = preference.get("message") or preference_response.get("message") or "No se pudo generar el link de pago en Mercado Pago."
+                    notification.payer_notes += f" (Error MP: {error_msg})"
+                    notification.save(update_fields=["payer_notes"])
+                    return Response(
+                        {"error": f"Mercado Pago: {error_msg}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except Exception as e:
+                notification.payer_notes += f" (Excepción MP SDK: {str(e)})"
+                notification.save(update_fields=["payer_notes"])
+                return Response(
+                    {"error": f"Error al conectar con Mercado Pago: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+        # Dev / Sandbox fallback ONLY when no access token is configured
         mock_pref_id = f"mock_pref_{notification.id}_{int(timezone.now().timestamp())}"
         notification.mp_preference_id = mock_pref_id
         notification.save(update_fields=["mp_preference_id"])
