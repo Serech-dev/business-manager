@@ -45,7 +45,8 @@ function FirstTimeSetupModal() {
         }
     }, [settings]);
 
-    if (!isSetupWizardOpen) return null;
+    const token = localStorage.getItem("businessManagerAuthToken");
+    if (!token || !isSetupWizardOpen) return null;
 
     async function handleSave(skip = false) {
         setIsSaving(true);

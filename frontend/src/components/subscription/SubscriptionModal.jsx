@@ -66,7 +66,8 @@ function SubscriptionModal({ isOpen, onClose }) {
         };
     }, [activeCheckout, subscription, refreshSubscription]);
 
-    if (!isOpen) return null;
+    const token = localStorage.getItem("businessManagerAuthToken");
+    if (!token || !isOpen) return null;
 
     async function handleRefresh() {
         setIsRefreshing(true);

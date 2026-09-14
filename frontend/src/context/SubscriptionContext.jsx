@@ -25,6 +25,7 @@ export function SubscriptionProvider({ children }) {
         if (!currentToken) {
             setSubscription(null);
             setIsLoading(false);
+            window.__BM_SUBSCRIPTION_EXPIRED__ = false;
             return null;
         }
 
@@ -130,6 +131,13 @@ export function SubscriptionProvider({ children }) {
         setIsSubscriptionModalOpen(false);
     }, []);
 
+    const clearSubscription = useCallback(() => {
+        setSubscription(null);
+        setMyPayments([]);
+        setIsSubscriptionModalOpen(false);
+        window.__BM_SUBSCRIPTION_EXPIRED__ = false;
+    }, []);
+
     const startCheckout = useCallback(
         async (plan = "yearly", { openInNewTab = false } = {}) => {
             setIsProcessingCheckout(true);
@@ -203,6 +211,7 @@ export function SubscriptionProvider({ children }) {
                 isSubscriptionModalOpen,
                 openSubscriptionModal,
                 closeSubscriptionModal,
+                clearSubscription,
                 refreshSubscription,
                 startCheckout,
                 submitPayment,

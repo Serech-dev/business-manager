@@ -45,7 +45,8 @@ function StoreSettingsModal({ isOpen, onClose }) {
         }
     }, [settings, isOpen]);
 
-    if (!isOpen) return null;
+    const token = localStorage.getItem("businessManagerAuthToken");
+    if (!token || !isOpen) return null;
 
     async function handleSubmit(e) {
         e.preventDefault();

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
 import { logout } from "../../services/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useSubscription } from "../../context/SubscriptionContext";
 
 function SubscriptionExpiredOverlay() {
@@ -11,15 +11,20 @@ function SubscriptionExpiredOverlay() {
         isSuperuser,
         subscription,
         refreshSubscription,
+        clearSubscription,
         startCheckout,
         isProcessingCheckout,
     } = useSubscription();
 
     const navigate = useNavigate();
+    const location = useLocation();
     const [selectedPlan, setSelectedPlan] = useState("yearly");
     const [activeCheckout, setActiveCheckout] = useState(null);
     const [isChecking, setIsChecking] = useState(false);
     const pollIntervalRef = useRef(null);
+
+    const token = localStorage.getItem("businessManagerAuthToken");
+    const isAuthRoute = location.pathname === "/login" || location.pathname === "/register";
 
     // Auto-polling when waiting for active Mercado Pago checkout confirmation
     useEffect(() => {
@@ -46,8 +51,8 @@ function SubscriptionExpiredOverlay() {
         };
     }, [activeCheckout, refreshSubscription]);
 
-    // Superusers or active users are never locked out
-    if (!isExpired || isSuperuser) return null;
+    // Superusers, active users, or unauthenticated / auth pages are never locked out
+    if (!token || isAuthRoute || !isExpired || isSuperuser) return null;
 
     async function handleCheckStatus() {
         setIsChecking(true);
@@ -60,7 +65,7 @@ function SubscriptionExpiredOverlay() {
                 toast.success("Estado verificado.");
             }
         } catch {
-            toast.error("No se pudo verificar el estado.");
+            toast.error("No se pudo verificar el estado.", { allowWhileExpired: true });
         } finally {
             setIsChecking(false);
         }
@@ -79,8 +84,11 @@ function SubscriptionExpiredOverlay() {
     }
 
     async function handleLogout() {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        setActiveCheckout(null);
+        clearSubscription();
         await logout();
-        navigate("/login");
+        navigate("/login", { replace: true });
     }
 
     return (
