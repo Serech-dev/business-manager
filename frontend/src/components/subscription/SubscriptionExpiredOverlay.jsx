@@ -36,7 +36,8 @@ function SubscriptionExpiredOverlay() {
         pollIntervalRef.current = setInterval(async () => {
             try {
                 const updated = await refreshSubscription();
-                if (updated && updated.is_valid && updated.status !== "expired") {
+                const sub = updated?.summary || updated;
+                if (sub && sub.is_valid && sub.status !== "expired" && sub.status !== "suspended") {
                     toast.success("¡Pago acreditado! Pantalla desbloqueada con éxito.");
                     setActiveCheckout(null);
                     clearInterval(pollIntervalRef.current);
@@ -58,9 +59,12 @@ function SubscriptionExpiredOverlay() {
         setIsChecking(true);
         try {
             const updated = await refreshSubscription();
-            if (updated?.is_valid && updated?.status !== "expired") {
+            const sub = updated?.summary || updated;
+            if (sub?.is_valid && sub?.status !== "expired" && sub?.status !== "suspended") {
                 toast.success("¡Licencia activa confirmada!");
                 setActiveCheckout(null);
+            } else if (sub?.status === "suspended") {
+                toast.error("Tu cuenta sigue suspendida por la administración.", { allowWhileExpired: true });
             } else {
                 toast.success("Estado verificado.");
             }
@@ -122,7 +126,9 @@ function SubscriptionExpiredOverlay() {
                 {/* CONTENT */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-5">
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                        Tus datos de productos, clientes, ventas y stock se encuentran totalmente resguardados. Para reactivar tu acceso de inmediato, seleccioná tu plan y aboná a continuación.
+                        {subscription?.status === "suspended"
+                            ? "Tu cuenta se encuentra temporalmente suspendida por la administración. Podés reactivarla abonando tu plan a continuación o comunicándote con soporte."
+                            : "Tus datos de productos, clientes, ventas y stock se encuentran totalmente resguardados. Para reactivar tu acceso de inmediato, seleccioná tu plan y aboná a continuación."}
                     </p>
 
                     {/* PLAN SELECTION */}

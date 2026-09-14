@@ -92,11 +92,11 @@ class Subscription(models.Model):
     @property
     def is_valid(self):
         """Returns True if the subscription allows using the application."""
-        if self.user.is_superuser or self.user.is_staff:
-            return True
-
         if self.status == self.Status.SUSPENDED:
             return False
+
+        if self.user.is_superuser or self.user.is_staff:
+            return True
 
         if self.plan == self.Plan.LIFETIME and self.status == self.Status.ACTIVE:
             return True
@@ -109,11 +109,11 @@ class Subscription(models.Model):
     @property
     def effective_status(self):
         """Calculates dynamic status taking expiration into account."""
-        if self.user.is_superuser:
-            return self.Status.ACTIVE
-
         if self.status == self.Status.SUSPENDED:
             return self.Status.SUSPENDED
+
+        if self.user.is_superuser:
+            return self.Status.ACTIVE
 
         if self.plan == self.Plan.LIFETIME:
             return self.Status.ACTIVE
@@ -126,6 +126,9 @@ class Subscription(models.Model):
     @property
     def days_remaining(self):
         """Returns integer remaining days until expiration, or None for lifetime / superuser."""
+        if self.status == self.Status.SUSPENDED or not self.is_valid:
+            return 0
+
         if self.plan == self.Plan.LIFETIME or self.user.is_superuser:
             return None
 
@@ -205,6 +208,8 @@ class Subscription(models.Model):
         return self
 
     def get_summary(self):
+        is_admin_user = bool(self.user.is_superuser or self.user.is_staff)
+        is_suspended = self.status == self.Status.SUSPENDED
         return {
             "status": self.effective_status,
             "status_display": dict(self.Status.choices).get(self.effective_status, self.effective_status),
@@ -214,7 +219,7 @@ class Subscription(models.Model):
             "days_remaining": self.days_remaining,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "is_trial": self.is_trial,
-            "is_superuser": bool(self.user.is_superuser or self.user.is_staff),
+            "is_superuser": bool(is_admin_user and not is_suspended),
             "payment_info": {
                 "alias": "gestor.negocios.mp",
                 "cbu": "0000003100010000000000",

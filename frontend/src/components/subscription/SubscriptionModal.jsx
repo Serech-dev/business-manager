@@ -73,9 +73,12 @@ function SubscriptionModal({ isOpen, onClose }) {
         setIsRefreshing(true);
         try {
             const updated = await refreshSubscription();
-            if (updated?.is_valid && updated?.status === "active") {
+            const sub = updated?.summary || updated;
+            if (sub?.is_valid && sub?.status === "active") {
                 toast.success("¡Licencia activa confirmada!");
                 setActiveCheckout(null);
+            } else if (sub?.status === "suspended") {
+                toast.error("Tu cuenta continúa suspendida.");
             } else {
                 toast.success("Estado de licencia actualizado.");
             }
@@ -146,7 +149,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                     {/* CURRENT STATUS BANNER */}
                     <div
                         className={`rounded-md border p-4 transition ${
-                            isExpired
+                            subscription?.status === "suspended" || isExpired
                                 ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)]"
                                 : isTrial
                                 ? "border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning)]"
@@ -163,7 +166,9 @@ function SubscriptionModal({ isOpen, onClose }) {
                                 </div>
 
                                 <p className="mt-1.5 text-sm font-medium text-[var(--text-primary)]">
-                                    {isExpired ? (
+                                    {subscription?.status === "suspended" ? (
+                                        "Tu cuenta se encuentra suspendida por la administración. Aboná tu plan a continuación o comunicate con soporte para reactivar el acceso."
+                                    ) : isExpired ? (
                                         "Tu período de acceso ha finalizado. Aboná tu plan para continuar utilizando el sistema sin interrupciones."
                                     ) : isSuperuser ? (
                                         "Tenés acceso total ilimitado como Administrador del sistema."

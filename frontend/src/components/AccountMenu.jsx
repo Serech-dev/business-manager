@@ -63,7 +63,8 @@ function AccountMenu() {
         navigate("/login", { replace: true });
     }
 
-    const isUserSuper = isSuperuser || user?.is_superuser;
+    const isSuspended = subscription?.status === "suspended";
+    const isUserSuper = !isSuspended && (isSuperuser || user?.is_superuser);
     const storeInitial = (settings?.store_name || user?.email || "M").charAt(0).toUpperCase();
 
     return (
@@ -129,7 +130,9 @@ function AccountMenu() {
                                             Estado de Licencia
                                         </span>
                                         <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">
-                                            {isExpired
+                                            {isSuspended
+                                                ? "Cuenta Suspendida"
+                                                : isExpired
                                                 ? "Licencia Vencida"
                                                 : isUserSuper
                                                 ? "Acceso Total / Admin"
@@ -148,14 +151,14 @@ function AccountMenu() {
                                             openSubscriptionModal();
                                         }}
                                         className={`rounded-lg px-2.5 py-1 text-xs font-bold transition border ${
-                                            isExpired
+                                            isSuspended || isExpired
                                                 ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)] hover:opacity-90"
                                                 : isTrial
                                                 ? "border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning)] hover:opacity-90"
                                                 : "border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90"
                                         }`}
                                     >
-                                        {isExpired ? "Renovar" : "Ver Plan"}
+                                        {isSuspended ? "Reactivar" : isExpired ? "Renovar" : "Ver Plan"}
                                     </button>
                                 </div>
                             </div>
@@ -388,14 +391,14 @@ function AccountMenu() {
                         {subscription && (
                             <span
                                 className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                                    isExpired
+                                    isSuspended || isExpired
                                         ? "bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]"
                                         : isTrial
                                         ? "bg-[var(--warning-bg)] text-[var(--warning)] border border-[var(--warning-border)]"
                                         : "bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success-border)]"
                                 }`}
                             >
-                                {isExpired ? "Vencida" : isUserSuper ? "Admin" : isTrial ? `${daysRemaining ?? 0}d` : "Activa"}
+                                {isSuspended ? "Suspendida" : isExpired ? "Vencida" : isUserSuper ? "Admin" : isTrial ? `${daysRemaining ?? 0}d` : "Activa"}
                             </span>
                         )}
 

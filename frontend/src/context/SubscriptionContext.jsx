@@ -37,7 +37,8 @@ export function SubscriptionProvider({ children }) {
             const sub = subData.summary || subData;
             setSubscription(sub);
             setMyPayments(paymentsData || []);
-            const valid = Boolean(sub?.is_superuser || sub?.is_valid);
+            const isSusp = sub?.status === "suspended";
+            const valid = !isSusp && Boolean(sub?.is_superuser || sub?.is_valid);
             window.__BM_SUBSCRIPTION_EXPIRED__ = !valid;
             return subData;
         } catch (error) {
@@ -183,14 +184,15 @@ export function SubscriptionProvider({ children }) {
         [refreshSubscription]
     );
 
-    const isSuperuser = Boolean(subscription?.is_superuser);
-    const isValid = isSuperuser || Boolean(subscription?.is_valid);
-    const isExpired = Boolean(subscription && !isValid);
+    const isSuspended = subscription?.status === "suspended";
+    const isSuperuser = !isSuspended && Boolean(subscription?.is_superuser);
+    const isValid = !isSuspended && (isSuperuser || Boolean(subscription?.is_valid));
+    const isExpired = Boolean(subscription && (!isValid || isSuspended));
     const daysRemaining = subscription?.days_remaining ?? 0;
     const isExpiringSoon = Boolean(
-        subscription && !isSuperuser && isValid && daysRemaining <= 3 && subscription.plan !== "lifetime"
+        subscription && !isSuperuser && !isSuspended && isValid && daysRemaining <= 3 && subscription.plan !== "lifetime"
     );
-    const isTrial = Boolean(subscription?.is_trial);
+    const isTrial = !isSuspended && Boolean(subscription?.is_trial);
     const hasPendingPayment = myPayments.some((p) => p.status === "pending");
 
     return (
@@ -199,6 +201,7 @@ export function SubscriptionProvider({ children }) {
                 subscription,
                 isLoading,
                 isExpired,
+                isSuspended,
                 isExpiringSoon,
                 isValid,
                 isTrial,

@@ -41,7 +41,7 @@ class LoginView(APIView):
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "is_superuser": bool(user.is_superuser or user.is_staff),
+                "is_superuser": bool((user.is_superuser or user.is_staff) and subscription.status != Subscription.Status.SUSPENDED),
             },
             "subscription": subscription.get_summary(),
         })
@@ -79,7 +79,7 @@ class RegisterView(APIView):
                 "user": {
                     "id": user.id,
                     "email": user.email,
-                    "is_superuser": bool(user.is_superuser or user.is_staff),
+                    "is_superuser": bool((user.is_superuser or user.is_staff) and subscription.status != Subscription.Status.SUSPENDED),
                 },
                 "subscription": subscription.get_summary(),
             },

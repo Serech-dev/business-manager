@@ -48,7 +48,8 @@ api.interceptors.response.use(
             }
         } else if (
             error.response?.status === 403 &&
-            error.response?.data?.code === "subscription_expired"
+            (error.response?.data?.code === "subscription_expired" ||
+                error.response?.data?.code === "subscription_suspended")
         ) {
             window.__BM_SUBSCRIPTION_EXPIRED__ = true;
             // Dismiss any lingering error toasts
@@ -71,7 +72,8 @@ export function getApiError(
 ) {
     if (
         error?.response?.status === 403 &&
-        error?.response?.data?.code === "subscription_expired"
+        (error?.response?.data?.code === "subscription_expired" ||
+            error?.response?.data?.code === "subscription_suspended")
     ) {
         return "";
     }

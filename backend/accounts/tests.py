@@ -262,3 +262,65 @@ class SubscriptionTests(TestCase):
         self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
         self.assertGreaterEqual(sub.days_remaining, 29)
 
+    def test_suspended_account_is_not_valid_and_blocked(self):
+        sub = Subscription.get_or_create_for_user(self.user)
+        sub.suspend(reason="Testing suspension")
+
+        self.assertFalse(sub.is_valid)
+        self.assertEqual(sub.effective_status, Subscription.Status.SUSPENDED)
+        self.assertEqual(sub.days_remaining, 0)
+        self.assertFalse(sub.get_summary()["is_valid"])
+        self.assertFalse(sub.get_summary()["is_superuser"])
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/business/products/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data["code"], "subscription_suspended")
+
+    def test_suspended_lifetime_account_has_no_days_and_is_not_valid(self):
+        sub = Subscription.get_or_create_for_user(self.user)
+        sub.activate_lifetime()
+        self.assertTrue(sub.is_valid)
+        self.assertIsNone(sub.days_remaining)
+
+        # Now suspend the lifetime account
+        sub.suspend(reason="Suspended lifetime")
+        self.assertFalse(sub.is_valid)
+        self.assertEqual(sub.effective_status, Subscription.Status.SUSPENDED)
+        self.assertEqual(sub.days_remaining, 0)
+
+        summary = sub.get_summary()
+        self.assertFalse(summary["is_valid"])
+        self.assertEqual(summary["status"], "suspended")
+        self.assertEqual(summary["days_remaining"], 0)
+        self.assertFalse(summary["is_superuser"])
+
+    def test_admin_suspend_and_reactivate_action(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Admin suspends user
+        suspend_res = self.client.post(
+            f"/api/auth/admin/subscriptions/{self.user.id}/action/",
+            {"action": "suspend", "notes": "Falta de pago"},
+            format="json",
+        )
+        self.assertEqual(suspend_res.status_code, status.HTTP_200_OK)
+
+        sub = Subscription.objects.get(user=self.user)
+        self.assertEqual(sub.status, Subscription.Status.SUSPENDED)
+        self.assertFalse(sub.is_valid)
+
+        # Admin reactivates user
+        reactivate_res = self.client.post(
+            f"/api/auth/admin/subscriptions/{self.user.id}/action/",
+            {"action": "reactivate"},
+            format="json",
+        )
+        self.assertEqual(reactivate_res.status_code, status.HTTP_200_OK)
+
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, Subscription.Status.ACTIVE)
+        self.assertTrue(sub.is_valid)
+        self.assertGreaterEqual(sub.days_remaining, 13)
+
+
