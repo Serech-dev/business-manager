@@ -70,7 +70,7 @@ function FirstTimeSetupModal() {
                 { silent: true }
             );
             if (!skip) {
-                toast.success("¡Bienvenido a Business Manager! Tu comercio está listo.");
+                toast.success("¡Tu comercio está listo!");
             }
             closeSetupWizard();
         } catch {
