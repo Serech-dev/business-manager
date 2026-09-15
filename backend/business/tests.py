@@ -87,3 +87,79 @@ class StoreSettingsTests(TestCase):
         settings = StoreSettings.objects.get(user=self.user)
         self.assertEqual(settings.store_name, "Kiosco San Martín")
         self.assertTrue(settings.is_setup_completed)
+
+
+class MasterCatalogTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="masteruser",
+            email="master@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        from .models import MasterCatalogProduct, Product
+        self.master_product = MasterCatalogProduct.objects.create(
+            barcode="7790150330166",
+            name="Té de Manzanilla La Virginia x 20u",
+            brand="La Virginia",
+            category_name="Almacén & Despensa",
+            unit_type="unit",
+            suggested_sale_price=Decimal("1400.00"),
+            suggested_cost_price=Decimal("1000.00"),
+            source="test",
+        )
+
+    def test_lookup_master_product_not_in_store(self):
+        res = self.client.get("/api/business/master-catalog/lookup/?barcode=7790150330166")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertFalse(res.data["in_store"])
+        self.assertTrue(res.data["found_in_master"])
+        self.assertEqual(res.data["master_product"]["name"], "Té de Manzanilla La Virginia x 20u")
+        self.assertEqual(res.data["master_product"]["brand"], "La Virginia")
+        self.assertEqual(Decimal(str(res.data["master_product"]["suggested_sale_price"])), Decimal("1400.00"))
+
+    def test_lookup_product_already_in_store(self):
+        from .models import Product
+        Product.objects.create(
+            user=self.user,
+            name="Té de Manzanilla La Virginia x 20u",
+            barcode="7790150330166",
+            sale_price=Decimal("1500.00"),
+            cost_price=Decimal("1100.00"),
+            is_active=True,
+        )
+
+        res = self.client.get("/api/business/master-catalog/lookup/?barcode=7790150330166")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.data["in_store"])
+        self.assertEqual(res.data["product"]["barcode"], "7790150330166")
+        self.assertEqual(Decimal(str(res.data["product"]["sale_price"])), Decimal("1500.00"))
+
+    def test_lookup_similar_store_product_for_unlinked_item(self):
+        from .models import Product
+        # Merchant entered product manually without barcode
+        Product.objects.create(
+            user=self.user,
+            name="Té de Manzanilla La Virginia x 20u",
+            barcode=None,
+            sale_price=Decimal("1350.00"),
+            cost_price=Decimal("900.00"),
+            is_active=True,
+        )
+
+        res = self.client.get("/api/business/master-catalog/lookup/?barcode=7790150330166")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertFalse(res.data["in_store"])
+        self.assertTrue(res.data["found_in_master"])
+        self.assertIsNotNone(res.data["similar_store_product"])
+        self.assertEqual(res.data["similar_store_product"]["name"], "Té de Manzanilla La Virginia x 20u")
+
+    def test_search_master_catalog(self):
+        res = self.client.get("/api/business/master-catalog/search/?q=Manzanilla")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["barcode"], "7790150330166")
+

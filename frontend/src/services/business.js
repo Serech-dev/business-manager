@@ -418,6 +418,21 @@ export async function updateStoreSettings(data) {
     return response.data;
 }
 
+export async function lookupMasterBarcode(barcode) {
+    const response = await api.get(
+        `business/master-catalog/lookup/?barcode=${encodeURIComponent(barcode)}`
+    );
+    return response.data;
+}
+
+export async function searchMasterCatalog(query) {
+    const response = await api.get(
+        `business/master-catalog/search/?q=${encodeURIComponent(query)}`
+    );
+    return response.data;
+}
+
+
 
 
 

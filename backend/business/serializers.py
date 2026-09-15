@@ -4,10 +4,10 @@ from django.db import transaction as db_transaction
 from django.db.models import F
 from rest_framework import serializers
 
-from .models import (Category, Client, Product, Provider, Register,
-                     StockMovement, StockNote, StoreSettings, Transaction,
-                     TransactionOperation, TransactionOperationAmount,
-                     TransactionOperationItem)
+from .models import (Category, Client, MasterCatalogProduct, Product,
+                     Provider, Register, StockMovement, StockNote,
+                     StoreSettings, Transaction, TransactionOperation,
+                     TransactionOperationAmount, TransactionOperationItem)
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -1836,4 +1836,31 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class MasterCatalogProductSerializer(serializers.ModelSerializer):
+    unit_type_display = serializers.CharField(source="get_unit_type_display", read_only=True)
+
+    class Meta:
+        model = MasterCatalogProduct
+        fields = [
+            "id",
+            "barcode",
+            "name",
+            "brand",
+            "category_name",
+            "unit_type",
+            "unit_type_display",
+            "suggested_sale_price",
+            "suggested_cost_price",
+            "source",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+        ]
+
 

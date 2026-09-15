@@ -2,12 +2,22 @@ import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import MoneyInput from "../MoneyInput";
 import { formatCurrency } from "../../utils/formatCurrency";
-import { createProduct, updateProduct } from "../../services/business";
+import { getProducts, createProduct, updateProduct, lookupMasterBarcode } from "../../services/business";
+import { playBeepSuccess } from "../../utils/audio";
+import { useBarcodeScanner } from "../../hooks/useBarcodeScanner";
+
+import { findInNationalCatalog } from "../../utils/nationalCatalog";
+import { lookupBarcodeDetails } from "../../utils/barcodeLookup";
 
 function ProductModal({
     isOpen,
     onClose,
     product,
+    initialBarcode = "",
+    initialName = "",
+    initialSalePrice = "",
+    initialCostPrice = "",
+    initialUnitType = "unit",
     categories = [],
     providers = [],
     onSuccess,
@@ -29,6 +39,65 @@ function ProductModal({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
+    const nameInputRef = useRef(null);
+    const salePriceInputRef = useRef(null);
+
+    async function applyBarcodeData(scannedCode) {
+        if (!scannedCode) return;
+        setBarcode(scannedCode);
+        setShowAdvanced(true);
+
+        const local = findInNationalCatalog(scannedCode);
+        if (local) {
+            if (!name) setName(local.name);
+            if (!salePrice && local.sale_price) setSalePrice(String(local.sale_price));
+            if (!costPrice && local.cost_price) setCostPrice(String(local.cost_price));
+            if (local.unit_type) setUnitType(local.unit_type);
+            if (local.category && categories.length > 0 && !categoryId) {
+                const matchCat = categories.find((c) =>
+                    c.name.toLowerCase().includes(local.category.toLowerCase()) ||
+                    local.category.toLowerCase().includes(c.name.toLowerCase())
+                );
+                if (matchCat) setCategoryId(String(matchCat.id));
+            }
+        }
+
+        try {
+            const res = await lookupMasterBarcode(scannedCode);
+            if (res?.found_in_master && res?.master_product) {
+                const mp = res.master_product;
+                setName(mp.name);
+                if (mp.suggested_sale_price && !salePrice) setSalePrice(String(mp.suggested_sale_price));
+                if (mp.suggested_cost_price && !costPrice) setCostPrice(String(mp.suggested_cost_price));
+                if (mp.unit_type) setUnitType(mp.unit_type);
+                if (mp.category_name && categories.length > 0 && !categoryId) {
+                    const matchCat = categories.find((c) =>
+                        c.name.toLowerCase().includes(mp.category_name.toLowerCase()) ||
+                        mp.category_name.toLowerCase().includes(c.name.toLowerCase())
+                    );
+                    if (matchCat) setCategoryId(String(matchCat.id));
+                }
+                toast.success(`Producto reconocido: ${mp.name}`, { id: "product-modal-recognize" });
+                salePriceInputRef.current?.focus();
+            } else if (!local) {
+                const detected = await lookupBarcodeDetails(scannedCode);
+                if (detected?.name) {
+                    setName(detected.name);
+                    toast.success(`Producto detectado: ${detected.name}`);
+                    salePriceInputRef.current?.focus();
+                }
+            }
+        } catch {
+            // ignore network lookup failures
+        }
+    }
+
+    // Auto-capture barcode scans while the modal is open
+    useBarcodeScanner(async (scannedCode) => {
+        playBeepSuccess();
+        await applyBarcodeData(scannedCode);
+    }, { enabled: isOpen });
+
     useEffect(() => {
         if (product && isEditing) {
             setName(product.name || "");
@@ -45,19 +114,30 @@ function ProductModal({
                 setShowAdvanced(true);
             }
         } else {
-            setName("");
-            setUnitType("unit");
-            setSalePrice("");
-            setCostPrice("");
+            const startBarcode = product?.barcode || initialBarcode || "";
+            const nat = startBarcode ? findInNationalCatalog(startBarcode) : null;
+            const startName = initialName || nat?.name || "";
+            const startSalePrice = initialSalePrice || (nat?.sale_price ? String(nat.sale_price) : "");
+            const startCostPrice = initialCostPrice || (nat?.cost_price ? String(nat.cost_price) : "");
+            const startUnitType = initialUnitType && initialUnitType !== "unit" ? initialUnitType : (nat?.unit_type || "unit");
+
+            setName(startName);
+            setUnitType(startUnitType);
+            setSalePrice(startSalePrice);
+            setCostPrice(startCostPrice);
             setCategoryId("");
             setProviderId("");
-            setBarcode("");
+            setBarcode(startBarcode);
             setStock("");
             setMinStock("1");
             setIsActive(true);
-            setShowAdvanced(false);
+            setShowAdvanced(Boolean(startBarcode));
+
+            if (startBarcode && !startName) {
+                applyBarcodeData(startBarcode);
+            }
         }
-    }, [product, isEditing, isOpen]);
+    }, [product, isEditing, isOpen, initialBarcode, initialName, initialSalePrice, initialCostPrice, initialUnitType]);
 
     // Auto-select newly created category or provider when added via quick modal
     const prevCategoriesRef = useRef(categories);
@@ -84,6 +164,19 @@ function ProductModal({
         }
         prevProvidersRef.current = providers;
     }, [providers, isOpen]);
+
+    useEffect(() => {
+        if (isOpen) {
+            const timer = setTimeout(() => {
+                if (name.trim()) {
+                    salePriceInputRef.current?.focus();
+                } else {
+                    nameInputRef.current?.focus();
+                }
+            }, 80);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -121,9 +214,29 @@ function ProductModal({
                 is_active: isActive,
             };
 
-            const saved = isEditing
-                ? await updateProduct(product.id, data)
-                : await createProduct(data);
+            let saved;
+            try {
+                saved = isEditing
+                    ? await updateProduct(product.id, data)
+                    : await createProduct(data);
+            } catch (saveError) {
+                // If create failed because a product with this name already exists, automatically update it!
+                const nameErrMsg = saveError.response?.data?.name?.[0] || "";
+                if (!isEditing && nameErrMsg.toLowerCase().includes("ya existe")) {
+                    const allProds = await getProducts();
+                    const existing = allProds.find(
+                        (p) => p.name.trim().toLowerCase() === data.name.toLowerCase()
+                    );
+                    if (existing) {
+                        saved = await updateProduct(existing.id, data);
+                        toast.success(`Producto "${existing.name}" actualizado con el nuevo código.`);
+                        onSuccess(saved);
+                        onClose();
+                        return;
+                    }
+                }
+                throw saveError;
+            }
 
             toast.success(isEditing ? "Producto actualizado." : "Producto creado.");
             onSuccess(saved);
@@ -182,9 +295,9 @@ function ProductModal({
                             </label>
                         </div>
                         <input
+                            ref={nameInputRef}
                             type="text"
                             required
-                            autoFocus
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Ej: Milanesas de Pollo, Coca Cola 500ml, Pan Francés..."
@@ -254,6 +367,7 @@ function ProductModal({
                                     $
                                 </span>
                                 <MoneyInput
+                                    ref={salePriceInputRef}
                                     required
                                     value={salePrice}
                                     onChange={(e) => setSalePrice(e.target.value)}

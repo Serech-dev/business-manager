@@ -7,6 +7,7 @@ import {
     createClient,
     getProducts,
     getCategories,
+    getProviders,
     getTransactionLabel,
 } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -17,6 +18,7 @@ import TransactionRecharge from "../components/transactions/TransactionRecharge"
 import TransactionAmounts from "../components/transactions/TransactionAmounts";
 import SaleProductSelector from "../components/transactions/SaleProductSelector";
 import ReceiptModal from "../components/transactions/ReceiptModal";
+import ProductModal from "../components/products/ProductModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useStoreSettings } from "../context/StoreSettingsContext";
 
@@ -76,6 +78,7 @@ function NewTransaction() {
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [providers, setProviders] = useState([]);
     const [client, setClient] = useState(null);
     const [description, setDescription] = useState("");
     const [receivedCash, setReceivedCash] = useState("");
@@ -90,21 +93,68 @@ function NewTransaction() {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
+    // Quick-create product modal from scanned unknown barcode
+    const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false);
+    const [newProductBarcode, setNewProductBarcode] = useState("");
+    const [newProductName, setNewProductName] = useState("");
+    const [newProductSalePrice, setNewProductSalePrice] = useState("");
+    const [newProductCostPrice, setNewProductCostPrice] = useState("");
+    const [newProductUnitType, setNewProductUnitType] = useState("unit");
+    const [targetOperationIndex, setTargetOperationIndex] = useState(0);
+
     useEffect(() => {
         async function loadCatalog() {
             try {
-                const [prodsData, catsData] = await Promise.all([
+                const [prodsData, catsData, provsData] = await Promise.all([
                     getProducts(),
                     getCategories(),
+                    getProviders().catch(() => []),
                 ]);
                 setProducts(prodsData);
                 setCategories(catsData);
+                setProviders(provsData || []);
             } catch (err) {
                 console.error("Error loading products catalog for sale:", err);
             }
         }
         loadCatalog();
     }, []);
+
+    function handleProductUpdated(updatedProduct) {
+        setProducts((prev) => prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)));
+    }
+
+    function handleOpenCreateProduct(barcode, detectedProduct, opIndex = 0) {
+        setNewProductBarcode(barcode || "");
+        setNewProductName(detectedProduct?.name || "");
+        setNewProductSalePrice(detectedProduct?.sale_price ? String(detectedProduct.sale_price) : "");
+        setNewProductCostPrice(detectedProduct?.cost_price ? String(detectedProduct.cost_price) : "");
+        setNewProductUnitType(detectedProduct?.unit_type || "unit");
+        setTargetOperationIndex(opIndex);
+        setIsCreateProductModalOpen(true);
+    }
+
+    function handleProductCreatedSuccess(newProduct) {
+        setProducts((prev) => [...prev, newProduct]);
+        if (targetOperationIndex !== null && operations[targetOperationIndex]) {
+            const op = operations[targetOperationIndex];
+            const newItem = {
+                product: newProduct,
+                unitType: newProduct.unit_type || "unit",
+                quantity: 1,
+                grams: null,
+                unitPrice: Number(newProduct.sale_price),
+                subtotal: Math.round(Number(newProduct.sale_price)),
+            };
+            handleUpdateOperationItems(targetOperationIndex, [...(op.items || []), newItem]);
+        }
+        setIsCreateProductModalOpen(false);
+        setNewProductBarcode("");
+        setNewProductName("");
+        setNewProductSalePrice("");
+        setNewProductCostPrice("");
+        setNewProductUnitType("unit");
+    }
 
     const hasPaymentOperation = operations.some((op) => op.type === "payment");
 
@@ -572,13 +622,18 @@ function NewTransaction() {
                                         <SaleProductSelector
                                             products={products}
                                             categories={categories}
-                                            items={op.items || []}
+                                            providers={providers}
+                                            items={op.items}
                                             onItemsChange={(newItems) =>
-                                                handleUpdateOperationItems(index, newItems)
+                                                handleUpdateOperation(index, "items", newItems)
                                             }
                                             manualAmount={op.manualAmount || ""}
                                             onManualAmountChange={(val) =>
                                                 handleUpdateOperation(index, "manualAmount", val)
+                                            }
+                                            onProductUpdated={handleProductUpdated}
+                                            onCreateNewProduct={(barcode, detected) =>
+                                                handleOpenCreateProduct(barcode, detected, index)
                                             }
                                         />
                                     </div>
@@ -871,6 +926,27 @@ function NewTransaction() {
             <OnboardingTour
                 tourKey="new-sale"
                 steps={NEW_SALE_TOUR_STEPS}
+            />
+
+            {/* CREATE PRODUCT MODAL FROM BARCODE */}
+            <ProductModal
+                isOpen={isCreateProductModalOpen}
+                onClose={() => {
+                    setIsCreateProductModalOpen(false);
+                    setNewProductBarcode("");
+                    setNewProductName("");
+                    setNewProductSalePrice("");
+                    setNewProductCostPrice("");
+                    setNewProductUnitType("unit");
+                }}
+                initialBarcode={newProductBarcode}
+                initialName={newProductName}
+                initialSalePrice={newProductSalePrice}
+                initialCostPrice={newProductCostPrice}
+                initialUnitType={newProductUnitType}
+                categories={categories}
+                providers={providers}
+                onSuccess={handleProductCreatedSuccess}
             />
         </div>
     );

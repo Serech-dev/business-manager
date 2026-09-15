@@ -1,25 +1,37 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import toast from "react-hot-toast";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 import { filterAndRankProducts } from "../../utils/productSearch";
+import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
+import { useBarcodeScanner } from "../../hooks/useBarcodeScanner";
+import BarcodeNotFoundModal from "./BarcodeNotFoundModal";
+import { NATIONAL_PRODUCTS } from "../../utils/nationalCatalog";
+import { updateProduct } from "../../services/business";
 
 /**
  * SaleProductSelector
- * Allows fast search, arrow-key navigation, barcode scanning, weight calculation (kg / 100g),
- * and quantity selection (by unit) for sales transactions.
+ * Allows fast search, arrow-key navigation, zero-focus barcode scanning, national catalog discovery,
+ * weight calculation (kg / 100g), quantity selection, and in-cart price editing.
  */
 function SaleProductSelector({
     products = [],
     categories = [],
+    providers = [],
     items = [],
     onItemsChange,
     manualAmount = "",
     onManualAmountChange,
+    onProductUpdated,
+    onCreateNewProduct,
 }) {
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("all");
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+
+    // Unregistered barcode modal state
+    const [unregisteredBarcode, setUnregisteredBarcode] = useState(null);
+    const [isBarcodeNotFoundModalOpen, setIsBarcodeNotFoundModalOpen] = useState(false);
 
     // Weight / Quantity Modal Dialog State
     const [activeProductForWeight, setActiveProductForWeight] = useState(null);
@@ -28,26 +40,60 @@ function SaleProductSelector({
     const [targetMoney, setTargetMoney] = useState("");
     const [editingItemIndex, setEditingItemIndex] = useState(null);
 
+    // In-Cart Unit Price Editing State
+    const [editingPriceIndex, setEditingPriceIndex] = useState(null);
+    const [editingPriceValue, setEditingPriceValue] = useState("");
+    const [updateCatalogPrice, setUpdateCatalogPrice] = useState(false);
+    const [isUpdatingCatalogPrice, setIsUpdatingCatalogPrice] = useState(false);
+    const cartPriceInputRef = useRef(null);
+
     const searchInputRef = useRef(null);
     const searchContainerRef = useRef(null);
 
-    // Filter active products
+    // Filter active products in store
     const activeProducts = useMemo(() => {
         return products.filter((p) => p.is_active);
     }, [products]);
 
-    // Search results matching query and category with precision relevance ranking
+    // Local store search results matching query with precision relevance ranking
     const searchResults = useMemo(() => {
+        if (!searchQuery.trim()) return [];
         return filterAndRankProducts(activeProducts, searchQuery, {
-            categoryId: selectedCategory,
             maxResults: 20,
         });
-    }, [activeProducts, searchQuery, selectedCategory]);
+    }, [activeProducts, searchQuery]);
+
+    // Master / National catalog matches not yet added to user's store
+    const nationalSearchResults = useMemo(() => {
+        if (!searchQuery.trim() || searchQuery.trim().length < 2) return [];
+        const query = searchQuery.trim().toLowerCase();
+
+        const existingBarcodes = new Set(activeProducts.map((p) => p.barcode).filter(Boolean));
+        const existingNames = new Set(activeProducts.map((p) => p.name.trim().toLowerCase()));
+
+        const matches = [];
+        for (const item of NATIONAL_PRODUCTS) {
+            if (existingBarcodes.has(item.barcode) || existingNames.has(item.name.trim().toLowerCase())) {
+                continue;
+            }
+            const nameMatch = item.name.toLowerCase().includes(query);
+            const catMatch = item.category && item.category.toLowerCase().includes(query);
+            const barcodeMatch = item.barcode && item.barcode.includes(query);
+
+            if (nameMatch || catMatch || barcodeMatch) {
+                matches.push(item);
+                if (matches.length >= 8) break;
+            }
+        }
+        return matches;
+    }, [activeProducts, searchQuery]);
+
+    const totalResultsCount = searchResults.length + nationalSearchResults.length;
 
     // Reset selected result index when results change
     useEffect(() => {
         setSelectedResultIndex(0);
-    }, [searchResults]);
+    }, [searchResults, nationalSearchResults]);
 
     // Focus search input on mount for zero-click scanning / typing
     useEffect(() => {
@@ -83,7 +129,6 @@ function SaleProductSelector({
                     (it) => it.product.id === product.id
                 );
                 if (existingIndex >= 0) {
-                    // Increment existing item quantity
                     const updated = [...items];
                     const item = updated[existingIndex];
                     const newQty = item.quantity + 1;
@@ -94,7 +139,6 @@ function SaleProductSelector({
                     };
                     onItemsChange(updated);
                 } else {
-                    // Add new unit item
                     const newItem = {
                         product,
                         unitType: "unit",
@@ -110,7 +154,6 @@ function SaleProductSelector({
                 setActiveProductForWeight(product);
                 setEditingItemIndex(null);
                 setWeightInputMode("weight");
-                // Default preset: 500g for kg, 150g for 100g
                 setWeightGrams(product.unit_type === "kg" ? "500" : "150");
                 setTargetMoney("");
             }
@@ -118,85 +161,110 @@ function SaleProductSelector({
         [items, onItemsChange]
     );
 
-    // Global keyboard listener for search shortcuts ('/' or 'F2') and hardware barcode scanners
-    useEffect(() => {
-        let barcodeBuffer = "";
-        let lastKeyTime = Date.now();
+    // Select a national catalog product: opens the fast setup card to confirm/edit price
+    function handleSelectNationalProduct(natItem) {
+        setIsSearchOpen(false);
+        setSearchQuery("");
+        setUnregisteredBarcode(natItem.barcode);
+        setIsBarcodeNotFoundModalOpen(true);
+    }
 
-        function handleGlobalKeyDown(e) {
+    // Dedicated Hardware Barcode Scanner Handler (works zero-focus anywhere on the page)
+    const handleHardwareScan = useCallback(
+        (code) => {
+            const clean = code.trim().toLowerCase();
+            if (!clean) return;
+
+            // 1. Check exact barcode match
+            let matched = activeProducts.find(
+                (p) => p.barcode && p.barcode.trim().toLowerCase() === clean
+            );
+
+            // 2. Fallback: check numeric equality
+            if (!matched) {
+                const numericClean = clean.replace(/\D/g, "");
+                if (numericClean.length >= 4) {
+                    matched = activeProducts.find((p) => {
+                        if (!p.barcode) return false;
+                        const pNum = p.barcode.replace(/\D/g, "");
+                        return pNum === numericClean || pNum.endsWith(numericClean) || numericClean.endsWith(pNum);
+                    });
+                }
+            }
+
+            // 3. Fallback: check exact name match
+            if (!matched) {
+                matched = activeProducts.find((p) => p.name.trim().toLowerCase() === clean);
+            }
+
+            if (matched) {
+                playBeepSuccess();
+                handleSelectProduct(matched);
+                toast.success(`+1 ${matched.name} (${formatCurrency(matched.sale_price)})`, {
+                    id: "scanner-toast",
+                    duration: 1800,
+                });
+                setSearchQuery("");
+                setIsSearchOpen(false);
+            } else {
+                playBeepWarning();
+                setUnregisteredBarcode(code.trim());
+                setIsBarcodeNotFoundModalOpen(true);
+            }
+        },
+        [activeProducts, handleSelectProduct]
+    );
+
+    // Attach global hardware scanner listener
+    useBarcodeScanner(handleHardwareScan, {
+        enabled: !isBarcodeNotFoundModalOpen && !activeProductForWeight && editingPriceIndex === null,
+    });
+
+    // Keyboard navigation and shortcuts for search input ('/' or 'F2')
+    useEffect(() => {
+        function handleGlobalShortcuts(e) {
             const targetTag = e.target?.tagName;
             const isEditingInput =
                 targetTag === "INPUT" || targetTag === "TEXTAREA" || targetTag === "SELECT";
 
-            // Shortcut '/' or 'F2' to focus search input from anywhere
             if ((e.key === "/" || e.key === "F2") && !isEditingInput) {
                 e.preventDefault();
                 searchInputRef.current?.focus();
-                setIsSearchOpen(true);
-                return;
-            }
-
-            // If user is manually typing inside modal inputs, ignore barcode buffer
-            if (e.target !== searchInputRef.current && isEditingInput) {
-                return;
-            }
-
-            // If searchInput is already focused, its onKeyDown handles it
-            if (e.target === searchInputRef.current) {
-                return;
-            }
-
-            const currentTime = Date.now();
-            const timeDiff = currentTime - lastKeyTime;
-            lastKeyTime = currentTime;
-
-            if (e.key === "Enter") {
-                if (barcodeBuffer.trim().length >= 3) {
-                    const query = barcodeBuffer.trim().toLowerCase();
-                    const matched =
-                        activeProducts.find((p) => p.barcode && p.barcode.toLowerCase() === query) ||
-                        activeProducts.find((p) => p.barcode && p.barcode.toLowerCase().includes(query)) ||
-                        activeProducts.find((p) => p.name.toLowerCase() === query);
-
-                    if (matched) {
-                        e.preventDefault();
-                        handleSelectProduct(matched);
-                    }
-                }
-                barcodeBuffer = "";
-            } else if (e.key.length === 1) {
-                // Buffer printable character if coming rapidly from hardware scanner (< 100ms between chars)
-                if (timeDiff > 100) {
-                    barcodeBuffer = e.key;
-                } else {
-                    barcodeBuffer += e.key;
-                }
             }
         }
 
-        window.addEventListener("keydown", handleGlobalKeyDown);
-        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-    }, [activeProducts, handleSelectProduct]);
+        window.addEventListener("keydown", handleGlobalShortcuts);
+        return () => window.removeEventListener("keydown", handleGlobalShortcuts);
+    }, []);
 
     // Search input keyboard navigation (Up, Down, Enter, Escape)
     function handleSearchKeyDown(e) {
         if (e.key === "ArrowDown") {
             e.preventDefault();
-            if (searchResults.length > 0) {
-                setSelectedResultIndex((prev) => (prev + 1) % searchResults.length);
+            if (totalResultsCount > 0) {
+                setSelectedResultIndex((prev) => (prev + 1) % totalResultsCount);
             }
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            if (searchResults.length > 0) {
+            if (totalResultsCount > 0) {
                 setSelectedResultIndex((prev) =>
-                    prev === 0 ? searchResults.length - 1 : prev - 1
+                    prev === 0 ? totalResultsCount - 1 : prev - 1
                 );
             }
         } else if (e.key === "Enter") {
             e.preventDefault();
-            if (searchResults.length > 0) {
-                const targetProd = searchResults[selectedResultIndex] || searchResults[0];
+            if (searchResults.length > 0 && selectedResultIndex < searchResults.length) {
+                const targetProd = searchResults[selectedResultIndex];
+                playBeepSuccess();
                 handleSelectProduct(targetProd);
+            } else if (nationalSearchResults.length > 0) {
+                const natIdx = selectedResultIndex - searchResults.length;
+                const targetNat = nationalSearchResults[natIdx] || nationalSearchResults[0];
+                handleSelectNationalProduct(targetNat);
+            } else if (searchQuery.trim().length >= 3) {
+                playBeepWarning();
+                setUnregisteredBarcode(searchQuery.trim());
+                setIsBarcodeNotFoundModalOpen(true);
             }
         } else if (e.key === "Escape") {
             setIsSearchOpen(false);
@@ -229,11 +297,9 @@ function SaleProductSelector({
             if (activeProductForWeight.unit_type === "kg") {
                 finalSubtotal = Math.round((finalGrams / 1000) * salePrice);
             } else {
-                // 100g
                 finalSubtotal = Math.round((finalGrams / 100) * salePrice);
             }
         } else {
-            // Target money mode
             const money = Number(targetMoney) || 0;
             if (money <= 0) return;
             finalSubtotal = money;
@@ -241,7 +307,6 @@ function SaleProductSelector({
             if (activeProductForWeight.unit_type === "kg") {
                 finalGrams = Math.round((money / salePrice) * 1000);
             } else {
-                // 100g
                 finalGrams = Math.round((money / salePrice) * 100);
             }
         }
@@ -298,6 +363,55 @@ function SaleProductSelector({
         onItemsChange(updated);
     }
 
+    // Start editing in-cart unit price
+    function handleStartEditPrice(idx, currentPrice) {
+        setEditingPriceIndex(idx);
+        setEditingPriceValue(String(currentPrice));
+        setUpdateCatalogPrice(false);
+        setTimeout(() => {
+            cartPriceInputRef.current?.focus();
+            cartPriceInputRef.current?.select();
+        }, 50);
+    }
+
+    // Save in-cart unit price
+    async function handleSaveCartItemPrice(idx) {
+        const parsedPrice = Number(editingPriceValue);
+        if (isNaN(parsedPrice) || parsedPrice <= 0) {
+            toast.error("Precio inválido");
+            return;
+        }
+
+        const updated = [...items];
+        const item = updated[idx];
+        item.unitPrice = parsedPrice;
+        if (item.unitType === "unit") {
+            item.subtotal = Math.round(item.quantity * parsedPrice);
+        } else {
+            const factor = item.unitType === "kg" ? 1000 : 100;
+            item.subtotal = Math.round(((item.grams || 0) / factor) * parsedPrice);
+        }
+        onItemsChange(updated);
+        setEditingPriceIndex(null);
+
+        // Optionally update product price permanently in catalog
+        if (updateCatalogPrice && item.product?.id) {
+            setIsUpdatingCatalogPrice(true);
+            try {
+                const updatedProd = await updateProduct(item.product.id, {
+                    ...item.product,
+                    sale_price: parsedPrice,
+                });
+                onProductUpdated?.(updatedProd);
+                toast.success(`Precio actualizado en tu catálogo: ${formatCurrency(parsedPrice)}`);
+            } catch (err) {
+                console.error("Error updating product price in catalog:", err);
+            } finally {
+                setIsUpdatingCatalogPrice(false);
+            }
+        }
+    }
+
     function handleRemoveItem(index) {
         const updated = items.filter((_, i) => i !== index);
         onItemsChange(updated);
@@ -330,7 +444,7 @@ function SaleProductSelector({
             return Number(weightGrams) || 0;
         } else {
             const money = Number(targetMoney) || 0;
-            if (salePrice <= 0) return 0;
+            if (money <= 0 || salePrice <= 0) return 0;
             if (activeProductForWeight.unit_type === "kg") {
                 return Math.round((money / salePrice) * 1000);
             } else {
@@ -339,168 +453,213 @@ function SaleProductSelector({
         }
     }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney]);
 
-    const totalCartSum = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalCartSum = useMemo(() => {
+        return items.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
+    }, [items]);
 
     return (
-        <div className="space-y-3">
-            {/* SEARCH AND QUICK SELECT BAR */}
-            <div ref={searchContainerRef} data-tour="sale-product-search" className="relative">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    {/* Search input with Barcode & Magnifier icon */}
-                    <div className="relative flex-1">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[var(--text-secondary)]">
-                            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                            </svg>
-                        </div>
+        <div className="space-y-4">
+            {/* SEARCH BOX & CATEGORY FILTER */}
+            <div ref={searchContainerRef} className="relative space-y-2">
+                {/* SEARCH INPUT */}
+                <div data-tour="sale-product-search" className="relative">
+                    <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </div>
 
-                        <input
-                            ref={searchInputRef}
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value);
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setSearchQuery(val);
+                            setIsSearchOpen(Boolean(val.trim()));
+                        }}
+                        onFocus={() => {
+                            if (searchQuery.trim()) {
                                 setIsSearchOpen(true);
-                            }}
-                            onFocus={() => setIsSearchOpen(true)}
-                            onKeyDown={handleSearchKeyDown}
-                            placeholder="Buscar producto o escanear código de barras..."
-                            className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-10 pr-24 text-xs sm:text-sm font-medium text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-secondary)]/60 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
-                        />
+                            }
+                        }}
+                        onKeyDown={handleSearchKeyDown}
+                        placeholder="Buscá por nombre, marca o pasá el código de barras..."
+                        className="h-12 w-full rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] pl-11 pr-24 text-sm font-semibold text-[var(--text-primary)] shadow-sm outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary)]/10"
+                    />
 
+                    {/* RIGHT ACTIONS / SHORTCUT BADGE */}
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                         {searchQuery ? (
                             <button
                                 type="button"
                                 onClick={() => {
                                     setSearchQuery("");
+                                    setIsSearchOpen(false);
                                     searchInputRef.current?.focus();
                                 }}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                                className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--surface-accent)] text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] transition"
                             >
-                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
+                                ✕
                             </button>
                         ) : (
-                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                <span className="rounded border border-[var(--border)] bg-[var(--surface-accent)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
-                                    /
-                                </span>
-                            </div>
+                            <kbd className="hidden sm:inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--text-secondary)]">
+                                /
+                            </kbd>
                         )}
                     </div>
-
-                    {/* Quick Category Filter */}
-                    {categories.length > 0 && (
-                        <div className="relative shrink-0 sm:w-48">
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => {
-                                    setSelectedCategory(e.target.value);
-                                    setIsSearchOpen(true);
-                                }}
-                                className="h-11 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-8 text-xs sm:text-sm font-medium text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
-                            >
-                                <option value="all">Todas las categorías</option>
-                                {categories.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                </svg>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
+
+
                 {/* SEARCH DROPDOWN POPUP */}
-                {isSearchOpen && (
-                    <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)]">
-                        {searchResults.length === 0 ? (
-                            <div className="p-4 text-center text-xs text-[var(--text-secondary)]">
-                                No se encontraron productos para &quot;{searchQuery}&quot;
+                {isSearchOpen && Boolean(searchQuery.trim()) && (
+                    <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-80 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)]">
+                        {searchResults.length === 0 && nationalSearchResults.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-[var(--text-secondary)] space-y-1">
+                                <p>No se encontraron productos para &quot;{searchQuery}&quot;</p>
+                                <p className="text-[11px] text-[var(--primary)]">
+                                    Presioná Enter para crearlo como nuevo producto.
+                                </p>
                             </div>
                         ) : (
-                            searchResults.map((p, idx) => {
-                                const isKg = p.unit_type === "kg";
-                                const is100g = p.unit_type === "100g";
-                                const isSelected = idx === selectedResultIndex;
+                            <>
+                                {/* 1. STORE PRODUCTS */}
+                                {searchResults.length > 0 && (
+                                    <div>
+                                        {searchResults.map((p, idx) => {
+                                            const isKg = p.unit_type === "kg";
+                                            const is100g = p.unit_type === "100g";
+                                            const isSelected = idx === selectedResultIndex;
 
-                                return (
-                                    <button
-                                        key={p.id}
-                                        type="button"
-                                        onClick={() => handleSelectProduct(p)}
-                                        onMouseEnter={() => setSelectedResultIndex(idx)}
-                                        className={`flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs transition ${
-                                            isSelected
-                                                ? "bg-[var(--primary)]/10 text-[var(--text-primary)]"
-                                                : "hover:bg-[var(--surface-accent)] text-[var(--text-primary)]"
-                                        }`}
-                                    >
-                                        <div className="flex flex-col pr-2 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold truncate">
-                                                    {p.name}
-                                                </span>
-                                                {isKg && (
-                                                    <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                                                        Por Kilo
-                                                    </span>
-                                                )}
-                                                {is100g && (
-                                                    <span className="shrink-0 rounded bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                                                        Por 100g
-                                                    </span>
-                                                )}
-                                                {p.stock !== null && p.stock !== undefined && (
-                                                    <span className={`shrink-0 rounded px-1.5 py-0.2 text-[9px] font-bold ${
-                                                        Number(p.stock) <= 0
-                                                            ? "bg-[var(--danger-bg)] text-[var(--danger)]"
-                                                            : Number(p.stock) <= (Number(p.min_stock) || 0)
-                                                            ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                                                            : "bg-[var(--surface-accent)] text-[var(--text-secondary)]"
-                                                    }`}>
-                                                        {Number(p.stock) <= 0 ? "Sin stock" : `Stock: ${p.stock}`}
-                                                    </span>
-                                                )}
+                                            return (
+                                                <button
+                                                    key={p.id}
+                                                    type="button"
+                                                    onClick={() => handleSelectProduct(p)}
+                                                    onMouseEnter={() => setSelectedResultIndex(idx)}
+                                                    className={`flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs transition ${
+                                                        isSelected
+                                                            ? "bg-[var(--primary)]/10 text-[var(--text-primary)]"
+                                                            : "hover:bg-[var(--surface-accent)] text-[var(--text-primary)]"
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col pr-2 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold truncate">
+                                                                {p.name}
+                                                            </span>
+                                                            {isKg && (
+                                                                <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                                                    Por Kilo
+                                                                </span>
+                                                            )}
+                                                            {is100g && (
+                                                                <span className="shrink-0 rounded bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                                                    Por 100g
+                                                                </span>
+                                                            )}
+                                                            {p.stock !== null && p.stock !== undefined && (
+                                                                <span className={`shrink-0 rounded px-1.5 py-0.2 text-[9px] font-bold ${
+                                                                    Number(p.stock) <= 0
+                                                                        ? "bg-[var(--danger-bg)] text-[var(--danger)]"
+                                                                        : Number(p.stock) <= (Number(p.min_stock) || 0)
+                                                                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                                                                        : "bg-[var(--surface-accent)] text-[var(--text-secondary)]"
+                                                                }`}>
+                                                                    {Number(p.stock) <= 0 ? "Sin stock" : `Stock: ${p.stock}`}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
+                                                            {p.category_name && <span>{p.category_name}</span>}
+                                                            {p.barcode && <span className="font-mono">{p.barcode}</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="shrink-0 text-right tabular-nums">
+                                                        <span className="text-xs font-bold text-[var(--success)]">
+                                                            {formatCurrency(p.sale_price)}
+                                                        </span>
+                                                        {isKg && (
+                                                            <span className="text-[10px] font-medium text-[var(--text-secondary)] ml-0.5">
+                                                                /kg
+                                                            </span>
+                                                        )}
+                                                        {is100g && (
+                                                            <span className="text-[10px] font-medium text-[var(--text-secondary)] ml-0.5">
+                                                                /100g
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* 2. NATIONAL / MASTER CATALOG DISCOVERIES */}
+                                {nationalSearchResults.length > 0 && (
+                                    <div>
+                                        <div className="bg-[var(--surface-accent)]/80 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--primary)] flex items-center justify-between border-t border-[var(--border)]">
+                                            <div className="flex items-center gap-1.5">
+                                                <span>⭐ Catálogo Nacional Maestro ({nationalSearchResults.length})</span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
-                                                {p.category_name && <span>{p.category_name}</span>}
-                                                {p.barcode && <span className="font-mono">{p.barcode}</span>}
-                                            </div>
+                                            <span className="text-[9px] font-normal text-[var(--text-secondary)]">Clic para sumar a tu negocio</span>
                                         </div>
 
-                                        <div className="shrink-0 text-right tabular-nums">
-                                            <span className="text-xs font-bold text-[var(--success)]">
-                                                {formatCurrency(p.sale_price)}
-                                            </span>
-                                            {isKg && (
-                                                <span className="text-[10px] font-medium text-[var(--text-secondary)] ml-0.5">
-                                                    /kg
-                                                </span>
-                                            )}
-                                            {is100g && (
-                                                <span className="text-[10px] font-medium text-[var(--text-secondary)] ml-0.5">
-                                                    /100g
-                                                </span>
-                                            )}
-                                        </div>
-                                    </button>
-                                );
-                            })
+                                        {nationalSearchResults.map((nat, natIdx) => {
+                                            const globalIdx = searchResults.length + natIdx;
+                                            const isSelected = globalIdx === selectedResultIndex;
+
+                                            return (
+                                                <button
+                                                    key={nat.barcode || nat.name}
+                                                    type="button"
+                                                    onClick={() => handleSelectNationalProduct(nat)}
+                                                    onMouseEnter={() => setSelectedResultIndex(globalIdx)}
+                                                    className={`flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs transition ${
+                                                        isSelected
+                                                            ? "bg-[var(--primary)]/15 text-[var(--text-primary)]"
+                                                            : "hover:bg-[var(--surface-accent)] text-[var(--text-primary)]"
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col pr-2 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-[var(--text-primary)] truncate">
+                                                                {nat.name}
+                                                            </span>
+                                                            <span className="shrink-0 rounded bg-[var(--primary)]/15 px-1.5 py-0.2 text-[9px] font-bold text-[var(--primary)]">
+                                                                + Agregar
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
+                                                            <span>{nat.category}</span>
+                                                            {nat.barcode && <span className="font-mono">{nat.barcode}</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="shrink-0 text-right tabular-nums">
+                                                        <span className="text-xs font-semibold text-[var(--text-secondary)] block">
+                                                            Sugerido: {formatCurrency(nat.sale_price)}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-[var(--primary)]">
+                                                            Sumar a la venta →
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
             </div>
 
             {/* ALWAYS-VISIBLE MANUAL / VARIOS AMOUNT FIELD */}
-            <div data-tour="sale-manual-amount" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-xs">
+            <div data-tour="sale-manual-amount" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-xs">
                 <div className="space-y-0.5">
                     <label htmlFor="sale-manual-amount" className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] block cursor-pointer">
                         Monto manual / Varios (+)
@@ -537,15 +696,12 @@ function SaleProductSelector({
             {/* WEIGHT & QUANTITY MODAL / DIALOG */}
             {activeProductForWeight && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    {/* Backdrop */}
                     <div
                         className="fixed inset-0 bg-black/70 backdrop-blur-xs"
                         onClick={() => setActiveProductForWeight(null)}
                     />
 
-                    {/* Dialog Card */}
-                    <div className="relative w-full max-w-md overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
-                        {/* Header */}
+                    <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
                         <div className="flex items-start justify-between border-b border-[var(--border)] pb-3">
                             <div>
                                 <span className="inline-block rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider mb-1">
@@ -577,15 +733,15 @@ function SaleProductSelector({
                             </button>
                         </div>
 
-                        {/* MODE TABS */}
-                        <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-[var(--surface-accent)]/50 p-1">
+                        {/* MODE SELECTOR */}
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
                                 onClick={() => setWeightInputMode("weight")}
-                                className={`rounded-md py-1.5 text-xs font-bold transition ${
+                                className={`rounded-lg py-2 text-xs font-bold transition ${
                                     weightInputMode === "weight"
-                                        ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-xs"
-                                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                        ? "bg-[var(--primary)] text-white shadow-xs"
+                                        : "border border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                 }`}
                             >
                                 Por Peso (gramos)
@@ -593,22 +749,21 @@ function SaleProductSelector({
                             <button
                                 type="button"
                                 onClick={() => setWeightInputMode("money")}
-                                className={`rounded-md py-1.5 text-xs font-bold transition ${
+                                className={`rounded-lg py-2 text-xs font-bold transition ${
                                     weightInputMode === "money"
-                                        ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-xs"
-                                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                        ? "bg-[var(--primary)] text-white shadow-xs"
+                                        : "border border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                 }`}
                             >
-                                Por Monto ($)
+                                Por Monto ($ dinero)
                             </button>
                         </div>
 
-                        {/* INPUT FIELDS & QUICK PRESETS */}
                         {weightInputMode === "weight" ? (
                             <div className="space-y-3">
                                 <div>
                                     <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                                        Gramos (g)
+                                        Gramos pesados
                                     </label>
                                     <div className="relative mt-1">
                                         <input
@@ -637,7 +792,6 @@ function SaleProductSelector({
                                     </div>
                                 </div>
 
-                                {/* PRESET WEIGHT BUTTONS */}
                                 <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
                                     {(activeProductForWeight.unit_type === "kg"
                                         ? [
@@ -705,7 +859,6 @@ function SaleProductSelector({
                                     </div>
                                 </div>
 
-                                {/* PRESET MONEY BUTTONS */}
                                 <div className="grid grid-cols-4 gap-1.5">
                                     {[1000, 1500, 2000, 3000].map((amt) => (
                                         <button
@@ -725,7 +878,6 @@ function SaleProductSelector({
                             </div>
                         )}
 
-                        {/* LIVE CALCULATION BANNER */}
                         <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-3">
                             <div>
                                 <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
@@ -748,7 +900,6 @@ function SaleProductSelector({
                             </div>
                         </div>
 
-                        {/* ACTIONS */}
                         <div className="flex items-center justify-end gap-2.5 pt-1">
                             <button
                                 type="button"
@@ -774,7 +925,7 @@ function SaleProductSelector({
 
             {/* CART ITEMS TABLE */}
             {items.length > 0 ? (
-                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-accent)]/40 px-4 py-2.5">
                         <div className="flex items-center gap-2">
@@ -796,11 +947,12 @@ function SaleProductSelector({
                     <div className="divide-y divide-[var(--border)] max-h-[380px] overflow-y-auto">
                         {items.map((item, idx) => {
                             const isWeight = item.unitType === "kg" || item.unitType === "100g";
+                            const isEditingThisPrice = editingPriceIndex === idx;
 
                             return (
                                 <div
                                     key={idx}
-                                    className="flex items-center justify-between px-4 py-3 text-xs sm:text-sm transition hover:bg-[var(--surface-accent)]/60"
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 text-xs sm:text-sm transition hover:bg-[var(--surface-accent)]/60 gap-2"
                                 >
                                     {/* Left: Name and weight/unit details */}
                                     <div className="flex flex-col pr-2 min-w-0 flex-1">
@@ -820,7 +972,7 @@ function SaleProductSelector({
                                             )}
                                         </div>
 
-                                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                        <div className="text-xs text-[var(--text-secondary)] mt-0.5 flex flex-wrap items-center gap-2">
                                             {isWeight ? (
                                                 <span>
                                                     {item.grams >= 1000
@@ -830,15 +982,91 @@ function SaleProductSelector({
                                                     {item.unitType === "kg" ? "/kg" : "/100g"}
                                                 </span>
                                             ) : (
-                                                <span>
-                                                    {formatCurrency(item.unitPrice)} c/u
-                                                </span>
+                                                 <div className="flex flex-wrap items-center gap-2">
+                                                    {!isEditingThisPrice ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold text-xs text-[var(--text-secondary)]">
+                                                                {formatCurrency(item.unitPrice)} c/u
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStartEditPrice(idx, item.unitPrice)}
+                                                                className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-accent)] transition shadow-2xs"
+                                                                title="Editar precio de este producto en la venta"
+                                                            >
+                                                                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                                                                </svg>
+                                                                <span>Editar precio</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-wrap items-center gap-2 bg-[var(--surface)] p-1.5 rounded-lg border border-[var(--primary)] shadow-xs">
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-bold text-xs text-[var(--text-secondary)]">$</span>
+                                                                <input
+                                                                    ref={cartPriceInputRef}
+                                                                    type="number"
+                                                                    step="any"
+                                                                    value={editingPriceValue}
+                                                                    onChange={(e) => setEditingPriceValue(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") {
+                                                                            e.preventDefault();
+                                                                            handleSaveCartItemPrice(idx);
+                                                                        } else if (e.key === "Escape") {
+                                                                            setEditingPriceIndex(null);
+                                                                        }
+                                                                    }}
+                                                                    className="w-20 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleSaveCartItemPrice(idx)}
+                                                                disabled={isUpdatingCatalogPrice}
+                                                                className="rounded bg-[var(--primary)] px-2 py-0.5 text-[11px] font-bold text-white hover:bg-[var(--primary-hover)] transition"
+                                                            >
+                                                                ✓ Aplicar
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingPriceIndex(null)}
+                                                                className="rounded bg-[var(--surface-accent)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+                                                            >
+                                                                ✕ Cancelar
+                                                            </button>
+                                                            <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] ml-1 cursor-pointer select-none">
+                                                                <div
+                                                                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                                                                        updateCatalogPrice
+                                                                            ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                                                            : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)]"
+                                                                    }`}
+                                                                >
+                                                                    {updateCatalogPrice && (
+                                                                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                                            <polyline points="20 6 9 17 4 12" />
+                                                                        </svg>
+                                                                    )}
+                                                                </div>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={updateCatalogPrice}
+                                                                    onChange={(e) => setUpdateCatalogPrice(e.target.checked)}
+                                                                    className="sr-only"
+                                                                />
+                                                                <span>Guardar en catálogo</span>
+                                                            </label>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Right: Quantity Stepper / Weight Edit, Subtotal, Delete */}
-                                    <div className="flex items-center gap-3 shrink-0">
+                                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                                         {!isWeight ? (
                                             <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--background)]">
                                                 <button
@@ -911,7 +1139,7 @@ function SaleProductSelector({
                     </div>
                 </div>
             ) : (
-                <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-accent)]/20 p-4 text-center">
+                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-accent)]/20 p-4 text-center">
                     <p className="text-xs font-semibold text-[var(--text-secondary)]">
                         No hay productos agregados al carrito.
                     </p>
@@ -920,6 +1148,22 @@ function SaleProductSelector({
                     </p>
                 </div>
             )}
+
+            {/* UNREGISTERED BARCODE / NATIONAL DISCOVERY SETUP MODAL */}
+            <BarcodeNotFoundModal
+                isOpen={isBarcodeNotFoundModalOpen}
+                onClose={() => {
+                    setIsBarcodeNotFoundModalOpen(false);
+                    setUnregisteredBarcode(null);
+                }}
+                scannedBarcode={unregisteredBarcode}
+                products={products}
+                categories={categories}
+                providers={providers}
+                onProductUpdated={onProductUpdated}
+                onSelectProduct={handleSelectProduct}
+                onCreateNewProduct={onCreateNewProduct}
+            />
         </div>
     );
 }

@@ -12,6 +12,8 @@ import {
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatStockQty, formatUnitType } from "../utils/formatStock";
 import { filterAndRankProducts } from "../utils/productSearch";
+import { playBeepSuccess, playBeepWarning } from "../utils/audio";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import ProductModal from "../components/products/ProductModal";
 import CategoryModal from "../components/products/CategoryModal";
 import ProviderModal from "../components/products/ProviderModal";
@@ -117,6 +119,7 @@ function ProductList() {
     // Modals
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [scannedBarcodeForNew, setScannedBarcodeForNew] = useState("");
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
     const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
@@ -126,6 +129,46 @@ function ProductList() {
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+    const isAnyModalOpen =
+        isProductModalOpen ||
+        isCategoryModalOpen ||
+        isProviderModalOpen ||
+        isBulkPriceModalOpen ||
+        isAssignProviderModalOpen ||
+        Boolean(productToDelete) ||
+        isBulkDeleteOpen ||
+        isImportModalOpen;
+
+    useBarcodeScanner(
+        (code) => {
+            const clean = code.trim().toLowerCase();
+            const numericClean = clean.replace(/\D/g, "");
+
+            const matched =
+                products.find((p) => p.barcode && p.barcode.trim().toLowerCase() === clean) ||
+                products.find((p) => {
+                    if (!p.barcode) return false;
+                    const pNum = p.barcode.replace(/\D/g, "");
+                    return numericClean.length >= 4 && (pNum === numericClean || pNum.endsWith(numericClean));
+                });
+
+            if (matched) {
+                playBeepSuccess();
+                setEditingProduct(matched);
+                setScannedBarcodeForNew("");
+                setIsProductModalOpen(true);
+                toast.success(`Producto encontrado: ${matched.name}`, { id: "prod-scan" });
+            } else {
+                playBeepWarning();
+                setEditingProduct(null);
+                setScannedBarcodeForNew(code.trim());
+                setIsProductModalOpen(true);
+                toast(`Nuevo producto con código: ${code.trim()}`, { id: "prod-scan" });
+            }
+        },
+        { enabled: !isAnyModalOpen }
+    );
 
     async function loadData() {
         try {
@@ -1199,8 +1242,12 @@ function ProductList() {
             {/* PRODUCT MODAL */}
             <ProductModal
                 isOpen={isProductModalOpen}
-                onClose={() => setIsProductModalOpen(false)}
+                onClose={() => {
+                    setIsProductModalOpen(false);
+                    setScannedBarcodeForNew("");
+                }}
                 product={editingProduct}
+                initialBarcode={scannedBarcodeForNew}
                 categories={categories}
                 providers={providers}
                 onSuccess={handleProductSaved}

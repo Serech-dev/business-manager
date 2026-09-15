@@ -19,7 +19,7 @@ const PRESET_OPTIONS = [
     {
         id: "almacen_despensa",
         name: "Almacén & Despensa",
-        count: "120+ productos",
+        count: "240+ productos",
         hasBarcodes: true,
         description: "Yerbas, aceites, harinas, fideos, arroz, condimentos, café y conservas.",
         highlights: "Playadito, Taragüi, Natura, Lucchetti, Pureza, La Campagnola, Dolca...",
@@ -32,7 +32,7 @@ const PRESET_OPTIONS = [
     {
         id: "fiambreria_lacteos",
         name: "Fiambrería & Lácteos",
-        count: "100+ productos",
+        count: "110+ productos",
         hasWeight: true,
         description: "Quesos y fiambres por peso (100g y kg), leches, manteca, yogures y tapas.",
         highlights: "Queso Cremoso, Barra Tybo, Jamón Cocido/Crudo, Leches, DDL, Tapas...",
@@ -43,9 +43,22 @@ const PRESET_OPTIONS = [
         ),
     },
     {
+        id: "carniceria_polleria",
+        name: "Carnicería & Granja",
+        count: "100+ productos",
+        hasWeight: true,
+        description: "Cortes vacunos, pollo, cerdo, milanesas, hamburguesas y achuras por kg.",
+        highlights: "Asado, Vacío, Nalga, Milanesas, Pollo Entero, Pechuga, Costillitas...",
+        icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+            </svg>
+        ),
+    },
+    {
         id: "verduleria_fruteria",
         name: "Verdulería & Frutería",
-        count: "75 productos",
+        count: "75+ productos",
         hasWeight: true,
         description: "Papas, cebollas, tomates, bananas, manzanas y cítricos por kilo.",
         highlights: "Papa Negra, Tomate Redondo, Banana Ecuador, Manzanas, Lechuga, Palta...",
@@ -58,7 +71,7 @@ const PRESET_OPTIONS = [
     {
         id: "panaderia_confiteria",
         name: "Panadería & Confitería",
-        count: "80 productos",
+        count: "80+ productos",
         hasWeight: true,
         description: "Pan francés, criollos, facturas, medialunas, chipá y sándwiches de miga.",
         highlights: "Pan Francés, Criollo/Mignon, Facturas, Medialunas, Chipá, Sándwiches...",
@@ -71,13 +84,27 @@ const PRESET_OPTIONS = [
     {
         id: "limpieza_perfumeria",
         name: "Limpieza & Perfumería",
-        count: "100+ productos",
+        count: "130+ productos",
         hasBarcodes: true,
         description: "Lavandinas, detergentes, skip, papel higiénico, desodorantes y shampoo.",
         highlights: "Ayudín, Magistral, Skip, Higienol, Rexona, Sedal, Colgate...",
         icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+            </svg>
+        ),
+    },
+    {
+        id: "mascotas_petshop",
+        name: "Mascotas & Alimentos Balanceados",
+        count: "60+ productos",
+        hasBarcodes: true,
+        hasWeight: true,
+        description: "Alimentos para perros y gatos por bolsa y por kilo suelto, piedras sanitarias y snacks.",
+        highlights: "Pedigree, Whiskas, Dog Chow, Cat Chow, Purina, Piedras Sanitarias...",
+        icon: (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
             </svg>
         ),
     },

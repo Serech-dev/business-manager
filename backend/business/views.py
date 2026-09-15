@@ -8,13 +8,14 @@ from accounts.permissions import HasActiveSubscription
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import (Category, Client, Product, Provider, Register,
-                     StockMovement, StockNote, StoreSettings, Transaction,
-                     TransactionOperationAmount, TransactionOperationItem)
+from .models import (Category, Client, MasterCatalogProduct, Product,
+                     Provider, Register, StockMovement, StockNote,
+                     StoreSettings, Transaction, TransactionOperationAmount,
+                     TransactionOperationItem)
 from .serializers import (CategorySerializer, ClientSerializer,
-                          ProductSerializer, ProviderSerializer,
-                          RegisterListSerializer, RegisterSerializer,
-                          StockAdjustmentSerializer,
+                          MasterCatalogProductSerializer, ProductSerializer,
+                          ProviderSerializer, RegisterListSerializer,
+                          RegisterSerializer, StockAdjustmentSerializer,
                           StockBatchRestockSerializer, StockMovementSerializer,
                           StockNoteSerializer, StoreSettingsSerializer,
                           TransactionAmountReceivedSerializer,
@@ -1136,6 +1137,135 @@ class StoreSettingsView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class MasterCatalogLookupView(APIView):
+    """
+    Looks up a product by barcode.
+    Order of lookup:
+    1. User's store inventory (Product table) -> returns in_store: true
+    2. Master national catalog (MasterCatalogProduct table) -> returns found_in_master: true
+    3. External lookup (OpenFoodFacts API) -> caches into MasterCatalogProduct
+    4. Suggested matching store product if name matches (for unlinked products)
+    """
+    permission_classes = [HasActiveSubscription]
+
+    def get(self, request):
+        import urllib.request
+        import json
+        import logging
+
+        barcode = request.query_params.get("barcode", "").strip()
+        if not barcode:
+            return Response({"error": "Barcode is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+
+        # 1. Check user's store products
+        store_product = (
+            Product.objects.filter(user=user, is_active=True, barcode=barcode)
+            .select_related("category", "provider")
+            .first()
+        )
+        if store_product:
+            return Response({
+                "in_store": True,
+                "found_in_master": False,
+                "product": ProductSerializer(store_product).data,
+            })
+
+        # 2. Check MasterCatalogProduct table
+        master_item = MasterCatalogProduct.objects.filter(barcode=barcode).first()
+        if master_item:
+            # Check if user has an existing store product with matching name that lacks barcode
+            similar_store_product = Product.objects.filter(
+                user=user,
+                is_active=True,
+                name__iexact=master_item.name
+            ).first()
+
+            return Response({
+                "in_store": False,
+                "found_in_master": True,
+                "master_product": MasterCatalogProductSerializer(master_item).data,
+                "similar_store_product": ProductSerializer(similar_store_product).data if similar_store_product else None,
+            })
+
+        # 3. Fallback online lookup (OpenFoodFacts API) with fast 2.5s timeout
+        online_data = self._lookup_online(barcode)
+        if online_data:
+            try:
+                master_item, _ = MasterCatalogProduct.objects.get_or_create(
+                    barcode=barcode,
+                    defaults={
+                        "name": online_data["name"],
+                        "brand": online_data.get("brand", ""),
+                        "category_name": online_data.get("category_name", "Almacén & Despensa"),
+                        "unit_type": Product.UnitType.UNIT,
+                        "source": "openfoodfacts",
+                    }
+                )
+                return Response({
+                    "in_store": False,
+                    "found_in_master": True,
+                    "master_product": MasterCatalogProductSerializer(master_item).data,
+                    "similar_store_product": None,
+                })
+            except Exception:
+                pass
+
+        # 4. Not found in master or online
+        return Response({
+            "in_store": False,
+            "found_in_master": False,
+            "master_product": None,
+            "similar_store_product": None,
+        })
+
+    def _lookup_online(self, barcode: str):
+        import urllib.request
+        import json
+        try:
+            url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "BusinessManager - Retail POS App"}
+            )
+            with urllib.request.urlopen(req, timeout=2.5) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode("utf-8"))
+                    if data.get("status") == 1 and "product" in data:
+                        p = data["product"]
+                        name = p.get("product_name_es") or p.get("product_name") or ""
+                        brand = p.get("brands") or ""
+                        if name:
+                            return {
+                                "name": f"{name} {brand}".strip() if brand and brand.lower() not in name.lower() else name,
+                                "brand": brand,
+                                "category_name": "Almacén & Despensa",
+                            }
+        except Exception:
+            pass
+        return None
+
+
+class MasterCatalogSearchView(APIView):
+    """
+    Search master catalog products by query string (name, brand, or barcode).
+    """
+    permission_classes = [HasActiveSubscription]
+
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+        if not query or len(query) < 2:
+            return Response([])
+
+        results = MasterCatalogProduct.objects.filter(
+            Q(name__icontains=query) | Q(brand__icontains=query) | Q(barcode__icontains=query)
+        )[:30]
+
+        return Response(MasterCatalogProductSerializer(results, many=True).data)
+
 
 
 

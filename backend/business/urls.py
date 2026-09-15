@@ -1,21 +1,22 @@
 from django.urls import path
 
 from .views import (AnalyticsView, BulkAssignProductProviderView,
-                    BulkDeleteProductsView, BulkUpdateProductPricesView,
-                    CategoryDetailView, CategoryListCreateView,
-                    ClientDetailView, ClientListCreateView, CloseRegisterView,
-                    CurrentRegisterView, CurrentTransactionListView,
-                    ImportStarterCatalogView, OpenRegisterView,
-                    ProductDetailView, ProductListCreateView,
-                    ProviderDetailView, ProviderListCreateView,
-                    RegisterDetailView, RegisterListView,
-                    ReopenLastRegisterView, ResolveTransferView,
-                    StockAdjustmentView, StockAlertsSummaryView,
-                    StockInsightsView, StockMovementListCreateView,
-                    StockNoteDetailView, StockNoteListCreateView,
-                    StoreSettingsView,
-                    TransactionAmountReceivedView, TransactionDetailView,
-                    TransactionListCreateView)
+                     BulkDeleteProductsView, BulkUpdateProductPricesView,
+                     CategoryDetailView, CategoryListCreateView,
+                     ClientDetailView, ClientListCreateView, CloseRegisterView,
+                     CurrentRegisterView, CurrentTransactionListView,
+                     ImportStarterCatalogView, MasterCatalogLookupView,
+                     MasterCatalogSearchView, OpenRegisterView,
+                     ProductDetailView, ProductListCreateView,
+                     ProviderDetailView, ProviderListCreateView,
+                     RegisterDetailView, RegisterListView,
+                     ReopenLastRegisterView, ResolveTransferView,
+                     StockAdjustmentView, StockAlertsSummaryView,
+                     StockInsightsView, StockMovementListCreateView,
+                     StockNoteDetailView, StockNoteListCreateView,
+                     StoreSettingsView,
+                     TransactionAmountReceivedView, TransactionDetailView,
+                     TransactionListCreateView)
 
 urlpatterns = [
     path(
@@ -200,4 +201,17 @@ urlpatterns = [
         StoreSettingsView.as_view(),
         name="store-settings",
     ),
+
+    path(
+        "master-catalog/lookup/",
+        MasterCatalogLookupView.as_view(),
+        name="master-catalog-lookup",
+    ),
+
+    path(
+        "master-catalog/search/",
+        MasterCatalogSearchView.as_view(),
+        name="master-catalog-search",
+    ),
 ]
+

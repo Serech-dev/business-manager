@@ -1,3 +1,26 @@
+v1.5.0 (Phase 2 - Hardware Barcode Scanner, Master National Catalog & Auto-Recognition)
+
+- Hardware Barcode Reader Integration (HID Keyboard Emulation):
+  - Zero-focus instant cart addition: Scanning barcodes anywhere on the POS / Cashier screen (`NewTransaction.jsx` / `SaleProductSelector.jsx`) adds products directly without requiring manual focus on the search box.
+  - High-resilience keystroke buffer with rapid scanner detection (<100ms inter-character interval) and automatic buffer resets on pauses.
+  - Silenced software audio feedback (`audio.js`) to eliminate duplicate sound alerts, keeping physical scanner hardware beeps clean.
+- Master National Argentine Retail Barcode Catalog (0ms Offline Zero-Latency):
+  - Comprehensive, 100% offline client-side and backend catalog (`nationalCatalog.js` + `starter_catalog.py`) with 1,088 products across 8 core Argentine rubros and 959 verified GS1 EAN-13 barcodes.
+  - Expanded coverage for economy, neighborhood, and corner-case brands (Tés Crysf, Galletitas Gaona/Trio/Fachitas/Dulcipan, Gaseosas Secco/Cunnington/Manaos/Pritty, Alfajores Fulbito/Grandote/Escolar, Krachitos, Softys/Elite/Higienol/Sussex, etc.).
+  - Automatic product identification across food, drinks, bakery, butcher, deli, produce, cleaning, and pet supplies.
+  - Django database ingestion command (`manage.py ingest_master_catalog`) for bulk loading master catalog entries into `MasterCatalogProduct`.
+- Smart Duplicate Name Resolution & 1-Click Addition:
+  - When scanning an uncataloged barcode for a product that already exists under that name (e.g. imported earlier or entered manually without a barcode), automatically updates and binds the barcode to the existing product instead of failing with a 400 duplicate name error.
+  - 1-click POS modal action: «Agregar a mi catálogo y sumar a la venta» / «Actualizar código de [Producto] y sumar a la venta».
+  - Product creation form (`ProductModal.jsx`) seamlessly auto-populates National Catalog data on scan and resolves duplicate name collisions safely.
+  - Re-importing starter presets (`import_starter_catalog_for_user`) backfills missing EAN-13 barcodes on existing user products.
+- POS Sales UX & Clean Interface Polish:
+  - In-cart unit price quick-edit button (`[✏️ Editar precio]`) with optional "Guardar en catálogo" checkbox to update shelf prices immediately.
+  - Custom themed SVG checkboxes eliminating Windows OS native white-box graphics.
+  - Styled `<select>` dropdown controls with custom SVG chevrons across modals (`BarcodeNotFoundModal.jsx`, `ImportCatalogModal.jsx`).
+  - Streamlined POS search: removed category filter pills and eliminated dropdown popup on empty query for a completely clean, unobstructed cart view.
+
+
 v1.4.0 (Phase 2 - Virtual Licensing, Automated Mercado Pago Checkout & UX Polish)
 
 - Virtual Licensing & Automated Checkout Gateway (Módulo de Licencias Virtuales v1):

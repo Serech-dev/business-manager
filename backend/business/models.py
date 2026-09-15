@@ -744,6 +744,71 @@ class StoreSettings(models.Model):
         return settings_obj
 
 
+class MasterCatalogProduct(models.Model):
+    barcode = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+    )
+    name = models.CharField(
+        max_length=255,
+        db_index=True,
+    )
+    brand = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    category_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    unit_type = models.CharField(
+        max_length=10,
+        choices=Product.UnitType.choices,
+        default=Product.UnitType.UNIT,
+    )
+    suggested_sale_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    suggested_cost_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    source = models.CharField(
+        max_length=50,
+        default="sepa",
+        help_text="Data source: sepa, gs1, openfoodfacts, manual, etc.",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = "Producto del Catálogo Maestro"
+        verbose_name_plural = "Catálogo Maestro de Productos Nacionales"
+        indexes = [
+            models.Index(fields=["barcode"]),
+            models.Index(fields=["name"]),
+            models.Index(fields=["brand"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.barcode}] {self.name} ({self.brand or 'Genérico'})"
+
+
+
 
 
 
