@@ -414,6 +414,22 @@ class Product(models.Model):
         default=True,
     )
 
+    promo_quantity = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    promo_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    is_bundle = models.BooleanField(
+        default=False,
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -432,8 +448,64 @@ class Product(models.Model):
         ]
         ordering = ["name"]
 
+    @property
+    def has_quantity_promo(self):
+        return bool(
+            self.promo_quantity
+            and self.promo_quantity >= 2
+            and self.promo_price
+            and self.promo_price > Decimal("0.00")
+        )
+
+    @property
+    def bundle_stock(self):
+        if not self.is_bundle:
+            return self.stock
+        items = list(self.bundle_items.select_related("product").all())
+        if not items:
+            return None
+        min_possible = None
+        has_tracked_item = False
+        for bi in items:
+            if bi.product and bi.product.stock is not None:
+                has_tracked_item = True
+                if bi.quantity > Decimal("0"):
+                    possible = int(bi.product.stock // bi.quantity)
+                    if min_possible is None or possible < min_possible:
+                        min_possible = max(0, possible)
+        return min_possible if has_tracked_item else None
+
     def __str__(self):
         return self.name
+
+
+class BundleItem(models.Model):
+    bundle = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="bundle_items",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="included_in_bundles",
+    )
+    quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("1.00"),
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["bundle", "product"],
+                name="unique_bundle_item_product",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.quantity} x {self.product.name} in {self.bundle.name}"
 
 
 class TransactionOperationItem(models.Model):

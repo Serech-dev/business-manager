@@ -30,3 +30,26 @@
 - In-cart price edits must give the cashier the option to either apply on-the-fly or save to catalog.
 - Starter and Master catalog imports must never overwrite or destroy existing custom prices or user products.
 
+## 5. Zero Emojis in UI (Clean & Professional Look)
+- **Strictly Prohibited**: Never use emojis (such as 🎁, 🏷️, 📦, 🛒, 🚀, etc.) anywhere in the user interface, buttons, tables, badges, modals, tab headers, or alert messages.
+- **Iconography**: Always use crisp, scalable inline SVG icons or clean typography. Emojis make the system look amateurish and unprofessional.
+
+## 6. Core Product Philosophy & Category Taxonomy
+- **Golden Rule**: **`ease of use > data clarity > slick look`**
+  - The system is feature-rich and powerful; our primary goal is to **give merchants less work, not more**.
+  - Minimize cognitive load, clicks, ambiguity, and cluttered dropdowns.
+- **Default Generalist Categories**:
+  - Keep catalog categories clean, simple, and generalist so any product has an obvious home:
+    1. **Bebidas** (gaseosas, aguas, jugos, energizantes, cervezas, vinos, licores)
+    2. **Golosinas & Snacks** (alfajores, chocolates, chicles, caramelos, papas fritas, galletitas dulces/saladas)
+    3. **Almacén** (yerba, azúcar, café, fideos, arroz, harina, aceite, condimentos, conservas, salsas)
+    4. **Fiambrería & Lácteos** (quesos, jamón, salame, fiambres, leche, yogur, manteca, tapas)
+    5. **Panadería** (pan, medialunas, facturas, tortillas, prepizzas, sándwiches de miga)
+    6. **Carnicería & Granja** (carne vacuna, patys/hamburguesas, pollo, cerdo, milanesas, huevos)
+    7. **Verdulería & Frutería** (frutas y verduras: papas, tomates, cebollas, bananas, manzanas)
+    8. **Limpieza** (lavandina, detergente, desinfectante, jabón para ropa, papel higiénico, rollos)
+    9. **Perfumería & Higiene** (shampoo, desodorante, jabón de tocador, pasta dental, toallitas)
+    10. **Cigarrillos & Tabaquería** (cigarrillos, tabaco para armar, encendedores, papelillos, filtros)
+    11. **Mascotas** (alimento para perros y gatos, piedritas, accesorios)
+
+

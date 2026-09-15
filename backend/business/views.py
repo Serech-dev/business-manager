@@ -605,6 +605,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
             Product.objects
             .filter(user=self.request.user)
             .select_related("category", "provider")
+            .prefetch_related("bundle_items__product")
             .order_by("name")
         )
 
@@ -653,6 +654,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
             Product.objects
             .filter(user=self.request.user)
             .select_related("category", "provider")
+            .prefetch_related("bundle_items__product")
         )
 
 

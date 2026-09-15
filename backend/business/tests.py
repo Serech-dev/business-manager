@@ -163,3 +163,162 @@ class MasterCatalogTests(TestCase):
         self.assertGreaterEqual(len(res.data), 1)
         self.assertEqual(res.data[0]["barcode"], "7790150330166")
 
+
+class SpecialSalesAndBundleTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="promouser",
+            email="promo@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        from .models import Register
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("5000.00"),
+        )
+
+    def test_quantity_promo_product(self):
+        from .models import Product
+        res = self.client.post(
+            "/api/business/products/",
+            {
+                "name": "Alfajor Guaymallén Triple",
+                "sale_price": "600.00",
+                "cost_price": "350.00",
+                "promo_quantity": 3,
+                "promo_price": "1500.00",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["promo_quantity"], 3)
+        self.assertEqual(Decimal(str(res.data["promo_price"])), Decimal("1500.00"))
+        self.assertTrue(res.data["has_quantity_promo"])
+
+        prod = Product.objects.get(id=res.data["id"])
+        self.assertTrue(prod.has_quantity_promo)
+
+    def test_bundle_creation_and_stock_calculation(self):
+        from .models import Product
+        fernet = Product.objects.create(
+            user=self.user,
+            name="Fernet Branca 750ml",
+            sale_price=Decimal("10000.00"),
+            stock=Decimal("10.00"),
+        )
+        coca = Product.objects.create(
+            user=self.user,
+            name="Coca Cola 1.5L",
+            sale_price=Decimal("2500.00"),
+            stock=Decimal("20.00"),
+        )
+
+        res = self.client.post(
+            "/api/business/products/",
+            {
+                "name": "Combo Previa (Fernet + 2 Coca)",
+                "sale_price": "14000.00",
+                "is_bundle": True,
+                "bundle_items": [
+                    {"product": fernet.id, "quantity": "1.00"},
+                    {"product": coca.id, "quantity": "2.00"},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res.data["is_bundle"])
+        self.assertEqual(len(res.data["bundle_items"]), 2)
+        # 10 / 1 = 10, 20 / 2 = 10 => bundle_stock = 10
+        self.assertEqual(res.data["bundle_stock"], 10)
+
+        # If coca stock drops to 5, bundle stock should be 5 // 2 = 2
+        coca.stock = Decimal("5.00")
+        coca.save()
+
+        get_res = self.client.get(f"/api/business/products/{res.data['id']}/")
+        self.assertEqual(get_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(get_res.data["bundle_stock"], 2)
+
+    def test_selling_bundle_deducts_constituent_stocks(self):
+        from .models import Product, StockMovement
+        fernet = Product.objects.create(
+            user=self.user,
+            name="Fernet Branca 750ml",
+            sale_price=Decimal("10000.00"),
+            stock=Decimal("10.00"),
+        )
+        coca = Product.objects.create(
+            user=self.user,
+            name="Coca Cola 1.5L",
+            sale_price=Decimal("2500.00"),
+            stock=Decimal("20.00"),
+        )
+
+        create_combo = self.client.post(
+            "/api/business/products/",
+            {
+                "name": "Combo Previa",
+                "sale_price": "14000.00",
+                "is_bundle": True,
+                "bundle_items": [
+                    {"product": fernet.id, "quantity": "1.00"},
+                    {"product": coca.id, "quantity": "2.00"},
+                ],
+            },
+            format="json",
+        )
+        combo_id = create_combo.data["id"]
+
+        # Sell 2 Combos
+        tx_res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "sale",
+                        "items": [
+                            {
+                                "product": combo_id,
+                                "product_name": "Combo Previa",
+                                "unit_type": "unit",
+                                "quantity": "2.00",
+                                "unit_price": "14000.00",
+                                "subtotal": "28000.00",
+                            }
+                        ],
+                        "amounts": [
+                            {
+                                "method": "cash",
+                                "amount": 28000,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(tx_res.status_code, status.HTTP_201_CREATED, tx_res.data)
+
+        # Refresh constituent stocks
+        fernet.refresh_from_db()
+        coca.refresh_from_db()
+
+        # 2 combos * 1 fernet = -2 => 10 - 2 = 8
+        self.assertEqual(fernet.stock, Decimal("8.00"))
+        # 2 combos * 2 coca = -4 => 20 - 4 = 16
+        self.assertEqual(coca.stock, Decimal("16.00"))
+
+        # Verify stock movements created
+        movements = StockMovement.objects.filter(user=self.user, movement_type=StockMovement.MovementType.SALE)
+        self.assertEqual(movements.count(), 2)
+        fernet_mov = movements.get(product=fernet)
+        self.assertEqual(fernet_mov.quantity, Decimal("-2.00"))
+        coca_mov = movements.get(product=coca)
+        self.assertEqual(coca_mov.quantity, Decimal("-4.00"))
+
+

@@ -4,7 +4,7 @@ from django.db import transaction as db_transaction
 from django.db.models import F
 from rest_framework import serializers
 
-from .models import (Category, Client, MasterCatalogProduct, Product,
+from .models import (BundleItem, Category, Client, MasterCatalogProduct, Product,
                      Provider, Register, StockMovement, StockNote,
                      StoreSettings, Transaction, TransactionOperation,
                      TransactionOperationAmount, TransactionOperationItem)
@@ -496,15 +496,30 @@ class TransactionSerializer(
                     subtotal=subtotal,
                 )
 
-                if prod and prod.stock is not None:
-                    Product.objects.filter(id=prod.id).update(stock=F("stock") - qty)
-                    StockMovement.objects.create(
-                        user=self.context["request"].user,
-                        product=prod,
-                        movement_type=StockMovement.MovementType.SALE,
-                        quantity=-Decimal(str(qty)),
-                        notes=f"Venta #{transaction.id}",
-                    )
+                if prod:
+                    if prod.is_bundle:
+                        bundle_items = prod.bundle_items.select_related("product").all()
+                        for bi in bundle_items:
+                            sub_prod = bi.product
+                            if sub_prod and sub_prod.stock is not None:
+                                deduct_qty = bi.quantity * qty
+                                Product.objects.filter(id=sub_prod.id).update(stock=F("stock") - deduct_qty)
+                                StockMovement.objects.create(
+                                    user=self.context["request"].user,
+                                    product=sub_prod,
+                                    movement_type=StockMovement.MovementType.SALE,
+                                    quantity=-Decimal(str(deduct_qty)),
+                                    notes=f"Venta #{transaction.id} (Combo: {prod.name})",
+                                )
+                    elif prod.stock is not None:
+                        Product.objects.filter(id=prod.id).update(stock=F("stock") - qty)
+                        StockMovement.objects.create(
+                            user=self.context["request"].user,
+                            product=prod,
+                            movement_type=StockMovement.MovementType.SALE,
+                            quantity=-Decimal(str(qty)),
+                            notes=f"Venta #{transaction.id}",
+                        )
 
         return transaction
 
@@ -1571,6 +1586,28 @@ class CategorySerializer(serializers.ModelSerializer):
         return obj.products.filter(is_active=True).count()
 
 
+class BundleItemReadSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(source="product.id", read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_unit_type = serializers.CharField(source="product.unit_type", read_only=True)
+    product_sale_price = serializers.DecimalField(source="product.sale_price", max_digits=12, decimal_places=2, read_only=True)
+    product_cost_price = serializers.DecimalField(source="product.cost_price", max_digits=12, decimal_places=2, read_only=True)
+    product_stock = serializers.DecimalField(source="product.stock", max_digits=10, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = BundleItem
+        fields = [
+            "id",
+            "product_id",
+            "product_name",
+            "product_unit_type",
+            "product_sale_price",
+            "product_cost_price",
+            "product_stock",
+            "quantity",
+        ]
+
+
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(
         source="category.name",
@@ -1584,6 +1621,9 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     markup_percentage = serializers.SerializerMethodField()
     stock_status = serializers.SerializerMethodField()
+    has_quantity_promo = serializers.BooleanField(read_only=True)
+    bundle_stock = serializers.IntegerField(read_only=True)
+    bundle_items = BundleItemReadSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -1601,6 +1641,12 @@ class ProductSerializer(serializers.ModelSerializer):
             "stock",
             "min_stock",
             "is_active",
+            "promo_quantity",
+            "promo_price",
+            "has_quantity_promo",
+            "is_bundle",
+            "bundle_items",
+            "bundle_stock",
             "markup_percentage",
             "stock_status",
             "created_at",
@@ -1612,6 +1658,9 @@ class ProductSerializer(serializers.ModelSerializer):
             "updated_at",
             "markup_percentage",
             "stock_status",
+            "has_quantity_promo",
+            "bundle_stock",
+            "bundle_items",
             "category_name",
             "provider_name",
         ]
@@ -1623,6 +1672,16 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_stock_status(self, obj):
+        if obj.is_bundle:
+            b_stock = obj.bundle_stock
+            if b_stock is None:
+                return "untracked"
+            if b_stock <= 0:
+                return "out_of_stock"
+            if obj.min_stock is not None and b_stock <= obj.min_stock:
+                return "low_stock"
+            return "normal"
+
         if obj.stock is None:
             return "untracked"
         if obj.stock <= Decimal("0"):
@@ -1630,6 +1689,44 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.min_stock is not None and obj.stock <= Decimal(str(obj.min_stock)):
             return "low_stock"
         return "normal"
+
+    @db_transaction.atomic
+    def create(self, validated_data):
+        bundle_items_data = self.initial_data.get("bundle_items")
+        product = super().create(validated_data)
+        if product.is_bundle and bundle_items_data:
+            self._save_bundle_items(product, bundle_items_data)
+        return product
+
+    @db_transaction.atomic
+    def update(self, instance, validated_data):
+        bundle_items_data = self.initial_data.get("bundle_items")
+        product = super().update(instance, validated_data)
+        if product.is_bundle and bundle_items_data is not None:
+            instance.bundle_items.all().delete()
+            self._save_bundle_items(product, bundle_items_data)
+        elif not product.is_bundle:
+            instance.bundle_items.all().delete()
+        return product
+
+    def _save_bundle_items(self, bundle, bundle_items_data):
+        created_items = []
+        user = self.context["request"].user if "request" in self.context else bundle.user
+        for item in bundle_items_data:
+            prod_id = item.get("product") or item.get("product_id")
+            qty = Decimal(str(item.get("quantity", 1)))
+            if prod_id and qty > Decimal("0"):
+                target_prod = Product.objects.filter(id=prod_id, user=user).first()
+                if target_prod and target_prod.id != bundle.id:
+                    created_items.append(
+                        BundleItem(
+                            bundle=bundle,
+                            product=target_prod,
+                            quantity=qty,
+                        )
+                    )
+        if created_items:
+            BundleItem.objects.bulk_create(created_items)
 
 
 class StockMovementSerializer(serializers.ModelSerializer):

@@ -64,8 +64,7 @@ function StockAdjustModal({
             if (newStockNum <= 0) {
                 toast.error(`Stock de "${product.name}" quedó en 0 (Agotado).`);
             } else if (minStockNum > 0 && newStockNum <= minStockNum) {
-                toast(`⚠️ Stock de "${product.name}" quedó en ${formatStockQty(newStockNum, product.unit_type)} (por debajo del mínimo de ${formatStockQty(minStockNum, product.unit_type)}).`, {
-                    icon: "⚠️",
+                toast(`Stock de "${product.name}" quedó en ${formatStockQty(newStockNum, product.unit_type)} (por debajo del mínimo de ${formatStockQty(minStockNum, product.unit_type)}).`, {
                     duration: 4000,
                 });
             } else {

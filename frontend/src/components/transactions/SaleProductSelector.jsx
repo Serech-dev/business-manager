@@ -10,9 +10,62 @@ import { NATIONAL_PRODUCTS } from "../../utils/nationalCatalog";
 import { updateProduct } from "../../services/business";
 
 /**
+ * Calculates item pricing, subtotal, and promo savings dynamically.
+ */
+export function calculateItemPricing(product, quantity, customUnitPrice = null, grams = null) {
+    const regularUnitPrice = customUnitPrice !== null ? customUnitPrice : Number(product.sale_price) || 0;
+    const isWeight = product.unit_type === "kg" || product.unit_type === "100g";
+
+    if (isWeight) {
+        const factor = product.unit_type === "kg" ? 1000 : 100;
+        const subtotal = Math.round(((grams || 0) / factor) * regularUnitPrice);
+        return {
+            unitPrice: regularUnitPrice,
+            subtotal,
+            hasPromoApplied: false,
+            promoSavings: 0,
+            promoText: null,
+        };
+    }
+
+    const promoQty = parseInt(product.promo_quantity, 10);
+    const promoPrc = Number(product.promo_price);
+    const hasPromoConfig = Boolean(
+        !product.is_bundle &&
+        promoQty >= 2 &&
+        promoPrc > 0 &&
+        (customUnitPrice === null || customUnitPrice === Number(product.sale_price))
+    );
+
+    if (hasPromoConfig && quantity >= promoQty) {
+        const bundles = Math.floor(quantity / promoQty);
+        const loose = quantity % promoQty;
+        const subtotal = Math.round((bundles * promoPrc) + (loose * regularUnitPrice));
+        const regularTotal = Math.round(quantity * regularUnitPrice);
+        const promoSavings = Math.max(0, regularTotal - subtotal);
+
+        return {
+            unitPrice: regularUnitPrice,
+            subtotal,
+            hasPromoApplied: true,
+            promoSavings,
+            promoText: `Promo ${promoQty}x ${formatCurrency(promoPrc)}`,
+        };
+    }
+
+    return {
+        unitPrice: regularUnitPrice,
+        subtotal: Math.round(quantity * regularUnitPrice),
+        hasPromoApplied: false,
+        promoSavings: 0,
+        promoText: null,
+    };
+}
+
+/**
  * SaleProductSelector
  * Allows fast search, arrow-key navigation, zero-focus barcode scanning, national catalog discovery,
- * weight calculation (kg / 100g), quantity selection, and in-cart price editing.
+ * weight calculation (kg / 100g), quantity selection, promo pricing, and in-cart price editing.
  */
 function SaleProductSelector({
     products = [],
@@ -109,14 +162,14 @@ function SaleProductSelector({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Open weight/quantity dialog or add unit product directly to cart
+    // Open weight/quantity dialog or add unit/bundle product directly to cart
     const handleSelectProduct = useCallback(
         (product) => {
             setIsSearchOpen(false);
             setSearchQuery("");
 
-            if (product.unit_type === "unit") {
-                // For unit products, check if already in cart
+            if (product.unit_type === "unit" || product.is_bundle) {
+                // For unit or combo products, check if already in cart
                 const existingIndex = items.findIndex(
                     (it) => it.product.id === product.id
                 );
@@ -124,20 +177,21 @@ function SaleProductSelector({
                     const updated = [...items];
                     const item = updated[existingIndex];
                     const newQty = item.quantity + 1;
+                    const pricing = calculateItemPricing(product, newQty, item.unitPrice, item.grams);
                     updated[existingIndex] = {
                         ...item,
                         quantity: newQty,
-                        subtotal: Math.round(newQty * Number(product.sale_price)),
+                        ...pricing,
                     };
                     onItemsChange(updated);
                 } else {
+                    const pricing = calculateItemPricing(product, 1, Number(product.sale_price), null);
                     const newItem = {
                         product,
                         unitType: "unit",
                         quantity: 1,
                         grams: null,
-                        unitPrice: Number(product.sale_price),
-                        subtotal: Math.round(Number(product.sale_price)),
+                        ...pricing,
                     };
                     onItemsChange([...items, newItem]);
                 }
@@ -318,10 +372,11 @@ function SaleProductSelector({
             handleRemoveItem(index);
             return;
         }
+        const pricing = calculateItemPricing(item.product, newQty, item.unitPrice, item.grams);
         updated[index] = {
             ...item,
             quantity: newQty,
-            subtotal: Math.round(newQty * item.unitPrice),
+            ...pricing,
         };
         onItemsChange(updated);
     }
@@ -332,10 +387,11 @@ function SaleProductSelector({
         if (isNaN(parsed) || parsed <= 0) return;
         const updated = [...items];
         const item = updated[index];
+        const pricing = calculateItemPricing(item.product, parsed, item.unitPrice, item.grams);
         updated[index] = {
             ...item,
             quantity: parsed,
-            subtotal: Math.round(parsed * item.unitPrice),
+            ...pricing,
         };
         onItemsChange(updated);
     }
@@ -361,13 +417,11 @@ function SaleProductSelector({
 
         const updated = [...items];
         const item = updated[idx];
-        item.unitPrice = parsedPrice;
-        if (item.unitType === "unit") {
-            item.subtotal = Math.round(item.quantity * parsedPrice);
-        } else {
-            const factor = item.unitType === "kg" ? 1000 : 100;
-            item.subtotal = Math.round(((item.grams || 0) / factor) * parsedPrice);
-        }
+        const pricing = calculateItemPricing(item.product, item.quantity, parsedPrice, item.grams);
+        updated[idx] = {
+            ...item,
+            ...pricing,
+        };
         onItemsChange(updated);
         setEditingPriceIndex(null);
 
@@ -522,18 +576,34 @@ function SaleProductSelector({
                                                             <span className="font-semibold truncate">
                                                                 {p.name}
                                                             </span>
+                                                            {p.is_bundle && (
+                                                                <span className="inline-flex items-center gap-1 shrink-0 rounded-sm bg-[var(--primary)]/15 px-1.5 py-0.2 text-[10px] font-bold text-[var(--primary)]">
+                                                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" />
+                                                                    </svg>
+                                                                    <span>{p.bundle_items?.length === 1 ? "Oferta" : "Combo"}</span>
+                                                                </span>
+                                                            )}
+                                                            {p.promo_quantity && Number(p.promo_quantity) >= 2 && Number(p.promo_price) > 0 && !p.is_bundle && (
+                                                                <span className="inline-flex items-center gap-1 shrink-0 rounded-sm bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
+                                                                    </svg>
+                                                                    <span>{p.promo_quantity}x {formatCurrency(p.promo_price)}</span>
+                                                                </span>
+                                                            )}
                                                             {isKg && (
-                                                                <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                                                <span className="shrink-0 rounded-sm bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
                                                                     Por Kilo
                                                                 </span>
                                                             )}
                                                             {is100g && (
-                                                                <span className="shrink-0 rounded bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                                                <span className="shrink-0 rounded-sm bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
                                                                     Por 100g
                                                                 </span>
                                                             )}
                                                             {p.stock !== null && p.stock !== undefined && (
-                                                                <span className={`shrink-0 rounded px-1.5 py-0.2 text-[9px] font-bold ${
+                                                                <span className={`shrink-0 rounded-sm px-1.5 py-0.2 text-[9px] font-bold ${
                                                                     Number(p.stock) <= 0
                                                                         ? "bg-[var(--danger-bg)] text-[var(--danger)]"
                                                                         : Number(p.stock) <= (Number(p.min_stock) || 0)
@@ -929,10 +999,18 @@ function SaleProductSelector({
                                 >
                                     {/* Left: Name and weight/unit details */}
                                     <div className="flex flex-col pr-2 min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <span className="font-bold text-sm text-[var(--text-primary)] truncate">
                                                 {item.product.name}
                                             </span>
+                                            {item.product.is_bundle && (
+                                                <span className="inline-flex items-center gap-1 shrink-0 rounded-sm bg-[var(--primary)]/15 px-1.5 py-0.2 text-[10px] font-bold text-[var(--primary)]">
+                                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" />
+                                                    </svg>
+                                                    <span>{item.product.bundle_items?.length === 1 ? "Oferta Especial" : `Combo (${item.product.bundle_items?.length || 0} arts.)`}</span>
+                                                </span>
+                                            )}
                                             {item.unitType === "kg" && (
                                                 <span className="shrink-0 rounded-sm bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
                                                     kg
@@ -941,6 +1019,14 @@ function SaleProductSelector({
                                             {item.unitType === "100g" && (
                                                 <span className="shrink-0 rounded-sm bg-purple-500/15 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
                                                     100g
+                                                </span>
+                                            )}
+                                            {item.hasPromoApplied && (
+                                                <span className="inline-flex items-center gap-1 shrink-0 rounded-sm bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
+                                                    </svg>
+                                                    <span>{item.promoText} aplicada (-{formatCurrency(item.promoSavings)})</span>
                                                 </span>
                                             )}
                                         </div>

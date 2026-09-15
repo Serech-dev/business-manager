@@ -204,6 +204,7 @@ function ProductList() {
     // Counts for status
     const activeCount = useMemo(() => products.filter((p) => p.is_active).length, [products]);
     const inactiveCount = useMemo(() => products.filter((p) => !p.is_active).length, [products]);
+    const promoCount = useMemo(() => products.filter((p) => p.has_quantity_promo || p.is_bundle).length, [products]);
 
     // Active filters list for interactive tag chips
     const activeFiltersList = useMemo(() => {
@@ -232,9 +233,12 @@ function ProductList() {
             });
         }
         if (statusFilter !== "active") {
+            let label = "Todos los estados";
+            if (statusFilter === "inactive") label = "Solo Inactivos";
+            else if (statusFilter === "promos") label = "Promociones & Combos";
             list.push({
                 id: "status",
-                label: statusFilter === "inactive" ? "Solo Inactivos" : "Todos los estados",
+                label,
                 onClear: () => setStatusFilter("active"),
             });
         }
@@ -479,7 +483,7 @@ function ProductList() {
                         type="button"
                         data-tour="products-bulk-price"
                         onClick={() => requireOwnerAccess(() => setIsBulkPriceModalOpen(true))}
-                        className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         <svg
                             className="h-4 w-4 text-[var(--primary)]"
@@ -501,7 +505,7 @@ function ProductList() {
                         type="button"
                         data-tour="products-import-catalog"
                         onClick={() => requireOwnerAccess(() => setIsImportModalOpen(true))}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         <span>Catálogo Base</span>
                     </button>
@@ -509,7 +513,7 @@ function ProductList() {
                     <button
                         type="button"
                         onClick={() => requireOwnerAccess(() => setIsCategoryModalOpen(true))}
-                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         Categorías ({categories.length})
                     </button>
@@ -517,7 +521,7 @@ function ProductList() {
                     <button
                         type="button"
                         onClick={() => requireOwnerAccess(() => setIsProviderModalOpen(true))}
-                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                     >
                         Proveedores ({providers.length})
                     </button>
@@ -526,7 +530,7 @@ function ProductList() {
                         type="button"
                         data-tour="products-create-btn"
                         onClick={() => requireOwnerAccess(handleOpenCreate)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
+                        className="inline-flex items-center gap-2 rounded-md bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                     >
                         <svg
                             className="h-4 w-4"
@@ -543,7 +547,7 @@ function ProductList() {
             </header>
 
             {/* SEARCH & FILTERS TOOLBAR */}
-            <div data-tour="products-search-bar" className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
+            <div data-tour="products-search-bar" className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
                 {/* PRIMARY CONTROLS ROW */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
                     {/* SEARCH INPUT */}
@@ -568,7 +572,7 @@ function ProductList() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por nombre, código o marca..."
-                            className="h-10.5 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-10 pr-8 text-xs font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10.5 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-8 text-xs font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                         />
                         {search && (
                             <button
@@ -594,7 +598,7 @@ function ProductList() {
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="h-10.5 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10.5 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                         >
                             <option value="">Todas las categorías</option>
                             {categories.map((c) => {
@@ -620,7 +624,7 @@ function ProductList() {
                         <select
                             value={selectedProvider}
                             onChange={(e) => setSelectedProvider(e.target.value)}
-                            className="h-10.5 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10.5 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                         >
                             <option value="">Todos los proveedores</option>
                             {providers.map((p) => {
@@ -646,7 +650,7 @@ function ProductList() {
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="h-10.5 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10.5 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                         >
                             <option value="name_asc">Nombre: A → Z</option>
                             <option value="name_desc">Nombre: Z → A</option>
@@ -666,7 +670,7 @@ function ProductList() {
                 {/* SECONDARY FILTER ROW: STATUS + ACTIVE FILTER TAGS + RESET BUTTON */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 text-xs">
                     {/* STATUS SEGMENTED CONTROL WITH COUNTS */}
-                    <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/40 p-1">
+                    <div className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/40 p-1">
                         <button
                             type="button"
                             onClick={() => setStatusFilter("active")}
@@ -706,6 +710,27 @@ function ProductList() {
                                 }`}
                             >
                                 {products.length}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter("promos")}
+                            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                                statusFilter === "promos"
+                                    ? "bg-[var(--primary)] text-white shadow-xs"
+                                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            }`}
+                        >
+                            <span>Promos & Ofertas</span>
+                            <span
+                                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                                    statusFilter === "promos"
+                                        ? "bg-white/20 text-white"
+                                        : "bg-[var(--surface)] text-[var(--text-secondary)]"
+                                }`}
+                            >
+                                {promoCount}
                             </span>
                         </button>
 
@@ -965,6 +990,23 @@ function ProductList() {
                                                             {p.category_name}
                                                         </span>
                                                     )}
+                                                    {p.is_bundle && (
+                                                        <span className="inline-flex items-center gap-1 rounded-md border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:text-purple-400">
+                                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" />
+                                                            </svg>
+                                                            <span>{p.bundle_items?.length === 1 ? "Oferta Especial" : `Combo (${p.bundle_items?.length || 0} arts.)`}</span>
+                                                        </span>
+                                                    )}
+                                                    {p.has_quantity_promo && (
+                                                        <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+                                                            </svg>
+                                                            <span>Promo {p.promo_quantity}x {formatCurrency(p.promo_price)}</span>
+                                                        </span>
+                                                    )}
                                                     {p.unit_type === "kg" && (
                                                         <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                                                             Por Kilo
@@ -975,23 +1017,44 @@ function ProductList() {
                                                             Por 100g
                                                         </span>
                                                     )}
-                                                    {p.stock !== null && p.stock !== undefined && (
-                                                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                                                            Number(p.stock) <= 0
-                                                                ? "bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]"
-                                                                : Number(p.stock) <= (Number(p.min_stock) || 0)
-                                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                                                                : "bg-[var(--surface-accent)] text-[var(--text-secondary)] border border-[var(--border)]"
-                                                        }`}>
-                                                            <span className={`h-1.5 w-1.5 rounded-full ${
+                                                    {p.is_bundle ? (
+                                                        p.bundle_stock !== null && p.bundle_stock !== undefined && (
+                                                            <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                                                                Number(p.bundle_stock) <= 0
+                                                                    ? "bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]"
+                                                                    : Number(p.bundle_stock) <= 2
+                                                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                                                    : "bg-[var(--surface-accent)] text-[var(--text-secondary)] border border-[var(--border)]"
+                                                            }`}>
+                                                                <span className={`h-1.5 w-1.5 rounded-full ${
+                                                                    Number(p.bundle_stock) <= 0
+                                                                        ? "bg-[var(--danger)]"
+                                                                        : Number(p.bundle_stock) <= 2
+                                                                        ? "bg-amber-500"
+                                                                        : "bg-emerald-500"
+                                                                }`} />
+                                                                {Number(p.bundle_stock) <= 0 ? "Sin stock para oferta/combo" : `Disp: ${p.bundle_stock} ${p.bundle_items?.length === 1 ? "ofertas" : "combos"}`}
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        p.stock !== null && p.stock !== undefined && (
+                                                            <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
                                                                 Number(p.stock) <= 0
-                                                                    ? "bg-[var(--danger)]"
+                                                                    ? "bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]"
                                                                     : Number(p.stock) <= (Number(p.min_stock) || 0)
-                                                                    ? "bg-amber-500"
-                                                                    : "bg-emerald-500"
-                                                            }`} />
-                                                            {Number(p.stock) <= 0 ? "Sin stock" : `Stock: ${formatStockQty(p.stock, p.unit_type)} ${formatUnitType(p.unit_type, false, p.stock)}`}
-                                                        </span>
+                                                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                                                    : "bg-[var(--surface-accent)] text-[var(--text-secondary)] border border-[var(--border)]"
+                                                            }`}>
+                                                                <span className={`h-1.5 w-1.5 rounded-full ${
+                                                                    Number(p.stock) <= 0
+                                                                        ? "bg-[var(--danger)]"
+                                                                        : Number(p.stock) <= (Number(p.min_stock) || 0)
+                                                                        ? "bg-amber-500"
+                                                                        : "bg-emerald-500"
+                                                                }`} />
+                                                                {Number(p.stock) <= 0 ? "Sin stock" : `Stock: ${formatStockQty(p.stock, p.unit_type)} ${formatUnitType(p.unit_type, false, p.stock)}`}
+                                                            </span>
+                                                        )
                                                     )}
                                                     {!p.is_active && (
                                                         <span className="rounded-md bg-[var(--danger)]/10 px-2 py-0.5 text-[11px] font-bold text-[var(--danger)]">
@@ -1044,18 +1107,25 @@ function ProductList() {
 
                                             {/* SALE PRICE */}
                                             <td className="py-3.5 px-4 text-right tabular-nums align-middle">
-                                                <span className="text-sm sm:text-base font-bold text-[var(--success)]">
-                                                    {formatCurrency(p.sale_price)}
-                                                </span>
-                                                {p.unit_type === "kg" && (
-                                                    <span className="text-xs font-semibold text-[var(--text-secondary)] ml-1">
-                                                        / kg
+                                                <div>
+                                                    <span className="text-sm sm:text-base font-bold text-[var(--success)]">
+                                                        {formatCurrency(p.sale_price)}
                                                     </span>
-                                                )}
-                                                {p.unit_type === "100g" && (
-                                                    <span className="text-xs font-semibold text-[var(--text-secondary)] ml-1">
-                                                        / 100g
-                                                    </span>
+                                                    {p.unit_type === "kg" && (
+                                                        <span className="text-xs font-semibold text-[var(--text-secondary)] ml-1">
+                                                            / kg
+                                                        </span>
+                                                    )}
+                                                    {p.unit_type === "100g" && (
+                                                        <span className="text-xs font-semibold text-[var(--text-secondary)] ml-1">
+                                                            / 100g
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {p.has_quantity_promo && (
+                                                    <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                        {p.promo_quantity} x {formatCurrency(p.promo_price)}
+                                                    </div>
                                                 )}
                                             </td>
 

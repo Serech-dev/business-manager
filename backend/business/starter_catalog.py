@@ -10,7 +10,7 @@ RUBRO_PRESETS = {
         "icon": "sparkles",
         "catalog": [
             {
-                "category": "Gaseosas & Aguas Saborizadas",
+                "category": "Bebidas",
                 "products": [
                     {"name": "Coca Cola 500ml", "barcode": "7790895000997", "sale_price": Decimal("1800.00"), "cost_price": Decimal("1300.00"), "unit_type": "unit"},
                     {"name": "Coca Cola 1.5L", "barcode": "7790895000447", "sale_price": Decimal("2800.00"), "cost_price": Decimal("2100.00"), "unit_type": "unit"},
@@ -99,7 +99,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Jugos & Energizantes",
+                "category": "Bebidas",
                 "products": [
                     {"name": "Cepita del Valle Naranja 1L", "barcode": "7790895004018", "sale_price": Decimal("2000.00"), "cost_price": Decimal("1450.00"), "unit_type": "unit"},
                     {"name": "Cepita del Valle Manzana 1L", "barcode": "7790895004025", "sale_price": Decimal("2000.00"), "cost_price": Decimal("1450.00"), "unit_type": "unit"},
@@ -148,7 +148,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Cervezas & Alcohol",
+                "category": "Bebidas",
                 "products": [
                     {"name": "Cerveza Quilmes Clásica 1L", "barcode": "7792798000012", "sale_price": Decimal("3200.00"), "cost_price": Decimal("2350.00"), "unit_type": "unit"},
                     {"name": "Cerveza Quilmes Clásica Lata 473ml", "barcode": "7792798000029", "sale_price": Decimal("2100.00"), "cost_price": Decimal("1550.00"), "unit_type": "unit"},
@@ -240,7 +240,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Alfajores, Chocolates & Golosinas",
+                "category": "Golosinas & Snacks",
                 "products": [
                     {"name": "Alfajor Guaymallén Blanco", "barcode": "7790580100014", "sale_price": Decimal("500.00"), "cost_price": Decimal("320.00"), "unit_type": "unit"},
                     {"name": "Alfajor Guaymallén Negro", "barcode": "7790580100021", "sale_price": Decimal("500.00"), "cost_price": Decimal("320.00"), "unit_type": "unit"},
@@ -340,7 +340,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Snacks & Galletitas de Kiosco",
+                "category": "Golosinas & Snacks",
                 "products": [
                     {"name": "Papas Fritas Lay's Clásicas 45g", "barcode": "7791813423012", "sale_price": Decimal("1400.00"), "cost_price": Decimal("950.00"), "unit_type": "unit"},
                     {"name": "Papas Fritas Lay's Clásicas 85g", "barcode": "7791813423029", "sale_price": Decimal("2400.00"), "cost_price": Decimal("1750.00"), "unit_type": "unit"},
@@ -459,7 +459,13 @@ RUBRO_PRESETS = {
         "icon": "shopping-bag",
         "catalog": [
             {
-                "category": "Yerba Mate, Té & Café",
+                "category": "Panadería",
+                "products": [
+                    {"name": "Pan (por kg)", "barcode": "", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
+                ],
+            },
+            {
+                "category": "Almacén",
                 "products": [
                     {"name": "Yerba Playadito 500g", "barcode": "7790580120012", "sale_price": Decimal("2800.00"), "cost_price": Decimal("2100.00"), "unit_type": "unit"},
                     {"name": "Yerba Playadito 1kg", "barcode": "7790580120029", "sale_price": Decimal("5200.00"), "cost_price": Decimal("3950.00"), "unit_type": "unit"},
@@ -551,7 +557,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Aceites, Harinas & Pastas Secas",
+                "category": "Almacén",
                 "products": [
                     {"name": "Aceite Natura Girasol 900ml", "barcode": "7790272001012", "sale_price": Decimal("2300.00"), "cost_price": Decimal("1700.00"), "unit_type": "unit"},
                     {"name": "Aceite Natura Girasol 1.5L", "barcode": "7790272001029", "sale_price": Decimal("3600.00"), "cost_price": Decimal("2700.00"), "unit_type": "unit"},
@@ -633,7 +639,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Conservas, Salsas & Condimentos",
+                "category": "Almacén",
                 "products": [
                     {"name": "Puré de Tomate La Campagnola Tetra 520g", "barcode": "7790580123013", "sale_price": Decimal("1100.00"), "cost_price": Decimal("750.00"), "unit_type": "unit"},
                     {"name": "Puré de Tomate Arcor Tetra 520g", "barcode": "7790580123020", "sale_price": Decimal("1100.00"), "cost_price": Decimal("750.00"), "unit_type": "unit"},
@@ -728,7 +734,7 @@ RUBRO_PRESETS = {
         "icon": "globe-alt",
         "catalog": [
             {
-                "category": "Quesos (por peso y fraccionados)",
+                "category": "Fiambrería & Lácteos",
                 "products": [
                     {"name": "Queso Cremoso La Serenísima Cremón (por kg)", "barcode": "7790580125018", "sale_price": Decimal("8900.00"), "cost_price": Decimal("6900.00"), "unit_type": "kg"},
                     {"name": "Queso Cremoso La Paulina (por kg)", "barcode": "7790580125025", "sale_price": Decimal("7900.00"), "cost_price": Decimal("6100.00"), "unit_type": "kg"},
@@ -761,7 +767,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Fiambres & Embutidos",
+                "category": "Fiambrería & Lácteos",
                 "products": [
                     {"name": "Jamón Cocido Paladini (por kg)", "barcode": "7790580125315", "sale_price": Decimal("12900.00"), "cost_price": Decimal("9900.00"), "unit_type": "kg"},
                     {"name": "Jamón Cocido Paladini (por 100g)", "barcode": "7790580125322", "sale_price": Decimal("1350.00"), "cost_price": Decimal("990.00"), "unit_type": "100g"},
@@ -800,7 +806,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Lácteos, Manteca & Tapas Frescas",
+                "category": "Fiambrería & Lácteos",
                 "products": [
                     {"name": "Leche La Serenísima Clásica 3% Sachet 1L", "barcode": "7790580125811", "sale_price": Decimal("1600.00"), "cost_price": Decimal("1200.00"), "unit_type": "unit"},
                     {"name": "Leche La Serenísima Liviana 1% Sachet 1L", "barcode": "7790580125828", "sale_price": Decimal("1600.00"), "cost_price": Decimal("1200.00"), "unit_type": "unit"},
@@ -853,7 +859,7 @@ RUBRO_PRESETS = {
         "icon": "sun",
         "catalog": [
             {
-                "category": "Verdulería & Hortalizas (por kilo)",
+                "category": "Verdulería & Frutería",
                 "products": [
                     {"name": "Papa Negra Lavada (por kg)", "barcode": "", "sale_price": Decimal("1100.00"), "cost_price": Decimal("750.00"), "unit_type": "kg"},
                     {"name": "Papa Blanca Cepillada (por kg)", "barcode": "", "sale_price": Decimal("1400.00"), "cost_price": Decimal("950.00"), "unit_type": "kg"},
@@ -896,7 +902,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Frutería (por kilo)",
+                "category": "Verdulería & Frutería",
                 "products": [
                     {"name": "Banana Ecuador Premium (por kg)", "barcode": "", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1850.00"), "unit_type": "kg"},
                     {"name": "Banana Salta / Bolivia (por kg)", "barcode": "", "sale_price": Decimal("2100.00"), "cost_price": Decimal("1450.00"), "unit_type": "kg"},
@@ -930,11 +936,9 @@ RUBRO_PRESETS = {
         "icon": "book-open",
         "catalog": [
             {
-                "category": "Panificados & Bollería",
+                "category": "Panadería",
                 "products": [
-                    {"name": "Pan Francés / Baguette (por kg)", "barcode": "", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
-                    {"name": "Pan Criollo / Mignon (por kg)", "barcode": "", "sale_price": Decimal("2800.00"), "cost_price": Decimal("1800.00"), "unit_type": "kg"},
-                    {"name": "Pan Flauta / Felipe (por kg)", "barcode": "", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
+                    {"name": "Pan (por kg)", "barcode": "", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1700.00"), "unit_type": "kg"},
                     {"name": "Pan de Campo Casero (por unidad)", "barcode": "", "sale_price": Decimal("2200.00"), "cost_price": Decimal("1400.00"), "unit_type": "unit"},
                     {"name": "Facturas Surtidas de Manteca (docena)", "barcode": "", "sale_price": Decimal("7200.00"), "cost_price": Decimal("4600.00"), "unit_type": "unit"},
                     {"name": "Facturas Surtidas de Manteca (media docena)", "barcode": "", "sale_price": Decimal("3800.00"), "cost_price": Decimal("2400.00"), "unit_type": "unit"},
@@ -959,7 +963,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Confitería & Sándwiches de Miga",
+                "category": "Panadería",
                 "products": [
                     {"name": "Sándwich de Miga Jamón y Queso (unidad)", "barcode": "", "sale_price": Decimal("1600.00"), "cost_price": Decimal("980.00"), "unit_type": "unit"},
                     {"name": "Sándwiches de Miga Jamón y Queso (docena)", "barcode": "", "sale_price": Decimal("17500.00"), "cost_price": Decimal("11200.00"), "unit_type": "unit"},
@@ -990,7 +994,7 @@ RUBRO_PRESETS = {
         "icon": "shopping-cart",
         "catalog": [
             {
-                "category": "Cortes Vacunos (por kilo)",
+                "category": "Carnicería & Granja",
                 "products": [
                     {"name": "Asado de Tira Vacuno (por kg)", "barcode": "", "sale_price": Decimal("9800.00"), "cost_price": Decimal("7600.00"), "unit_type": "kg"},
                     {"name": "Vacío Vacuno (por kg)", "barcode": "", "sale_price": Decimal("11500.00"), "cost_price": Decimal("8900.00"), "unit_type": "kg"},
@@ -1018,7 +1022,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Pollería, Cerdo & Huevos",
+                "category": "Carnicería & Granja",
                 "products": [
                     {"name": "Pollo Entero Fresco (por kg)", "barcode": "", "sale_price": Decimal("3400.00"), "cost_price": Decimal("2450.00"), "unit_type": "kg"},
                     {"name": "Pechuga de Pollo Fileteada / Suprema (por kg)", "barcode": "", "sale_price": Decimal("7400.00"), "cost_price": Decimal("5600.00"), "unit_type": "kg"},
@@ -1048,7 +1052,7 @@ RUBRO_PRESETS = {
         "icon": "shield-check",
         "catalog": [
             {
-                "category": "Limpieza del Hogar & Lavandería",
+                "category": "Limpieza",
                 "products": [
                     {"name": "Lavandina Ayudín Clásica 1L", "barcode": "7790580133333", "sale_price": Decimal("1600.00"), "cost_price": Decimal("1180.00"), "unit_type": "unit"},
                     {"name": "Lavandina Ayudín Clásica 2L", "barcode": "7790580133340", "sale_price": Decimal("2900.00"), "cost_price": Decimal("2150.00"), "unit_type": "unit"},
@@ -1140,7 +1144,7 @@ RUBRO_PRESETS = {
                 ],
             },
             {
-                "category": "Perfumería & Cuidado Personal",
+                "category": "Perfumería & Higiene",
                 "products": [
                     {"name": "Crema Dental Colgate Total 12 90g", "barcode": "7790580152222", "sale_price": Decimal("2600.00"), "cost_price": Decimal("1950.00"), "unit_type": "unit"},
                     {"name": "Crema Dental Colgate Total 12 140g", "barcode": "7790580152277", "sale_price": Decimal("3600.00"), "cost_price": Decimal("2700.00"), "unit_type": "unit"},
@@ -1230,7 +1234,7 @@ RUBRO_PRESETS = {
         "icon": "heart",
         "catalog": [
             {
-                "category": "Alimentos para Perros & Gatos",
+                "category": "Mascotas",
                 "products": [
                     {"name": "Pedigree Perro Adulto Carne y Vegetales 1.5kg", "barcode": "7790580128010", "sale_price": Decimal("6900.00"), "cost_price": Decimal("5200.00"), "unit_type": "unit"},
                     {"name": "Pedigree Perro Adulto Carne y Vegetales 3kg", "barcode": "7790580128027", "sale_price": Decimal("12900.00"), "cost_price": Decimal("9800.00"), "unit_type": "unit"},

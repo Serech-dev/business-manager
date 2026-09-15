@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Normalizes text for search by removing accents/diacritics and trimming whitespace.
  * e.g., "Panadería" -> "panaderia", "Taragüi" -> "taragui", "Capitán" -> "capitan"
  */
@@ -126,6 +126,11 @@ export function filterAndRankProducts(products = [], query = "", options = {}) {
         }
         if (statusFilter === "inactive" && p.is_active) {
             continue;
+        }
+        if (statusFilter === "promos") {
+            if (!p.has_quantity_promo && !p.is_bundle) {
+                continue;
+            }
         }
         if (statusFilter === "out_of_stock") {
             if (p.stock === null || Number(p.stock) > 0) continue;
