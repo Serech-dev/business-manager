@@ -301,7 +301,7 @@ function BarcodeNotFoundModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn">
-            <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
+            <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5 bg-[var(--surface-accent)]">
                     <div className="flex items-center gap-3">
@@ -334,7 +334,16 @@ function BarcodeNotFoundModal({
                 {/* CONTENT */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-4">
                     {/* 1. QUICK-ADD & PRICE CONFIRMATION FORM */}
-                    <form onSubmit={handleSaveAndAddToSale} className="rounded-xl border border-[var(--primary)]/30 bg-[var(--surface-accent)]/30 p-4 space-y-3.5 shadow-sm">
+                    <div
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSaveAndAddToSale();
+                            }
+                        }}
+                        className="rounded-md border border-[var(--primary)]/30 bg-[var(--surface-accent)]/30 p-4 space-y-3.5 shadow-xs"
+                    >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--primary)] uppercase tracking-wider">
                                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -365,7 +374,7 @@ function BarcodeNotFoundModal({
                                 value={nameInput}
                                 onChange={(e) => setNameInput(e.target.value)}
                                 placeholder="Ej: Té de Manzanilla La Virginia x 25u"
-                                className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+                                className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
                             />
                         </div>
 
@@ -387,7 +396,7 @@ function BarcodeNotFoundModal({
                                         value={salePriceInput}
                                         onChange={(e) => setSalePriceInput(e.target.value)}
                                         placeholder="0"
-                                        className="h-10 w-full rounded-lg border-2 border-[var(--primary)]/60 bg-[var(--background)] pl-7 pr-3 text-sm font-extrabold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                        className="h-10 w-full rounded-md border-2 border-[var(--primary)]/60 bg-[var(--background)] pl-7 pr-3 text-sm font-extrabold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                     />
                                 </div>
                             </div>
@@ -407,7 +416,7 @@ function BarcodeNotFoundModal({
                                         value={costPriceInput}
                                         onChange={(e) => setCostPriceInput(e.target.value)}
                                         placeholder="0"
-                                        className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-7 pr-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+                                        className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-7 pr-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
                                     />
                                 </div>
                             </div>
@@ -432,7 +441,7 @@ function BarcodeNotFoundModal({
                                     <select
                                         value={categoryIdInput}
                                         onChange={(e) => setCategoryIdInput(e.target.value)}
-                                        className="h-9 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 pr-8 text-xs text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] cursor-pointer"
+                                        className="h-9 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 pr-8 text-xs text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] cursor-pointer"
                                     >
                                         <option value="">Sin categoría</option>
                                         {categories.map((c) => (
@@ -458,7 +467,7 @@ function BarcodeNotFoundModal({
                                     <select
                                         value={providerIdInput}
                                         onChange={(e) => setProviderIdInput(e.target.value)}
-                                        className="h-9 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 pr-8 text-xs text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] cursor-pointer"
+                                        className="h-9 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 pr-8 text-xs text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] cursor-pointer"
                                     >
                                         <option value="">Sin proveedor</option>
                                         {providers.map((p) => (
@@ -478,14 +487,15 @@ function BarcodeNotFoundModal({
 
                         {/* SUBMIT BUTTON */}
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={handleSaveAndAddToSale}
                             disabled={isSaving}
-                            className="w-full flex items-center justify-center gap-2 rounded-lg bg-[var(--primary)] py-2.5 px-4 text-xs font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-98 disabled:opacity-50 mt-2"
+                            className="w-full flex items-center justify-center gap-2 rounded-md bg-[var(--primary)] py-2.5 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] active:scale-98 disabled:opacity-50 mt-2"
                         >
                             <span>+</span>
                             <span>{isSaving ? "Guardando..." : "Guardar y sumar a la venta (Enter)"}</span>
                         </button>
-                    </form>
+                    </div>
 
                     {/* 2. LINK TO EXISTING PRODUCT SECTION */}
                     <div className="space-y-2 pt-2 border-t border-[var(--border)]">

@@ -146,7 +146,7 @@ function TransactionCard({
     return (
         <article className="
             overflow-hidden
-            rounded-xl
+            rounded-lg
             border
             border-[var(--border)]
             bg-[var(--surface)]

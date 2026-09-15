@@ -511,38 +511,48 @@ function EditTransactionModal({
                                                 key={amountIndex}
                                                 className="flex items-center gap-2"
                                             >
-                                                <select
-                                                    value={amountItem.method}
-                                                    onChange={(e) =>
-                                                        handleUpdateAmount(
-                                                            opIndex,
-                                                            amountIndex,
-                                                            "method",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    className="
-                                                        w-32
-                                                        shrink-0
-                                                        rounded-md
-                                                        border
-                                                        border-[var(--border)]
-                                                        bg-[var(--background)]
-                                                        px-2.5
-                                                        py-1.5
-                                                        text-xs
-                                                        text-[var(--text-primary)]
-                                                        outline-none
-                                                        focus:border-[var(--primary)]
-                                                    "
-                                                >
-                                                    <option value="cash">Efectivo</option>
-                                                    <option value="transfer">Transferencia</option>
-                                                    <option value="card">Tarjeta</option>
-                                                    {op.type !== "payment" && (
-                                                        <option value="debt">A cuenta</option>
-                                                    )}
-                                                </select>
+                                                <div className="relative w-36 shrink-0">
+                                                    <select
+                                                        value={amountItem.method}
+                                                        onChange={(e) =>
+                                                            handleUpdateAmount(
+                                                                opIndex,
+                                                                amountIndex,
+                                                                "method",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="
+                                                            h-9
+                                                            w-full
+                                                            appearance-none
+                                                            rounded-md
+                                                            border
+                                                            border-[var(--border)]
+                                                            bg-[var(--background)]
+                                                            px-2.5
+                                                            pr-7
+                                                            text-xs
+                                                            font-semibold
+                                                            text-[var(--text-primary)]
+                                                            outline-none
+                                                            transition
+                                                            focus:border-[var(--primary)]
+                                                        "
+                                                    >
+                                                        <option value="cash">Efectivo</option>
+                                                        <option value="transfer">Transferencia</option>
+                                                        <option value="card">Tarjeta</option>
+                                                        {op.type !== "payment" && (
+                                                            <option value="debt">A cuenta</option>
+                                                        )}
+                                                    </select>
+                                                    <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+                                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
 
                                                 <div className="relative flex-1">
                                                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-secondary)]">

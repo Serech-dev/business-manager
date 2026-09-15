@@ -95,14 +95,6 @@ function SaleProductSelector({
         setSelectedResultIndex(0);
     }, [searchResults, nationalSearchResults]);
 
-    // Focus search input on mount for zero-click scanning / typing
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            searchInputRef.current?.focus();
-        }, 50);
-        return () => clearTimeout(timer);
-    }, []);
-
     // Close search dropdown on click outside
     useEffect(() => {
         function handleClickOutside(e) {
@@ -220,22 +212,7 @@ function SaleProductSelector({
         enabled: !isBarcodeNotFoundModalOpen && !activeProductForWeight && editingPriceIndex === null,
     });
 
-    // Keyboard navigation and shortcuts for search input ('/' or 'F2')
-    useEffect(() => {
-        function handleGlobalShortcuts(e) {
-            const targetTag = e.target?.tagName;
-            const isEditingInput =
-                targetTag === "INPUT" || targetTag === "TEXTAREA" || targetTag === "SELECT";
 
-            if ((e.key === "/" || e.key === "F2") && !isEditingInput) {
-                e.preventDefault();
-                searchInputRef.current?.focus();
-            }
-        }
-
-        window.addEventListener("keydown", handleGlobalShortcuts);
-        return () => window.removeEventListener("keydown", handleGlobalShortcuts);
-    }, []);
 
     // Search input keyboard navigation (Up, Down, Enter, Escape)
     function handleSearchKeyDown(e) {
@@ -485,12 +462,12 @@ function SaleProductSelector({
                         }}
                         onKeyDown={handleSearchKeyDown}
                         placeholder="Buscá por nombre, marca o pasá el código de barras..."
-                        className="h-12 w-full rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] pl-11 pr-24 text-sm font-semibold text-[var(--text-primary)] shadow-sm outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary)]/10"
+                        className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-10 pr-10 text-sm font-semibold text-[var(--text-primary)] shadow-xs outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                     />
 
-                    {/* RIGHT ACTIONS / SHORTCUT BADGE */}
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                        {searchQuery ? (
+                    {/* RIGHT ACTION: CLEAR BUTTON */}
+                    {searchQuery && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -502,19 +479,15 @@ function SaleProductSelector({
                             >
                                 ✕
                             </button>
-                        ) : (
-                            <kbd className="hidden sm:inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--text-secondary)]">
-                                /
-                            </kbd>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
 
 
                 {/* SEARCH DROPDOWN POPUP */}
                 {isSearchOpen && Boolean(searchQuery.trim()) && (
-                    <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-80 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)]">
+                    <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xl divide-y divide-[var(--border)]">
                         {searchResults.length === 0 && nationalSearchResults.length === 0 ? (
                             <div className="p-4 text-center text-xs text-[var(--text-secondary)] space-y-1">
                                 <p>No se encontraron productos para &quot;{searchQuery}&quot;</p>
@@ -659,7 +632,7 @@ function SaleProductSelector({
             </div>
 
             {/* ALWAYS-VISIBLE MANUAL / VARIOS AMOUNT FIELD */}
-            <div data-tour="sale-manual-amount" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-xs">
+            <div data-tour="sale-manual-amount" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-xs">
                 <div className="space-y-0.5">
                     <label htmlFor="sale-manual-amount" className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] block cursor-pointer">
                         Monto manual / Varios (+)
@@ -701,7 +674,7 @@ function SaleProductSelector({
                         onClick={() => setActiveProductForWeight(null)}
                     />
 
-                    <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
+                    <div className="relative w-full max-w-md overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl space-y-4">
                         <div className="flex items-start justify-between border-b border-[var(--border)] pb-3">
                             <div>
                                 <span className="inline-block rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider mb-1">
@@ -925,7 +898,7 @@ function SaleProductSelector({
 
             {/* CART ITEMS TABLE */}
             {items.length > 0 ? (
-                <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-accent)]/40 px-4 py-2.5">
                         <div className="flex items-center gap-2">
@@ -1139,12 +1112,12 @@ function SaleProductSelector({
                     </div>
                 </div>
             ) : (
-                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-accent)]/20 p-4 text-center">
+                <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-accent)]/20 p-4 text-center">
                     <p className="text-xs font-semibold text-[var(--text-secondary)]">
                         No hay productos agregados al carrito.
                     </p>
-                    <p className="text-[11px] text-[var(--text-secondary)]/70 mt-0.5">
-                        Escaneá un código de barras o buscá con <kbd className="rounded-sm border border-[var(--border)] bg-[var(--surface)] px-1 py-0.2 font-mono text-[10px] text-[var(--text-primary)]">/</kbd>.
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                        Escaneá un código de barras o escribí el nombre en el buscador.
                     </p>
                 </div>
             )}
