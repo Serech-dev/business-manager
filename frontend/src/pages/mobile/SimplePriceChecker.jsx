@@ -5,7 +5,8 @@ import { getProducts, getCategories } from "../../services/business";
 import { filterAndRankProducts } from "../../utils/productSearch";
 import { useBarcodeScanner } from "../../hooks/useBarcodeScanner";
 import MobileCameraScanner from "../../components/mobile/MobileCameraScanner";
-import { NATIONAL_PRODUCTS } from "../../utils/nationalCatalog";
+import { findInNationalCatalog } from "../../utils/nationalCatalog";
+import { lookupBarcodeDetails } from "../../utils/barcodeLookup";
 import ProductModal from "../../components/products/ProductModal";
 import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
 
@@ -61,13 +62,29 @@ export function SimplePriceChecker({ onNavigateToPos }) {
             toast.success(`Producto: ${found.name}`, { id: "checker-found" });
         } else {
             setActiveProduct(null);
-            const nat = NATIONAL_PRODUCTS[barcodeStr];
+            const nat = findInNationalCatalog(barcodeStr);
             setUnregisteredInfo({
                 barcode: barcodeStr,
                 national: nat || null,
             });
             playBeepWarning();
-            toast.error("Código no registrado en el catálogo local", { id: "checker-not-found" });
+            toast.error("Código no registrado en el inventario local", { id: "checker-not-found" });
+
+            if (!nat) {
+                lookupBarcodeDetails(barcodeStr).then((onlineInfo) => {
+                    if (onlineInfo) {
+                        setUnregisteredInfo((prev) => {
+                            if (prev?.barcode === barcodeStr) {
+                                return {
+                                    barcode: barcodeStr,
+                                    national: onlineInfo,
+                                };
+                            }
+                            return prev;
+                        });
+                    }
+                });
+            }
         }
     }, [products]);
 

@@ -138,11 +138,15 @@ function BarcodeNotFoundModal({
                             setSimilarStoreProduct(res.similar_store_product);
                         }
                     } else if (!localMatch) {
-                        // 3. Fallback online lookup
+                        // 3. Fallback online lookup across open databases
                         lookupBarcodeDetails(scannedBarcode).then((info) => {
                             if (info && info.name) {
                                 setDetectedInfo(info);
                                 setNameInput(info.name);
+                                if (info.category) {
+                                    const matchedCat = findMatchingCategoryId(info.category);
+                                    if (matchedCat) setCategoryIdInput(matchedCat);
+                                }
                                 if (info.sale_price) setSalePriceInput(String(info.sale_price));
                                 if (info.cost_price) setCostPriceInput(String(info.cost_price));
                             }

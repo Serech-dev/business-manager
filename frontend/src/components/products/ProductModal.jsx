@@ -115,6 +115,13 @@ function ProductModal({
                 const detected = await lookupBarcodeDetails(scannedCode);
                 if (detected?.name) {
                     setName(detected.name);
+                    if (detected.category && categories.length > 0 && !categoryId) {
+                        const matchCat = categories.find((c) =>
+                            c.name.toLowerCase().includes(detected.category.toLowerCase()) ||
+                            detected.category.toLowerCase().includes(c.name.toLowerCase())
+                        );
+                        if (matchCat) setCategoryId(String(matchCat.id));
+                    }
                     toast.success(`Producto detectado: ${detected.name}`);
                     salePriceInputRef.current?.focus();
                 }
