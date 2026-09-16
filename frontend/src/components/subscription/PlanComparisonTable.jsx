@@ -133,8 +133,8 @@ export function PlanComparisonTable({ onSelectPlan, currentTier }) {
                         )}
                     </div>
                     <div className="mt-3 flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-[var(--text-primary)]">$10.000</span>
-                        <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes ($100.000/año)</span>
+                        <span className="text-2xl font-black text-[var(--text-primary)]">$9.900</span>
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes ($99.000/año)</span>
                     </div>
                     <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
                         Ideal para comercios que necesitan agilidad total en caja, control de stock, combos y libreta de clientes.
@@ -167,8 +167,8 @@ export function PlanComparisonTable({ onSelectPlan, currentTier }) {
                         )}
                     </div>
                     <div className="mt-3 flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-[var(--text-primary)]">$20.000</span>
-                        <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes ($200.000/año)</span>
+                        <span className="text-2xl font-black text-[var(--text-primary)]">$19.900</span>
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes ($199.000/año)</span>
                     </div>
                     <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
                         Para negocios en crecimiento que precisan múltiples empleados, reportes de rentabilidad y cuentas de proveedores.

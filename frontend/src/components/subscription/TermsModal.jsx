@@ -94,8 +94,8 @@ export function TermsModal({ isOpen, onClose, initialTab = "terms" }) {
                                     3. Planes, Precios y Formas de Pago
                                 </h3>
                                 <ul className="list-disc pl-5 space-y-1 text-[var(--text-primary)]">
-                                    <li><strong>Plan Básico:</strong> $10.000 / mes o $100.000 / año (incluye 2 meses bonificados).</li>
-                                    <li><strong>Plan Premium:</strong> $20.000 / mes o $200.000 / año (incluye 2 meses bonificados).</li>
+                                    <li><strong>Plan Básico:</strong> $9.900 / mes o $99.000 / año (incluye 2 meses bonificados).</li>
+                                    <li><strong>Plan Premium:</strong> $19.900 / mes o $199.000 / año (incluye 2 meses bonificados).</li>
                                 </ul>
                                 <p>
                                     Los pagos son procesados mediante pasarelas autorizadas (Mercado Pago, transferencias bancarias y QR interoperable). Al tratarse de renovaciones manuales prepagas, nunca se efectúan débitos automáticos no autorizados sobre las cuentas bancarias o tarjetas de los usuarios.

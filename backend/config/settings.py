@@ -173,7 +173,7 @@ SUBSCRIPTION_PRICES = {
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_MONTHLY", "10000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_MONTHLY", "9900.00")),
         "days": 30,
         "tier": "basic",
     },
@@ -185,7 +185,7 @@ SUBSCRIPTION_PRICES = {
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_YEARLY", "100000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_YEARLY", "99000.00")),
         "days": 365,
         "tier": "basic",
     },
@@ -197,7 +197,7 @@ SUBSCRIPTION_PRICES = {
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_PREMIUM_MONTHLY", "20000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_PREMIUM_MONTHLY", "19900.00")),
         "days": 30,
         "tier": "premium",
     },
@@ -209,7 +209,7 @@ SUBSCRIPTION_PRICES = {
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_PREMIUM_YEARLY", "200000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_PREMIUM_YEARLY", "199000.00")),
         "days": 365,
         "tier": "premium",
     },
@@ -222,7 +222,7 @@ SUBSCRIPTION_PRICES = {
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_MONTHLY", "10000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_MONTHLY", "9900.00")),
         "days": 30,
         "tier": "basic",
     },
@@ -234,7 +234,7 @@ SUBSCRIPTION_PRICES = {
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_YEARLY", "100000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_YEARLY", "99000.00")),
         "days": 365,
         "tier": "basic",
     },

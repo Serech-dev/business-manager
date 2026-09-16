@@ -30,10 +30,10 @@ function SubscriptionExpiredOverlay() {
     const currentPlanKey = `${selectedTier}_${billingCycle}`;
 
     const PLAN_PRICES = {
-        basic_monthly: { amount: 10000, label: "$10.000", period: "/ mes", title: "Plan Básico Mensual" },
-        basic_yearly: { amount: 100000, label: "$100.000", period: "/ año", title: "Plan Básico Anual" },
-        premium_monthly: { amount: 20000, label: "$20.000", period: "/ mes", title: "Plan Premium Mensual" },
-        premium_yearly: { amount: 200000, label: "$200.000", period: "/ año", title: "Plan Premium Anual" },
+        basic_monthly: { amount: 9900, label: "$9.900", period: "/ mes", title: "Plan Básico Mensual" },
+        basic_yearly: { amount: 99000, label: "$99.000", period: "/ año", title: "Plan Básico Anual" },
+        premium_monthly: { amount: 19900, label: "$19.900", period: "/ mes", title: "Plan Premium Mensual" },
+        premium_yearly: { amount: 199000, label: "$199.000", period: "/ año", title: "Plan Premium Anual" },
     };
 
     const currentPriceInfo = PLAN_PRICES[currentPlanKey] || PLAN_PRICES.basic_monthly;
@@ -158,7 +158,7 @@ function SubscriptionExpiredOverlay() {
                         >
                             <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Básico</span>
                             <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
-                                {billingCycle === "yearly" ? "$100.000" : "$10.000"}
+                                {billingCycle === "yearly" ? "$99.000" : "$9.900"}
                                 <span className="text-xs font-medium text-[var(--text-secondary)]"> {billingCycle === "yearly" ? "/ año" : "/ mes"}</span>
                             </span>
                         </div>
@@ -176,7 +176,7 @@ function SubscriptionExpiredOverlay() {
                             </div>
                             <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Premium</span>
                             <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
-                                {billingCycle === "yearly" ? "$200.000" : "$20.000"}
+                                {billingCycle === "yearly" ? "$199.000" : "$19.900"}
                                 <span className="text-xs font-medium text-[var(--text-secondary)]"> {billingCycle === "yearly" ? "/ año" : "/ mes"}</span>
                             </span>
                         </div>

@@ -35,10 +35,10 @@ function SubscriptionModal({ isOpen, onClose }) {
 
     // Pricing dictionary
     const PLAN_PRICES = {
-        basic_monthly: { amount: 10000, label: "$10.000", period: "/ mes", title: "Plan Básico Mensual" },
-        basic_yearly: { amount: 100000, label: "$100.000", period: "/ año", monthlyEquiv: "$8.333/mes", title: "Plan Básico Anual", discount: "2 meses gratis" },
-        premium_monthly: { amount: 20000, label: "$20.000", period: "/ mes", title: "Plan Premium Mensual" },
-        premium_yearly: { amount: 200000, label: "$200.000", period: "/ año", monthlyEquiv: "$16.666/mes", title: "Plan Premium Anual", discount: "2 meses gratis" },
+        basic_monthly: { amount: 9900, label: "$9.900", period: "/ mes", title: "Plan Básico Mensual" },
+        basic_yearly: { amount: 99000, label: "$99.000", period: "/ año", monthlyEquiv: "$8.250/mes", title: "Plan Básico Anual", discount: "2 meses gratis" },
+        premium_monthly: { amount: 19900, label: "$19.900", period: "/ mes", title: "Plan Premium Mensual" },
+        premium_yearly: { amount: 199000, label: "$199.000", period: "/ año", monthlyEquiv: "$16.583/mes", title: "Plan Premium Anual", discount: "2 meses gratis" },
     };
 
     const currentPriceInfo = PLAN_PRICES[currentPlanKey] || PLAN_PRICES.basic_monthly;
@@ -344,7 +344,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                                         </div>
                                         <div className="mt-2 flex items-baseline gap-1">
                                             <span className="text-2xl font-black text-[var(--text-primary)]">
-                                                {billingCycle === "yearly" ? "$100.000" : "$10.000"}
+                                                {billingCycle === "yearly" ? "$99.000" : "$9.900"}
                                             </span>
                                             <span className="text-xs text-[var(--text-secondary)] font-medium">
                                                 {billingCycle === "yearly" ? "/ año" : "/ mes"}
@@ -369,14 +369,14 @@ function SubscriptionModal({ isOpen, onClose }) {
                                         </div>
 
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm font-bold text-amber-500 dark:text-amber-400">Plan Premium</span>
+                                             <span className="text-sm font-bold text-amber-500 dark:text-amber-400">Plan Premium</span>
                                             <span className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedTier === "premium" ? "border-amber-500 bg-amber-500 text-white" : "border-[var(--border)]"}`}>
                                                 {selectedTier === "premium" && <span className="h-2 w-2 rounded-full bg-white" />}
                                             </span>
                                         </div>
                                         <div className="mt-2 flex items-baseline gap-1">
                                             <span className="text-2xl font-black text-[var(--text-primary)]">
-                                                {billingCycle === "yearly" ? "$200.000" : "$20.000"}
+                                                {billingCycle === "yearly" ? "$199.000" : "$19.900"}
                                             </span>
                                             <span className="text-xs text-[var(--text-secondary)] font-medium">
                                                 {billingCycle === "yearly" ? "/ año" : "/ mes"}
@@ -408,7 +408,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                                         <div>
                                             <p className="text-xs font-bold text-[var(--text-primary)]">Pago Mensual (30 días)</p>
                                             <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                                                {selectedTier === "premium" ? "$20.000 / mes" : "$10.000 / mes"}
+                                                {selectedTier === "premium" ? "$19.900 / mes" : "$9.900 / mes"}
                                             </p>
                                         </div>
                                         <span className={`h-4 w-4 rounded-full border flex items-center justify-center ${billingCycle === "monthly" ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border)]"}`}>
@@ -431,7 +431,7 @@ function SubscriptionModal({ isOpen, onClose }) {
                                         <div>
                                             <p className="text-xs font-bold text-[var(--text-primary)]">Pago Anual (365 días)</p>
                                             <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                                                {selectedTier === "premium" ? "$200.000 / año ($16.666/mes)" : "$100.000 / año ($8.333/mes)"}
+                                                {selectedTier === "premium" ? "$199.000 / año ($16.583/mes)" : "$99.000 / año ($8.250/mes)"}
                                             </p>
                                         </div>
                                         <span className={`h-4 w-4 rounded-full border flex items-center justify-center ${billingCycle === "yearly" ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border)]"}`}>

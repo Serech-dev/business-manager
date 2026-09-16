@@ -19,14 +19,14 @@ class Subscription(models.Model):
 
     class Plan(models.TextChoices):
         TRIAL = "trial", "Prueba (14 días)"
-        BASIC_MONTHLY = "basic_monthly", "Plan Básico Mensual ($10.000/mes)"
-        BASIC_YEARLY = "basic_yearly", "Plan Básico Anual ($100.000/año)"
-        PREMIUM_MONTHLY = "premium_monthly", "Plan Premium Mensual ($20.000/mes)"
-        PREMIUM_YEARLY = "premium_yearly", "Plan Premium Anual ($200.000/año)"
+        BASIC_MONTHLY = "basic_monthly", "Plan Básico Mensual ($9.900/mes)"
+        BASIC_YEARLY = "basic_yearly", "Plan Básico Anual ($99.000/año)"
+        PREMIUM_MONTHLY = "premium_monthly", "Plan Premium Mensual ($19.900/mes)"
+        PREMIUM_YEARLY = "premium_yearly", "Plan Premium Anual ($199.000/año)"
         LIFETIME = "lifetime", "Licencia Vitalicia Premium"
         # Backwards compatibility
-        MONTHLY = "monthly", "Plan Mensual ($10.000/mes)"
-        YEARLY = "yearly", "Plan Anual ($100.000/año)"
+        MONTHLY = "monthly", "Plan Mensual ($9.900/mes)"
+        YEARLY = "yearly", "Plan Anual ($99.000/año)"
 
     PREMIUM_FEATURES = {
         "employees",
@@ -387,10 +387,10 @@ class Subscription(models.Model):
                 "cbu": "0000003100010000000000",
                 "holder": "Business Manager Payments",
                 "email_contact": "soporte.businessmanager@gmail.com",
-                "basic_monthly_price": 10000,
-                "basic_yearly_price": 100000,
-                "premium_monthly_price": 20000,
-                "premium_yearly_price": 200000,
+                "basic_monthly_price": 9900,
+                "basic_yearly_price": 99000,
+                "premium_monthly_price": 19900,
+                "premium_yearly_price": 199000,
             },
         }
 
@@ -424,12 +424,12 @@ class PaymentNotification(models.Model):
         MANUAL_TRANSFER = "manual_transfer", "Transferencia Bancaria Manual"
 
     class PlanRequested(models.TextChoices):
-        BASIC_MONTHLY = "basic_monthly", "Plan Básico Mensual ($10.000/mes)"
-        BASIC_YEARLY = "basic_yearly", "Plan Básico Anual ($100.000/año)"
-        PREMIUM_MONTHLY = "premium_monthly", "Plan Premium Mensual ($20.000/mes)"
-        PREMIUM_YEARLY = "premium_yearly", "Plan Premium Anual ($200.000/año)"
-        MONTHLY = "monthly", "Plan Básico Mensual ($10.000/mes)"
-        YEARLY = "yearly", "Plan Básico Anual ($100.000/año)"
+        BASIC_MONTHLY = "basic_monthly", "Plan Básico Mensual ($9.900/mes)"
+        BASIC_YEARLY = "basic_yearly", "Plan Básico Anual ($99.000/año)"
+        PREMIUM_MONTHLY = "premium_monthly", "Plan Premium Mensual ($19.900/mes)"
+        PREMIUM_YEARLY = "premium_yearly", "Plan Premium Anual ($199.000/año)"
+        MONTHLY = "monthly", "Plan Básico Mensual ($9.900/mes)"
+        YEARLY = "yearly", "Plan Básico Anual ($99.000/año)"
 
     subscription = models.ForeignKey(
         Subscription,
