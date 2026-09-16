@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../../context/NotificationContext";
 
-export function NotificationMenu() {
+export function NotificationMenu({ align = "right" }) {
     const {
         notifications,
         unreadCount,
@@ -86,7 +86,7 @@ export function NotificationMenu() {
 
             {/* NOTIFICATIONS DROPDOWN POPOVER */}
             {isOpen && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-80 sm:w-96 rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden animate-fadeIn">
+                <div className={`absolute ${align === "left" ? "left-0" : "right-0"} top-full z-50 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden animate-fadeIn`}>
                     {/* HEADER */}
                     <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 bg-[var(--surface-accent)]">
                         <div className="flex items-center gap-2">

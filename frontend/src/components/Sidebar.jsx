@@ -153,7 +153,7 @@ function Sidebar({
                         Administrador
                     </p>
                     <div className="flex items-center gap-1.5">
-                        <NotificationMenu />
+                        <NotificationMenu align="left" />
                         <button
                             type="button"
                             onClick={openSubscriptionModal}
