@@ -17,12 +17,7 @@ const BARCODE_FORMATS = [
  * 
  * Embedded smartphone camera barcode reader for PWA and Mobile Simple Mode.
  * Features laser aiming guide, torch toggle, camera switcher, audio feedback, and debounce.
- * 
- * @param {Function} onScan - Callback when barcode is detected: (code) => void
- * @param {Function} onClose - Optional callback to close scanner overlay
- * @param {string} [title="Escanear Código de Barras"] - Header title
- * @param {string} [subtitle] - Helper subtitle
- * @param {boolean} [continuous=true] - If true, keeps scanning after detection with debounce
+ * Gracefully handles unmounting and missing/denied camera permissions.
  */
 export function MobileCameraScanner({
     onScan,
@@ -34,6 +29,7 @@ export function MobileCameraScanner({
     const scannerId = useRef(`qr-reader-${Math.random().toString(36).substring(2, 9)}`).current;
     const scannerRef = useRef(null);
     const lastScannedRef = useRef({ code: "", timestamp: 0 });
+    const isMountedRef = useRef(true);
 
     const [isStarting, setIsStarting] = useState(true);
     const [cameraError, setCameraError] = useState(null);
@@ -53,7 +49,9 @@ export function MobileCameraScanner({
         }
 
         lastScannedRef.current = { code, timestamp: now };
-        setLastDetected(code);
+        if (isMountedRef.current) {
+            setLastDetected(code);
+        }
         playBeepSuccess();
 
         if (onScan) {
@@ -65,18 +63,36 @@ export function MobileCameraScanner({
         }
     }, [onScan, onClose, continuous]);
 
+    const stopScannerSafely = useCallback(async () => {
+        const instance = scannerRef.current;
+        if (!instance) return;
+
+        try {
+            // Only stop if currently scanning (state 2 is SCANNING)
+            if (instance.isScanning) {
+                await instance.stop();
+            }
+        } catch {
+            // Ignore any stop errors safely
+        }
+
+        try {
+            instance.clear();
+        } catch {
+            // Ignore clear errors safely
+        }
+    }, []);
+
     const startScanner = useCallback(async (cameraIdOrConfig) => {
         try {
+            if (!isMountedRef.current) return;
             setIsStarting(true);
             setCameraError(null);
 
-            if (scannerRef.current) {
-                try {
-                    await scannerRef.current.stop();
-                } catch {
-                    // Ignore stop error if already stopped
-                }
-            }
+            // Safely stop any previous instance
+            await stopScannerSafely();
+
+            if (!isMountedRef.current) return;
 
             const html5QrCode = new Html5Qrcode(scannerId, {
                 formatsToSupport: BARCODE_FORMATS,
@@ -103,9 +119,14 @@ export function MobileCameraScanner({
                 config,
                 (decodedText) => handleBarcodeDetected(decodedText),
                 () => {
-                    // QR parse frame failed (normal while searching for barcode)
+                    // QR/Barcode search loop frame (normal)
                 }
             );
+
+            if (!isMountedRef.current) {
+                await stopScannerSafely();
+                return;
+            }
 
             // Check if torch/flashlight capability exists
             try {
@@ -119,28 +140,38 @@ export function MobileCameraScanner({
 
             setIsStarting(false);
         } catch (err) {
-            console.error("Camera scanner error:", err);
-            setCameraError(
-                err?.name === "NotAllowedError"
-                    ? "Permiso de cámara denegado. Habilitalo en los ajustes de tu navegador."
-                    : "No se pudo acceder a la cámara. Verificá que no esté en uso por otra app."
-            );
-            setIsStarting(false);
-            playBeepWarning();
+            console.warn("Camera scanner notice:", err);
+            if (isMountedRef.current) {
+                const errStr = String(err?.name || err?.message || err);
+                const isDenied = errStr.includes("NotAllowedError") || errStr.includes("Permission") || errStr.includes("denied");
+                setCameraError(
+                    isDenied
+                        ? "Permiso de cámara denegado o no disponible en este dispositivo."
+                        : "No se pudo acceder a la cámara. Verificá que no esté en uso por otra app."
+                );
+                setIsStarting(false);
+                playBeepWarning();
+            }
         }
-    }, [scannerId, handleBarcodeDetected]);
+    }, [scannerId, handleBarcodeDetected, stopScannerSafely]);
 
-    // Initial camera startup
+    // Initial camera startup & cleanup
     useEffect(() => {
-        let isMounted = true;
+        isMountedRef.current = true;
 
         async function init() {
             try {
-                const devices = await Html5Qrcode.getCameras();
-                if (isMounted && devices && devices.length > 0) {
+                const devices = await Html5Qrcode.getCameras().catch(() => []);
+                if (!isMountedRef.current) return;
+
+                if (devices && devices.length > 0) {
                     setCameras(devices);
-                    // Prefer rear camera
-                    const backCam = devices.find(d => d.label.toLowerCase().includes("back") || d.label.toLowerCase().includes("trasera") || d.label.toLowerCase().includes("environment"));
+                    // Prefer rear / back camera
+                    const backCam = devices.find(d =>
+                        d.label.toLowerCase().includes("back") ||
+                        d.label.toLowerCase().includes("trasera") ||
+                        d.label.toLowerCase().includes("environment")
+                    );
                     const initialCamId = backCam ? backCam.id : devices[0].id;
                     const initialIdx = devices.findIndex(d => d.id === initialCamId);
                     setCurrentCameraIndex(initialIdx >= 0 ? initialIdx : 0);
@@ -149,7 +180,7 @@ export function MobileCameraScanner({
                     await startScanner({ facingMode: "environment" });
                 }
             } catch {
-                if (isMounted) {
+                if (isMountedRef.current) {
                     await startScanner({ facingMode: "environment" });
                 }
             }
@@ -158,14 +189,10 @@ export function MobileCameraScanner({
         init();
 
         return () => {
-            isMounted = false;
-            if (scannerRef.current) {
-                scannerRef.current.stop().catch(() => {}).finally(() => {
-                    scannerRef.current?.clear?.();
-                });
-            }
+            isMountedRef.current = false;
+            stopScannerSafely();
         };
-    }, [startScanner]);
+    }, [startScanner, stopScannerSafely]);
 
     const toggleTorch = async () => {
         if (!scannerRef.current || !hasTorch) return;
@@ -204,7 +231,7 @@ export function MobileCameraScanner({
                         <button
                             type="button"
                             onClick={toggleTorch}
-                            className={`p-2 rounded-md transition-colors ${
+                            className={`p-2 rounded-xl transition-colors ${
                                 isTorchOn
                                     ? "bg-amber-500 text-slate-950 font-bold"
                                     : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -221,7 +248,7 @@ export function MobileCameraScanner({
                         <button
                             type="button"
                             onClick={switchCamera}
-                            className="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-md transition-colors"
+                            className="p-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl transition-colors"
                             title="Cambiar Cámara"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +261,7 @@ export function MobileCameraScanner({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-2 bg-slate-800 text-slate-300 hover:bg-rose-950 hover:text-rose-300 rounded-md transition-colors"
+                            className="p-2 bg-slate-800 text-slate-300 hover:bg-rose-950 hover:text-rose-300 rounded-xl transition-colors"
                             title="Cerrar escáner"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,9 +280,9 @@ export function MobileCameraScanner({
                 />
 
                 {/* Laser Overlay Guide */}
-                {!cameraError && (
+                {!cameraError && !isStarting && (
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-6">
-                        <div className="relative w-64 h-40 rounded-md border-2 border-dashed border-emerald-400/70 shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center">
+                        <div className="relative w-64 h-40 rounded-2xl border-2 border-dashed border-emerald-400/70 shadow-[0_0_25px_rgba(16,185,129,0.3)] flex items-center justify-center">
                             {/* Scanning Red Laser Line */}
                             <div className="absolute left-2 right-2 h-0.5 bg-rose-500 shadow-[0_0_8px_#f43f5e] animate-pulse"></div>
 
@@ -266,37 +293,49 @@ export function MobileCameraScanner({
                         </div>
 
                         {lastDetected && (
-                            <div className="mt-4 px-3 py-1 bg-emerald-500/90 text-slate-950 text-xs font-mono font-bold rounded-md shadow-lg animate-bounce">
+                            <div className="mt-4 px-3 py-1 bg-emerald-500/90 text-slate-950 text-xs font-mono font-bold rounded-xl shadow-lg animate-bounce">
                                 Código: {lastDetected}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Loading / Error States */}
+                {/* Loading State */}
                 {isStarting && (
                     <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center p-4">
-                        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-3"></div>
                         <p className="text-sm text-slate-300 font-medium">Iniciando cámara...</p>
                     </div>
                 )}
 
+                {/* Error State */}
                 {cameraError && (
                     <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-                        <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                         </div>
-                        <h4 className="text-base font-semibold text-white mb-1">Acceso a Cámara Requerido</h4>
+                        <h4 className="text-base font-semibold text-white mb-1">Cámara no disponible</h4>
                         <p className="text-xs text-slate-400 max-w-xs mb-4">{cameraError}</p>
-                        <button
-                            type="button"
-                            onClick={() => startScanner({ facingMode: "environment" })}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition-colors"
-                        >
-                            Reintentar Conexión
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => startScanner({ facingMode: "environment" })}
+                                className="px-4 py-2 bg-[var(--primary)] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-colors shadow-md"
+                            >
+                                Reintentar Conexión
+                            </button>
+                            {onClose && (
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl transition-colors"
+                                >
+                                    Cerrar
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
@@ -312,4 +351,3 @@ export function MobileCameraScanner({
 }
 
 export default MobileCameraScanner;
-

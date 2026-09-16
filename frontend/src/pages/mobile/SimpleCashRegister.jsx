@@ -296,7 +296,7 @@ export function SimpleCashRegister() {
                     </div>
 
                     <div className="p-2.5 bg-[var(--surface-accent)]/60 rounded-md">
-                        <span className="text-[10px] text-[var(--text-secondary)] block">Libreta (A cuenta)</span>
+                        <span className="text-[10px] text-[var(--text-secondary)] block">A Cuenta (Fiado)</span>
                         <span className="font-bold font-mono text-amber-400">
                             {formatCurrency(summary.salesDebt)}
                         </span>

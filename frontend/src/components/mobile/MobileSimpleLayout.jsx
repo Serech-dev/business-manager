@@ -194,7 +194,7 @@ export function MobileSimpleLayout() {
                                                 </svg>
                                             </div>
                                             <div>
-                                                <span className="font-bold text-[var(--text-primary)] block">Clientes & Libreta</span>
+                                                <span className="font-bold text-[var(--text-primary)] block">Clientes & Cuentas</span>
                                                 <span className="text-[10px] text-[var(--text-secondary)]">Cuentas corrientes</span>
                                             </div>
                                         </button>

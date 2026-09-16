@@ -326,12 +326,12 @@ export function SimplePos({ register, onOpenRegister }) {
         toast.success(`Sumado cambio de dinero (${formatCurrency(amt)})`);
     };
 
-    // 6. Add Debt Payment (Pago de Libreta)
+    // 6. Add Debt Payment (Pago A Cuenta)
     const handleAddDebtPayment = (e) => {
         if (e) e.preventDefault();
         const client = debtPaymentClient || selectedClient;
         if (!client) {
-            toast.error("Seleccioná el cliente que realiza el pago.");
+            toast.error("Seleccioná el cliente que realiza el pago a cuenta.");
             return;
         }
 
@@ -346,7 +346,7 @@ export function SimplePos({ register, onOpenRegister }) {
             {
                 id: `payment-${Date.now()}`,
                 type: "payment",
-                name: `Pago a Cuenta · ${client.name}`,
+                name: `Pago A Cuenta · ${client.name}`,
                 client,
                 unitPrice: amt,
                 subtotal: amt,
@@ -363,7 +363,7 @@ export function SimplePos({ register, onOpenRegister }) {
         setDebtPaymentClient(null);
         setActiveServiceSheet(null);
         playBeepSuccess();
-        toast.success(`Sumado pago de libreta de ${client.name}`);
+        toast.success(`Sumado pago a cuenta de ${client.name}`);
     };
 
     // 7. Update Item Quantity (stepper)
@@ -373,7 +373,6 @@ export function SimplePos({ register, onOpenRegister }) {
             const item = updated[index];
 
             if (item.type !== "product" || item.unitType !== "unit") {
-                // For non-unit products, removing if delta < 0
                 if (delta < 0) {
                     return updated.filter((_, i) => i !== index);
                 }
@@ -573,7 +572,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
         const hasPaymentItem = ticketItems.some((i) => i.type === "payment");
         if ((paymentMethod === "debt" || hasPaymentItem) && !selectedClient) {
-            toast.error("Seleccioná un cliente para registrar la operación a cuenta / libreta.");
+            toast.error("Seleccioná un cliente para registrar la operación a cuenta.");
             return;
         }
 
@@ -673,7 +672,7 @@ export function SimplePos({ register, onOpenRegister }) {
                 });
             }
 
-            // 5. Debt Payment Items
+            // 5. Debt Payment Items (A Cuenta)
             const paymentItems = ticketItems.filter((i) => i.type === "payment");
             for (const pay of paymentItems) {
                 operations.push({
@@ -750,7 +749,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                 )}
                             </div>
                             <span className="text-[10px] text-[var(--text-secondary)] block truncate">
-                                {selectedClient ? "Tocar para cambiar" : "Tocar para asignar cliente / libreta"}
+                                {selectedClient ? "Tocar para cambiar" : "Tocar para asignar cliente (A cuenta)"}
                             </span>
                         </div>
                     </button>
@@ -821,7 +820,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         <span>Cambio $</span>
                     </button>
 
-                    {/* Cobro Libreta */}
+                    {/* Cobro A Cuenta */}
                     <button
                         type="button"
                         onClick={() => setActiveServiceSheet("payment")}
@@ -830,7 +829,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
-                        <span>Cobro Libreta</span>
+                        <span>Cobro A Cuenta</span>
                     </button>
                 </div>
             </div>
@@ -1021,7 +1020,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                                         : item.type === "exchange"
                                                         ? "CAMBIO"
                                                         : item.type === "payment"
-                                                        ? "LIBRETA"
+                                                        ? "A CUENTA"
                                                         : "VARIOS"}
                                                 </span>
                                             )}
@@ -1282,7 +1281,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                         { id: "cash", label: "Efectivo" },
                                         { id: "mp", label: "Mercado Pago / Transf." },
                                         { id: "card", label: "Tarjeta Débito / Crédito" },
-                                        { id: "debt", label: "Libreta (A Cuenta)" },
+                                        { id: "debt", label: "A Cuenta (Fiado)" },
                                     ].map((m) => (
                                         <button
                                             key={m.id}
@@ -1352,10 +1351,10 @@ export function SimplePos({ register, onOpenRegister }) {
                                 </div>
                             )}
 
-                            {/* Libreta warning */}
+                            {/* A Cuenta warning */}
                             {paymentMethod === "debt" && (
                                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs space-y-1">
-                                    <p className="font-bold text-amber-400">Venta en Libreta / A Cuenta</p>
+                                    <p className="font-bold text-amber-400">Venta A Cuenta (Fiado)</p>
                                     <p className="text-[11px] text-[var(--text-secondary)]">
                                         {selectedClient ? (
                                             <>
@@ -1681,13 +1680,13 @@ export function SimplePos({ register, onOpenRegister }) {
                 </div>
             )}
 
-            {/* 5. Debt Payment Sheet (Cobro Libreta) */}
+            {/* 5. Debt Payment Sheet (Cobro A Cuenta) */}
             {activeServiceSheet === "payment" && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
-                                Cobro de Libreta / Pago a Cuenta
+                                Cobro A Cuenta (Pago de Deuda)
                             </h4>
                             <button
                                 type="button"
@@ -1738,7 +1737,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                             {(debtPaymentClient || selectedClient).name}
                                         </p>
                                         <p className="text-[10px] text-[var(--text-secondary)]">
-                                            Deuda: {formatCurrency((debtPaymentClient || selectedClient).current_debt || 0)}
+                                            Deuda actual: {formatCurrency((debtPaymentClient || selectedClient).current_debt || 0)}
                                         </p>
                                     </div>
                                     <button
@@ -1774,7 +1773,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                         }
                                         className="text-xs text-[var(--primary)] font-bold hover:underline"
                                     >
-                                        Saldar total ({formatCurrency((debtPaymentClient || selectedClient).current_debt)})
+                                        Saldar deuda total ({formatCurrency((debtPaymentClient || selectedClient).current_debt)})
                                     </button>
                                 )}
 
