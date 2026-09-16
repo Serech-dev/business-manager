@@ -30,6 +30,9 @@ import { SubscriptionProvider, useSubscription } from "./context/SubscriptionCon
 import { StoreSettingsProvider, useStoreSettings } from "./context/StoreSettingsContext";
 
 
+import { NotificationProvider } from "./context/NotificationContext";
+
+
 function SubscriptionModalContainer() {
     const { isSubscriptionModalOpen, closeSubscriptionModal } = useSubscription();
 
@@ -64,15 +67,16 @@ function App() {
         <DeviceSecurityProvider>
             <SubscriptionProvider>
                 <StoreSettingsProvider>
-                    <OnboardingProvider>
-                        <Toaster
-                            position="top-center"
-                            toastOptions={{
-                                duration: 2500,
-                            }}
-                        />
+                    <NotificationProvider>
+                        <OnboardingProvider>
+                            <Toaster
+                                position="top-center"
+                                toastOptions={{
+                                    duration: 2500,
+                                }}
+                            />
 
-                        <PinModal />
+                            <PinModal />
 
                         <BrowserRouter>
                             <SubscriptionModalContainer />
@@ -159,9 +163,10 @@ function App() {
                         </Routes>
                     </BrowserRouter>
                 </OnboardingProvider>
-            </StoreSettingsProvider>
-        </SubscriptionProvider>
-    </DeviceSecurityProvider>
+            </NotificationProvider>
+        </StoreSettingsProvider>
+    </SubscriptionProvider>
+</DeviceSecurityProvider>
 );
 }
 

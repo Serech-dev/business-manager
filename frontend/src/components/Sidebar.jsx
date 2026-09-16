@@ -10,6 +10,7 @@ import {
 } from "../services/business";
 
 import AccountMenu from "./AccountMenu";
+import NotificationMenu from "./notifications/NotificationMenu";
 import ConfirmDialog from "./ConfirmDialog";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useSubscription } from "../context/SubscriptionContext";
@@ -151,20 +152,23 @@ function Sidebar({
                     ">
                         Administrador
                     </p>
-                    <button
-                        type="button"
-                        onClick={openSubscriptionModal}
-                        className={`rounded-sm px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition ${
-                            isPremium || isSuperuser
-                                ? "badge-gold hover:opacity-95"
-                                : isTrial
-                                ? "badge-gold-subtle"
-                                : "bg-[var(--surface-muted)] text-[var(--text-secondary)] border border-[var(--border)] hover:text-[var(--text-primary)]"
-                        }`}
-                        title="Ver plan y opciones de suscripción"
-                    >
-                        {isSuperuser ? "Admin" : isTrial ? "Prueba" : isPremium ? "Premium" : "Básico"}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                        <NotificationMenu />
+                        <button
+                            type="button"
+                            onClick={openSubscriptionModal}
+                            className={`rounded-sm px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition ${
+                                isPremium || isSuperuser
+                                    ? "badge-gold hover:opacity-95"
+                                    : isTrial
+                                    ? "badge-gold-subtle"
+                                    : "bg-[var(--surface-muted)] text-[var(--text-secondary)] border border-[var(--border)] hover:text-[var(--text-primary)]"
+                            }`}
+                            title="Ver plan y opciones de suscripción"
+                        >
+                            {isSuperuser ? "Admin" : isTrial ? "Prueba" : isPremium ? "Premium" : "Básico"}
+                        </button>
+                    </div>
                 </div>
 
                 <h1 className="
