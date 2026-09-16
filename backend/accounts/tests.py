@@ -390,5 +390,29 @@ class SubscriptionTests(TestCase):
         self.assertTrue(sub.is_valid)
         self.assertGreaterEqual(sub.days_remaining, 13)
 
+    def test_admin_set_expiration_custom_dates_action(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        target_date = (timezone.now() + timedelta(days=45)).isoformat()
+        res = self.client.post(
+            f"/api/auth/admin/subscriptions/{self.user.id}/action/",
+            {
+                "action": "set_expiration",
+                "expires_at": target_date,
+                "premium_expires_at": target_date,
+                "basic_expires_at": None,
+                "notes": "Modificación manual de prueba",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("subscription", res.data)
+        self.assertEqual(res.data["subscription"]["tier"], "premium")
+        self.assertGreaterEqual(res.data["subscription"]["days_remaining"], 44)
+
+        sub = Subscription.objects.get(user=self.user)
+        self.assertEqual(sub.notes, "Modificación manual de prueba")
+        self.assertTrue(sub.is_premium)
+
 
 

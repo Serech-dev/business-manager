@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import generics, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
@@ -513,7 +514,7 @@ class AdminManageSubscriptionView(APIView):
                 days=30,
                 tier=Subscription.Tier.BASIC,
                 plan=Subscription.Plan.BASIC_MONTHLY,
-                amount=amount or Decimal("10000.00"),
+                amount=amount or Decimal("9900.00"),
                 reference=reference or "Renovación manual Básico 30 días",
             )
         elif action in ["extend_365", "extend_365_basic"]:
@@ -521,7 +522,7 @@ class AdminManageSubscriptionView(APIView):
                 days=365,
                 tier=Subscription.Tier.BASIC,
                 plan=Subscription.Plan.BASIC_YEARLY,
-                amount=amount or Decimal("100000.00"),
+                amount=amount or Decimal("99000.00"),
                 reference=reference or "Renovación manual Básico 1 año",
             )
         elif action == "extend_30_premium":
@@ -529,7 +530,7 @@ class AdminManageSubscriptionView(APIView):
                 days=30,
                 tier=Subscription.Tier.PREMIUM,
                 plan=Subscription.Plan.PREMIUM_MONTHLY,
-                amount=amount or Decimal("20000.00"),
+                amount=amount or Decimal("19900.00"),
                 reference=reference or "Renovación manual Premium 30 días",
             )
         elif action == "extend_365_premium":
@@ -537,7 +538,7 @@ class AdminManageSubscriptionView(APIView):
                 days=365,
                 tier=Subscription.Tier.PREMIUM,
                 plan=Subscription.Plan.PREMIUM_YEARLY,
-                amount=amount or Decimal("200000.00"),
+                amount=amount or Decimal("199000.00"),
                 reference=reference or "Renovación manual Premium 1 año",
             )
         elif action == "activate_trial":
@@ -563,24 +564,33 @@ class AdminManageSubscriptionView(APIView):
             plan = request.data.get("plan")
             subscription.extend(days=days, tier=tier, plan=plan, amount=amount, reference=reference)
         elif action == "set_expiration":
-            expires_at_str = request.data.get("expires_at")
-            premium_expires_at_str = request.data.get("premium_expires_at")
-            basic_expires_at_str = request.data.get("basic_expires_at")
-            if expires_at_str:
-                subscription.expires_at = expires_at_str
-            if premium_expires_at_str:
-                subscription.premium_expires_at = premium_expires_at_str
-            if basic_expires_at_str:
-                subscription.basic_expires_at = basic_expires_at_str
-            subscription.status = Subscription.Status.ACTIVE
+            if "expires_at" in request.data:
+                val = request.data.get("expires_at")
+                subscription.expires_at = parse_datetime(val) if val else None
+            if "premium_expires_at" in request.data:
+                val = request.data.get("premium_expires_at")
+                subscription.premium_expires_at = parse_datetime(val) if val else None
+            if "basic_expires_at" in request.data:
+                val = request.data.get("basic_expires_at")
+                subscription.basic_expires_at = parse_datetime(val) if val else None
+
+            if "notes" in request.data:
+                subscription.notes = str(request.data.get("notes") or "").strip()
+
+            if subscription.is_valid:
+                subscription.status = Subscription.Status.ACTIVE
+            else:
+                subscription.status = Subscription.Status.EXPIRED
+
             subscription.save()
+            subscription.refresh_from_db()
         else:
             return Response(
                 {"error": f"Acción '{action}' no reconocida."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if notes and action not in ["lifetime", "suspend"]:
+        if notes and action not in ["lifetime", "suspend", "set_expiration"]:
             subscription.notes = f"{subscription.notes}\n[{timezone.now().strftime('%Y-%m-%d')}]: {notes}".strip()
             subscription.save()
 
