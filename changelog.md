@@ -1,3 +1,21 @@
+v1.6.0 (Modo Simple Mobile PWA - BETA, In-App Notifications & Subscription Tiers)
+
+- Modo Simple & Progressive Web App (PWA - BETA):
+  - Dedicated mobile PWA with manifest, service worker (`vite-plugin-pwa`), touch icon presets, and standalone app display.
+  - Tactile mobile Point of Sale terminal (`SimplePos.jsx`) featuring fluid multi-service ribbon (`+ Varios $`, `Carga SUBE`, `Recarga Celular`, `Cambio $`, `Cobro A Cuenta`).
+  - Unified multi-service ticket: seamlessly blend products, weighable items (with custom grams picker), arbitrary custom amounts, utility recharges, money exchange, and debt collections into a single sale.
+  - Floating bottom checkout drawer with fast bill shortcuts (`Exacto`, `+$1.000`, `+$2.000`, `+$5.000`, `+$10.000`, `+$20.000`), live change calculation, and post-sale WhatsApp receipt sharing.
+  - Integrated mobile camera barcode scanner (`MobileCameraScanner.jsx`) with laser viewfinder target, instant beep/haptic feedback, catalog auto-recognition, and graceful camera error handling.
+  - Dedicated Mobile Control Hub (`SimpleMoreHub.jsx`) replacing nested dropdowns with a structured 2x3 module grid, merchant hero card, inline theme selector, and business settings.
+  - Responsive dropdown & drawer containment: bounds `NotificationMenu` and `AccountMenu` to mobile screen viewports without overflowing.
+- In-App Real-Time Notification Center:
+  - Header notification bell with badge counters, unread filters, and single-click dismiss actions (`NotificationMenu.jsx`).
+  - Automated proactive alerts for low stock / out-of-stock items, license expiration countdowns (3 days / 1 day / expired), and overnight active cash register reminders.
+- PRO Subscription Tiers & Charm Pricing:
+  - Psychological charm pricing structure (.900 / .000 / .900 / .000).
+  - Dynamic tier-based avatar gradient indicators (PRO, Trial, Básico, Lifetime, Superadmin) across all menus.
+  - Superadmin owner panel subscription action management and ISO datetime parsing fixes.
+
 v1.5.0 (Phase 2 - Hardware Barcode Scanner, Master National Catalog & Auto-Recognition)
 
 - Hardware Barcode Reader Integration (HID Keyboard Emulation):
