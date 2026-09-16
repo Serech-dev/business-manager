@@ -4,8 +4,8 @@ import SimplePos from "../../pages/mobile/SimplePos";
 import SimplePriceChecker from "../../pages/mobile/SimplePriceChecker";
 import SimpleCashRegister from "../../pages/mobile/SimpleCashRegister";
 import MobileCameraScanner from "./MobileCameraScanner";
+import SimpleMoreHub from "./SimpleMoreHub";
 import NotificationMenu from "../notifications/NotificationMenu";
-import AccountMenu from "../AccountMenu";
 import { useDeviceMode } from "../../hooks/useDeviceMode";
 import { useSubscription } from "../../context/SubscriptionContext";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
@@ -147,84 +147,7 @@ export function MobileSimpleLayout() {
                         )}
 
                         {activeTab === "more" && (
-                            <div className="p-4 space-y-4 max-w-md mx-auto">
-                                <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-xs">
-                                    <h3 className="font-bold text-sm text-[var(--text-primary)] mb-3">Módulos de Gestión</h3>
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate("/products")}
-                                            className="p-3 bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left font-medium transition-colors flex flex-col gap-1.5"
-                                        >
-                                            <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <span className="font-bold text-[var(--text-primary)] block">Productos</span>
-                                                <span className="text-[10px] text-[var(--text-secondary)]">Catálogo completo</span>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate("/stock")}
-                                            className="p-3 bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left font-medium transition-colors flex flex-col gap-1.5"
-                                        >
-                                            <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <span className="font-bold text-[var(--text-primary)] block">Control Stock</span>
-                                                <span className="text-[10px] text-[var(--text-secondary)]">Alertas y reposición</span>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate("/clients")}
-                                            className="p-3 bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left font-medium transition-colors flex flex-col gap-1.5"
-                                        >
-                                            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <span className="font-bold text-[var(--text-primary)] block">Clientes & Cuentas</span>
-                                                <span className="text-[10px] text-[var(--text-secondary)]">Cuentas corrientes</span>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate("/analytics")}
-                                            className="p-3 bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left font-medium transition-colors flex flex-col gap-1.5"
-                                        >
-                                            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <span className="font-bold text-[var(--text-primary)] block">Métricas & Caja</span>
-                                                <span className="text-[10px] text-[var(--text-secondary)]">Reportes mensuales</span>
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Account Menu embedded */}
-                                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3 shadow-xs">
-                                    <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] mb-2 px-1">
-                                        Mi Cuenta & Ajustes
-                                    </p>
-                                    <AccountMenu />
-                                </div>
-                            </div>
+                            <SimpleMoreHub />
                         )}
                     </>
                 )}
