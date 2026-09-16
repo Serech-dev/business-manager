@@ -28,8 +28,7 @@ import { DeviceSecurityProvider } from "./context/DeviceSecurityContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { SubscriptionProvider, useSubscription } from "./context/SubscriptionContext";
 import { StoreSettingsProvider, useStoreSettings } from "./context/StoreSettingsContext";
-
-
+import { DeviceModeProvider } from "./hooks/useDeviceMode";
 import { NotificationProvider } from "./context/NotificationContext";
 
 
@@ -64,11 +63,12 @@ function StoreSettingsModalContainer() {
 
 function App() {
     return (
-        <DeviceSecurityProvider>
-            <SubscriptionProvider>
-                <StoreSettingsProvider>
-                    <NotificationProvider>
-                        <OnboardingProvider>
+        <DeviceModeProvider>
+            <DeviceSecurityProvider>
+                <SubscriptionProvider>
+                    <StoreSettingsProvider>
+                        <NotificationProvider>
+                            <OnboardingProvider>
                             <Toaster
                                 position="top-center"
                                 toastOptions={{
@@ -167,6 +167,7 @@ function App() {
         </StoreSettingsProvider>
     </SubscriptionProvider>
 </DeviceSecurityProvider>
+</DeviceModeProvider>
 );
 }
 

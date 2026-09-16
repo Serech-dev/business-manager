@@ -3,9 +3,12 @@ import { Outlet } from "react-router-dom";
 
 import Sidebar from "./Sidebar";
 import HelpButton from "./HelpButton";
+import MobileSimpleLayout from "./mobile/MobileSimpleLayout";
 import { getCurrentRegister } from "../services/business";
+import { useDeviceMode } from "../hooks/useDeviceMode";
 
 function AppLayout() {
+    const { isSimpleMode } = useDeviceMode();
     const [register, setRegister] = useState(null);
 
     async function loadRegister() {
@@ -20,6 +23,10 @@ function AppLayout() {
     useEffect(() => {
         loadRegister();
     }, []);
+
+    if (isSimpleMode) {
+        return <MobileSimpleLayout />;
+    }
 
     return (
         <div className="min-h-screen text-[var(--text-primary)]">

@@ -10,12 +10,13 @@ export default defineConfig({
         VitePWA({
             registerType: "autoUpdate",
             manifest: {
-                name: "Market Manager",
-                short_name: "Market Manager",
-                description: "Gestión de ventas para tu negocio.",
-                theme_color: "#a34f63",
-                background_color: "#fdf6f0",
+                name: "Business Manager",
+                short_name: "Business Manager",
+                description: "Gestión de ventas y stock para tu negocio.",
+                theme_color: "#1e1b4b",
+                background_color: "#0f172a",
                 display: "standalone",
+                orientation: "portrait",
                 start_url: "/",
                 icons: [
                     {
@@ -26,6 +27,11 @@ export default defineConfig({
                     {
                         src: "/pwa-512x512.png",
                         sizes: "512x512",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/apple-touch-icon.png",
+                        sizes: "180x180",
                         type: "image/png",
                     },
                 ],

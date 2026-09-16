@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { APP_VERSION } from "../utils/version";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useStoreSettings } from "../context/StoreSettingsContext";
+import { useDeviceMode } from "../hooks/useDeviceMode";
 
 function AccountMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,7 @@ function AccountMenu() {
     const menuRef = useRef(null);
 
     const navigate = useNavigate();
+    const { isSimpleMode, toggleMode } = useDeviceMode();
     const { settings, openSettingsModal } = useStoreSettings();
     const {
         subscription,
@@ -333,6 +335,35 @@ function AccountMenu() {
                                 </div>
                                 <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition">
                                     →
+                                </span>
+                            </button>
+
+                            {/* INTERFACE MODE TOGGLE (SIMPLE VS DESKTOP) */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    toggleMode();
+                                }}
+                                className="flex w-full items-center justify-between rounded-xl p-2.5 text-left transition hover:bg-[var(--surface-accent)] group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] block">
+                                            {isSimpleMode ? "Modo Escritorio" : "Modo Simple (PWA)"}
+                                        </span>
+                                        <span className="text-[11px] text-[var(--text-secondary)]">
+                                            {isSimpleMode ? "Cambiar a panel completo" : "Punto de venta táctil y escáner"}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span className="text-xs font-bold text-[var(--primary)]">
+                                    {isSimpleMode ? "Activar" : "Activar"}
                                 </span>
                             </button>
 
