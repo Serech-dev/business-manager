@@ -29,6 +29,9 @@ class StoreSettingsTests(TestCase):
         self.assertEqual(settings.phone_fee_value, Decimal("10.00"))
         self.assertEqual(settings.sube_fee_value, Decimal("10.00"))
         self.assertFalse(settings.debt_surcharge_enabled)
+        self.assertFalse(settings.card_surcharge_enabled)
+        self.assertEqual(settings.card_surcharge_type, StoreSettings.FeeType.PERCENTAGE)
+        self.assertEqual(settings.card_surcharge_value, Decimal("10.00"))
         self.assertFalse(settings.is_setup_completed)
 
     def test_fee_calculations(self):
@@ -56,11 +59,31 @@ class StoreSettingsTests(TestCase):
         surcharge = settings.calculate_debt_surcharge(5000)
         self.assertEqual(surcharge, Decimal("300.00"))
 
+        # Disabled card surcharge returns 0
+        card_surcharge = settings.calculate_card_surcharge(8000)
+        self.assertEqual(card_surcharge, Decimal("0"))
+
+        # Enabled percentage card surcharge (10% of 8000 = 800)
+        settings.card_surcharge_enabled = True
+        settings.card_surcharge_type = StoreSettings.FeeType.PERCENTAGE
+        settings.card_surcharge_value = Decimal("10.00")
+        settings.save()
+        card_surcharge = settings.calculate_card_surcharge(8000)
+        self.assertEqual(card_surcharge, Decimal("800"))
+
+        # Fixed card surcharge ($400 fixed)
+        settings.card_surcharge_type = StoreSettings.FeeType.FIXED
+        settings.card_surcharge_value = Decimal("400.00")
+        settings.save()
+        card_surcharge = settings.calculate_card_surcharge(8000)
+        self.assertEqual(card_surcharge, Decimal("400.00"))
+
     def test_get_and_patch_store_settings_api(self):
         # GET
         get_res = self.client.get("/api/business/settings/")
         self.assertEqual(get_res.status_code, status.HTTP_200_OK)
         self.assertEqual(get_res.data["store_name"], "Mi Negocio")
+        self.assertFalse(get_res.data["card_surcharge_enabled"])
         self.assertFalse(get_res.data["is_setup_completed"])
 
         # PATCH
@@ -73,6 +96,9 @@ class StoreSettingsTests(TestCase):
                 "exchange_fee_value": "12.00",
                 "debt_surcharge_enabled": True,
                 "debt_surcharge_value": "15.00",
+                "card_surcharge_enabled": True,
+                "card_surcharge_type": "fixed",
+                "card_surcharge_value": "250.00",
                 "is_setup_completed": True,
             },
             format="json",
@@ -81,11 +107,17 @@ class StoreSettingsTests(TestCase):
         self.assertEqual(patch_res.data["store_name"], "Kiosco San Martín")
         self.assertEqual(Decimal(str(patch_res.data["exchange_fee_value"])), Decimal("12.00"))
         self.assertTrue(patch_res.data["debt_surcharge_enabled"])
+        self.assertTrue(patch_res.data["card_surcharge_enabled"])
+        self.assertEqual(patch_res.data["card_surcharge_type"], "fixed")
+        self.assertEqual(Decimal(str(patch_res.data["card_surcharge_value"])), Decimal("250.00"))
         self.assertTrue(patch_res.data["is_setup_completed"])
 
         # Verify persisted in DB
         settings = StoreSettings.objects.get(user=self.user)
         self.assertEqual(settings.store_name, "Kiosco San Martín")
+        self.assertTrue(settings.card_surcharge_enabled)
+        self.assertEqual(settings.card_surcharge_type, "fixed")
+        self.assertEqual(settings.card_surcharge_value, Decimal("250.00"))
         self.assertTrue(settings.is_setup_completed)
 
 

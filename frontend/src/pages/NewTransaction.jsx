@@ -75,7 +75,7 @@ function createNewOperation() {
 
 function NewTransaction() {
     const navigate = useNavigate();
-    const { settings, calculateExchangeFee, calculateSubeFee, calculatePhoneFee, calculateDebtSurcharge } = useStoreSettings();
+    const { settings, calculateExchangeFee, calculateSubeFee, calculatePhoneFee, calculateDebtSurcharge, calculateCardSurcharge } = useStoreSettings();
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -204,6 +204,8 @@ function NewTransaction() {
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
                         if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
+                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
+                            targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
                         }
                         updated.amounts = [
                             {
@@ -245,6 +247,8 @@ function NewTransaction() {
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
                         if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
+                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
+                            targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
                         }
                         updated.amounts = [
                             {
@@ -265,6 +269,8 @@ function NewTransaction() {
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
                         if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
+                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
+                            targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
                         }
                         updated.amounts = [
                             {
@@ -295,6 +301,8 @@ function NewTransaction() {
                     let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
                     if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
                         targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
+                    } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
+                        targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
                     }
                     updatedAmounts[0] = {
                         ...updatedAmounts[0],

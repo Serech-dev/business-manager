@@ -1902,6 +1902,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
     phone_fee_type_display = serializers.CharField(source="get_phone_fee_type_display", read_only=True)
     sube_fee_type_display = serializers.CharField(source="get_sube_fee_type_display", read_only=True)
     debt_surcharge_type_display = serializers.CharField(source="get_debt_surcharge_type_display", read_only=True)
+    card_surcharge_type_display = serializers.CharField(source="get_card_surcharge_type_display", read_only=True)
 
     class Meta:
         model = StoreSettings
@@ -1924,6 +1925,10 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             "debt_surcharge_type",
             "debt_surcharge_type_display",
             "debt_surcharge_value",
+            "card_surcharge_enabled",
+            "card_surcharge_type",
+            "card_surcharge_type_display",
+            "card_surcharge_value",
             "is_setup_completed",
             "created_at",
             "updated_at",

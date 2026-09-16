@@ -18,6 +18,9 @@ const DEFAULT_SETTINGS = {
     debt_surcharge_enabled: false,
     debt_surcharge_type: "percentage",
     debt_surcharge_value: "10",
+    card_surcharge_enabled: false,
+    card_surcharge_type: "percentage",
+    card_surcharge_value: "10",
     is_setup_completed: false,
 };
 
@@ -73,6 +76,9 @@ export function StoreSettingsProvider({ children }) {
             }
             if (cleanData.debt_surcharge_value !== undefined) {
                 cleanData.debt_surcharge_value = String(Math.round(Number(cleanData.debt_surcharge_value) || 0));
+            }
+            if (cleanData.card_surcharge_value !== undefined) {
+                cleanData.card_surcharge_value = String(Math.round(Number(cleanData.card_surcharge_value) || 0));
             }
 
             const updated = await updateStoreSettings(cleanData);
@@ -177,6 +183,37 @@ export function StoreSettingsProvider({ children }) {
         ]
     );
 
+    const calculateCardSurcharge = useCallback(
+        (amount) => {
+            const num = Number(amount) || 0;
+            if (!settings.card_surcharge_enabled || num <= 0) {
+                return { surcharge: 0, totalWithSurcharge: num, isEnabled: false };
+            }
+
+            const surchargeValue = Number(settings.card_surcharge_value) || 0;
+            let surcharge = 0;
+
+            if (settings.card_surcharge_type === "percentage") {
+                surcharge = Math.round(num * (surchargeValue / 100));
+            } else {
+                surcharge = Math.round(surchargeValue);
+            }
+
+            return {
+                surcharge,
+                totalWithSurcharge: num + surcharge,
+                isEnabled: true,
+                type: settings.card_surcharge_type,
+                value: surchargeValue,
+            };
+        },
+        [
+            settings.card_surcharge_enabled,
+            settings.card_surcharge_type,
+            settings.card_surcharge_value,
+        ]
+    );
+
     const openSettingsModal = useCallback(() => setIsSettingsModalOpen(true), []);
     const closeSettingsModal = useCallback(() => setIsSettingsModalOpen(false), []);
 
@@ -193,6 +230,7 @@ export function StoreSettingsProvider({ children }) {
                 calculateSubeFee,
                 calculatePhoneFee,
                 calculateDebtSurcharge,
+                calculateCardSurcharge,
                 isSettingsModalOpen,
                 openSettingsModal,
                 closeSettingsModal,

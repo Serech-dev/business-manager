@@ -27,6 +27,8 @@ export function SimplePos({ register, onOpenRegister }) {
         calculateSubeFee,
         calculatePhoneFee,
         calculateExchangeFee,
+        calculateCardSurcharge,
+        calculateDebtSurcharge,
     } = useStoreSettings();
     const { isPro } = useSubscriptionTier();
 
@@ -114,6 +116,16 @@ export function SimplePos({ register, onOpenRegister }) {
     const grandTotal = useMemo(() => {
         return ticketItems.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
     }, [ticketItems]);
+
+    const effectiveCheckoutTotal = useMemo(() => {
+        if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
+            return calculateCardSurcharge(grandTotal).totalWithSurcharge;
+        }
+        if (paymentMethod === "debt" && settings?.debt_surcharge_enabled) {
+            return calculateDebtSurcharge(grandTotal).totalWithSurcharge;
+        }
+        return grandTotal;
+    }, [paymentMethod, settings?.card_surcharge_enabled, settings?.debt_surcharge_enabled, grandTotal, calculateCardSurcharge, calculateDebtSurcharge]);
 
     const totalSavings = useMemo(() => {
         return ticketItems.reduce((sum, item) => sum + (Number(item.promoSavings) || 0), 0);
@@ -611,13 +623,20 @@ export function SimplePos({ register, onOpenRegister }) {
                 const saleTotal =
                     resolvedItems.reduce((s, i) => s + i.subtotal, 0) + manualTotal;
 
+                let finalSaleAmount = saleTotal;
+                if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
+                    finalSaleAmount = calculateCardSurcharge(saleTotal).totalWithSurcharge;
+                } else if (paymentMethod === "debt" && settings?.debt_surcharge_enabled) {
+                    finalSaleAmount = calculateDebtSurcharge(saleTotal).totalWithSurcharge;
+                }
+
                 operations.push({
                     type: "sale",
                     manualAmount: manualTotal > 0 ? manualTotal : null,
                     amounts: [
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
-                            amount: saleTotal,
+                            amount: finalSaleAmount,
                         },
                     ],
                     items: resolvedItems,
@@ -1255,7 +1274,7 @@ export function SimplePos({ register, onOpenRegister }) {
                             <div>
                                 <h3 className="font-bold text-sm text-[var(--text-primary)]">Confirmar y Cobrar</h3>
                                 <p className="text-xs text-[var(--text-secondary)]">
-                                    Total a pagar: <strong className="text-[var(--primary)] font-mono">{formatCurrency(grandTotal)}</strong>
+                                    Total a pagar: <strong className="text-[var(--primary)] font-mono">{formatCurrency(effectiveCheckoutTotal)}</strong>
                                 </p>
                             </div>
                             <button
@@ -1298,6 +1317,24 @@ export function SimplePos({ register, onOpenRegister }) {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Card Surcharge Info */}
+                            {paymentMethod === "card" && settings?.card_surcharge_enabled && (
+                                <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-2xl text-xs space-y-1">
+                                    <div className="flex items-center justify-between font-bold text-sky-400">
+                                        <span>
+                                            Recargo con Tarjeta ({settings.card_surcharge_type === "percentage" ? `${Number(settings.card_surcharge_value)}%` : formatCurrency(Number(settings.card_surcharge_value))})
+                                        </span>
+                                        <span className="tabular-nums">
+                                            +{formatCurrency(calculateCardSurcharge(grandTotal).surcharge)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                                        <span>Base: {formatCurrency(grandTotal)}</span>
+                                        <span>Total final sugerido: <strong className="text-[var(--text-primary)] font-bold">{formatCurrency(effectiveCheckoutTotal)}</strong></span>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Cash Bill Shortcuts & Vuelto Calculation */}
                             {paymentMethod === "cash" && (
@@ -1354,12 +1391,20 @@ export function SimplePos({ register, onOpenRegister }) {
                             {/* A Cuenta warning */}
                             {paymentMethod === "debt" && (
                                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs space-y-1">
-                                    <p className="font-bold text-amber-400">Venta A Cuenta (Fiado)</p>
+                                    <div className="flex items-center justify-between font-bold text-amber-400">
+                                        <span>Venta A Cuenta (Fiado)</span>
+                                        {settings?.debt_surcharge_enabled && (
+                                            <span className="tabular-nums">
+                                                +{formatCurrency(calculateDebtSurcharge(grandTotal).surcharge)}
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-[11px] text-[var(--text-secondary)]">
                                         {selectedClient ? (
                                             <>
-                                                Se sumarán <strong>{formatCurrency(grandTotal)}</strong> a la deuda de{" "}
-                                                <strong>{selectedClient.name}</strong>.
+                                                Se sumarán <strong>{formatCurrency(effectiveCheckoutTotal)}</strong> a la deuda de{" "}
+                                                <strong>{selectedClient.name}</strong>
+                                                {settings?.debt_surcharge_enabled && " (incluye recargo por fiado)"}.
                                             </>
                                         ) : (
                                             <span className="text-rose-400 font-bold">
@@ -1385,7 +1430,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                         <span>Registrando venta...</span>
                                     </>
                                 ) : (
-                                    <span>Cobrar {formatCurrency(grandTotal)}</span>
+                                    <span>Cobrar {formatCurrency(effectiveCheckoutTotal)}</span>
                                 )}
                             </button>
                         </div>

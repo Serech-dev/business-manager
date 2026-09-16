@@ -27,6 +27,10 @@ function FirstTimeSetupModal() {
     const [debtSurchargeType, setDebtSurchargeType] = useState("percentage");
     const [debtSurchargeValue, setDebtSurchargeValue] = useState("10");
 
+    const [cardSurchargeEnabled, setCardSurchargeEnabled] = useState(false);
+    const [cardSurchargeType, setCardSurchargeType] = useState("percentage");
+    const [cardSurchargeValue, setCardSurchargeValue] = useState("10");
+
     useEffect(() => {
         if (settings) {
             setStoreName(settings.store_name || "Mi Negocio");
@@ -42,6 +46,9 @@ function FirstTimeSetupModal() {
             setDebtSurchargeEnabled(Boolean(settings.debt_surcharge_enabled));
             setDebtSurchargeType(settings.debt_surcharge_type || "percentage");
             setDebtSurchargeValue(settings.debt_surcharge_value ? String(Math.round(Number(settings.debt_surcharge_value))) : "10");
+            setCardSurchargeEnabled(Boolean(settings.card_surcharge_enabled));
+            setCardSurchargeType(settings.card_surcharge_type || "percentage");
+            setCardSurchargeValue(settings.card_surcharge_value ? String(Math.round(Number(settings.card_surcharge_value))) : "10");
         }
     }, [settings]);
 
@@ -66,6 +73,9 @@ function FirstTimeSetupModal() {
                     debt_surcharge_enabled: debtSurchargeEnabled,
                     debt_surcharge_type: debtSurchargeType,
                     debt_surcharge_value: debtSurchargeValue,
+                    card_surcharge_enabled: cardSurchargeEnabled,
+                    card_surcharge_type: cardSurchargeType,
+                    card_surcharge_value: cardSurchargeValue,
                     is_setup_completed: true,
                 },
                 { silent: true }
@@ -330,18 +340,81 @@ function FirstTimeSetupModal() {
                         </div>
                     )}
 
-                    {/* STEP 3: DEBT / TAB SURCHARGE */}
+                    {/* STEP 3: SURCHARGES (CARDS & DEBT) */}
                     {step === 3 && (
                         <div className="space-y-4 animate-in fade-in duration-200">
                             <div>
                                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                                    3. Ventas a Cuenta Corriente (Fiado)
+                                    3. Recargos por Medios de Pago
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                                    ¿Tu comercio aplica un recargo por financiar o anotar en la libreta?
+                                    Configurá si tu comercio aplica recargos automáticos en tarjetas o ventas fiadas.
                                 </p>
                             </div>
 
+                            {/* CARD SURCHARGE */}
+                            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-4 text-xs">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-bold text-[var(--text-primary)] text-sm">
+                                            Recargo por pago con Tarjeta
+                                        </p>
+                                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                            Al cobrar con débito o crédito, sugerirá el total con recargo.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setCardSurchargeEnabled(!cardSurchargeEnabled)}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                            cardSurchargeEnabled ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                cardSurchargeEnabled ? "translate-x-5" : "translate-x-0"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {cardSurchargeEnabled && (
+                                    <div className="pt-3 border-t border-[var(--border)] space-y-2 animate-in fade-in duration-150">
+                                        <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                            Valor del Recargo por Tarjeta
+                                        </label>
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative">
+                                                <select
+                                                    value={cardSurchargeType}
+                                                    onChange={(e) => setCardSurchargeType(e.target.value)}
+                                                    className="appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-7 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] cursor-pointer"
+                                                >
+                                                    <option value="percentage">Porcentaje (+%)</option>
+                                                    <option value="fixed">Monto Fijo (+$)</option>
+                                                </select>
+                                                <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                                </svg>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                min="0"
+                                                value={cardSurchargeValue}
+                                                onChange={(e) => setCardSurchargeValue(e.target.value)}
+                                                className="w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                            />
+                                            <span className="text-xs font-bold text-[var(--primary)]">
+                                                {cardSurchargeType === "percentage" ? `+${cardSurchargeValue || "0"}% sobre el total` : `+$${cardSurchargeValue || "0"} fijos por venta`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* DEBT / FIADO SURCHARGE */}
                             <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-4 text-xs">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -349,7 +422,7 @@ function FirstTimeSetupModal() {
                                             Recargo automático en Fiado
                                         </p>
                                         <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                                            Al elegir "Fiado" en una venta, sugerirá el total con este incremento.
+                                            Al elegir "A cuenta / Fiado", sugerirá el total con este incremento.
                                         </p>
                                     </div>
 
@@ -368,7 +441,7 @@ function FirstTimeSetupModal() {
                                     </button>
                                 </div>
 
-                                {debtSurchargeEnabled ? (
+                                {debtSurchargeEnabled && (
                                     <div className="pt-3 border-t border-[var(--border)] space-y-2 animate-in fade-in duration-150">
                                         <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                                             Valor del Recargo por Fiado
@@ -399,10 +472,6 @@ function FirstTimeSetupModal() {
                                                 {debtSurchargeType === "percentage" ? `+${debtSurchargeValue || "0"}% sobre la venta` : `+$${debtSurchargeValue || "0"} monto adicional`}
                                             </span>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="pt-2 text-[11px] text-[var(--text-secondary)] italic">
-                                        Sin recargo. Las ventas a cuenta se anotarán por el importe exacto de los productos.
                                     </div>
                                 )}
                             </div>

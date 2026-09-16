@@ -759,6 +759,24 @@ class StoreSettings(models.Model):
         default=Decimal("10.00"),
     )
 
+    # Card (Debit / Credit) Surcharge
+    card_surcharge_enabled = models.BooleanField(
+        default=False,
+        help_text="Indica si se aplica recargo al cobrar con tarjeta (débito/crédito)",
+    )
+
+    card_surcharge_type = models.CharField(
+        max_length=20,
+        choices=FeeType.choices,
+        default=FeeType.PERCENTAGE,
+    )
+
+    card_surcharge_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("10.00"),
+    )
+
     is_setup_completed = models.BooleanField(
         default=False,
         help_text="True si el usuario ya completó el asistente inicial de configuración",
@@ -795,6 +813,14 @@ class StoreSettings(models.Model):
             return (amount * (self.debt_surcharge_value / Decimal("100"))).quantize(Decimal("1"))
         return self.debt_surcharge_value
 
+    def calculate_card_surcharge(self, amount):
+        if not self.card_surcharge_enabled or not amount:
+            return Decimal("0")
+        amount = Decimal(str(amount))
+        if self.card_surcharge_type == self.FeeType.PERCENTAGE:
+            return (amount * (self.card_surcharge_value / Decimal("100"))).quantize(Decimal("1"))
+        return self.card_surcharge_value
+
     @classmethod
     def get_or_create_for_user(cls, user):
         settings_obj, _ = cls.objects.get_or_create(
@@ -810,6 +836,9 @@ class StoreSettings(models.Model):
                 "debt_surcharge_enabled": False,
                 "debt_surcharge_type": cls.FeeType.PERCENTAGE,
                 "debt_surcharge_value": Decimal("10.00"),
+                "card_surcharge_enabled": False,
+                "card_surcharge_type": cls.FeeType.PERCENTAGE,
+                "card_surcharge_value": Decimal("10.00"),
                 "is_setup_completed": False,
             },
         )

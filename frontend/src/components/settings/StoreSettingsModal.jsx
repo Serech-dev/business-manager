@@ -27,6 +27,10 @@ function StoreSettingsModal({ isOpen, onClose }) {
     const [debtSurchargeType, setDebtSurchargeType] = useState("percentage");
     const [debtSurchargeValue, setDebtSurchargeValue] = useState("10");
 
+    const [cardSurchargeEnabled, setCardSurchargeEnabled] = useState(false);
+    const [cardSurchargeType, setCardSurchargeType] = useState("percentage");
+    const [cardSurchargeValue, setCardSurchargeValue] = useState("10");
+
     useEffect(() => {
         if (settings) {
             setStoreName(settings.store_name || "Mi Negocio");
@@ -42,6 +46,9 @@ function StoreSettingsModal({ isOpen, onClose }) {
             setDebtSurchargeEnabled(Boolean(settings.debt_surcharge_enabled));
             setDebtSurchargeType(settings.debt_surcharge_type || "percentage");
             setDebtSurchargeValue(settings.debt_surcharge_value ? String(Math.round(Number(settings.debt_surcharge_value))) : "10");
+            setCardSurchargeEnabled(Boolean(settings.card_surcharge_enabled));
+            setCardSurchargeType(settings.card_surcharge_type || "percentage");
+            setCardSurchargeValue(settings.card_surcharge_value ? String(Math.round(Number(settings.card_surcharge_value))) : "10");
         }
     }, [settings, isOpen]);
 
@@ -66,6 +73,9 @@ function StoreSettingsModal({ isOpen, onClose }) {
                 debt_surcharge_enabled: debtSurchargeEnabled,
                 debt_surcharge_type: debtSurchargeType,
                 debt_surcharge_value: debtSurchargeValue,
+                card_surcharge_enabled: cardSurchargeEnabled,
+                card_surcharge_type: cardSurchargeType,
+                card_surcharge_value: cardSurchargeValue,
             });
             onClose();
         } catch {
@@ -108,6 +118,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
                     {[
                         { id: "general", label: "Datos del Comercio" },
                         { id: "services", label: "Comisiones de Servicios" },
+                        { id: "cards", label: "Recargo Tarjetas" },
                         { id: "debt", label: "Venta a Cuenta (Fiado)" },
                     ].map((tab) => (
                         <button
@@ -306,6 +317,88 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     </span>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* TAB: CARDS */}
+                    {activeTab === "cards" && (
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-4 text-xs">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-bold text-[var(--text-primary)] text-sm">
+                                        Recargo automático al cobrar con Tarjeta
+                                    </p>
+                                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                        Aplica un incremento sugerido cuando el cliente abona con tarjeta (débito/crédito).
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setCardSurchargeEnabled(!cardSurchargeEnabled)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                        cardSurchargeEnabled ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+                                    }`}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                            cardSurchargeEnabled ? "translate-x-5" : "translate-x-0"
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {cardSurchargeEnabled ? (
+                                <div className="pt-3 border-t border-[var(--border)] space-y-3 animate-in fade-in duration-150">
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                        Valor del Recargo por Tarjeta
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative">
+                                            <select
+                                                value={cardSurchargeType}
+                                                onChange={(e) => setCardSurchargeType(e.target.value)}
+                                                className="appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-7 py-1.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] cursor-pointer"
+                                            >
+                                                <option value="percentage">Porcentaje (+%)</option>
+                                                <option value="fixed">Monto Fijo (+$)</option>
+                                            </select>
+                                            <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            min="0"
+                                            value={cardSurchargeValue}
+                                            onChange={(e) => setCardSurchargeValue(e.target.value)}
+                                            className="w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                        />
+                                        <span className="text-xs font-bold text-[var(--primary)]">
+                                            {cardSurchargeType === "percentage" ? `+${cardSurchargeValue || "0"}% sobre el total` : `+$${cardSurchargeValue || "0"} fijos por venta`}
+                                        </span>
+                                    </div>
+
+                                    {/* Preview banner */}
+                                    <div className="rounded-lg border border-sky-500/20 bg-sky-500/10 p-3 text-xs text-sky-700 dark:text-sky-300">
+                                        <span className="font-bold block mb-0.5">Ejemplo de cálculo en caja:</span>
+                                        <p className="text-[11px] text-[var(--text-secondary)]">
+                                            Una venta de $10.000 cobrará{" "}
+                                            <strong className="text-[var(--text-primary)] font-bold">
+                                                {cardSurchargeType === "percentage"
+                                                    ? `$${(10000 + Math.round(10000 * ((Number(cardSurchargeValue) || 0) / 100))).toLocaleString("es-AR")}`
+                                                    : `$${(10000 + Math.round(Number(cardSurchargeValue) || 0)).toLocaleString("es-AR")}`}
+                                            </strong>{" "}
+                                            (recargo de {cardSurchargeType === "percentage" ? `+${cardSurchargeValue || 0}%` : `+$${cardSurchargeValue || 0}`}).
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="pt-2 text-[11px] text-[var(--text-secondary)] italic">
+                                    Sin recargo. Las ventas con tarjeta se cobrarán por el monto normal sin recargo adicional.
+                                </div>
+                            )}
                         </div>
                     )}
 
