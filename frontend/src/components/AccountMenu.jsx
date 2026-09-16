@@ -20,6 +20,8 @@ function AccountMenu() {
     const { settings, openSettingsModal } = useStoreSettings();
     const {
         subscription,
+        tier,
+        isPremium,
         isExpired,
         isTrial,
         daysRemaining,
@@ -69,6 +71,17 @@ function AccountMenu() {
     const isUserSuper = !isSuspended && (isSuperuser || user?.is_superuser);
     const storeInitial = (settings?.store_name || user?.email || "M").charAt(0).toUpperCase();
 
+    // Dynamic tier-based avatar styling
+    const avatarGradient = isUserSuper
+        ? "bg-gradient-to-br from-purple-600 via-indigo-600 to-indigo-800 text-white shadow-xs border border-purple-400/30"
+        : isSuspended || isExpired
+        ? "bg-gradient-to-br from-rose-600 to-red-800 text-white shadow-xs border border-rose-400/30"
+        : isPremium
+        ? "bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 text-white shadow-xs border border-amber-400/40"
+        : isTrial
+        ? "bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-xs border border-emerald-400/30"
+        : "bg-gradient-to-br from-sky-600 to-blue-700 text-white shadow-xs border border-sky-400/30";
+
     return (
         <>
             <ChangePinModal
@@ -116,7 +129,7 @@ function AccountMenu() {
                         {/* USER & LICENSE HERO BANNER */}
                         <div className="border-b border-[var(--border)] bg-[var(--surface-accent)]/50 p-4">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--primary)] to-indigo-700 text-white font-black text-base shadow-sm ring-2 ring-white/15">
+                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-black text-base shadow-sm ring-2 ring-white/15 ${avatarGradient}`}>
                                     {storeInitial}
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -404,7 +417,7 @@ function AccountMenu() {
                     `}
                 >
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--primary)] to-indigo-700 text-white font-bold text-xs shadow-xs">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${avatarGradient}`}>
                             {storeInitial}
                         </div>
 
