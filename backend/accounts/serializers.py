@@ -105,11 +105,16 @@ class RegisterSerializer(serializers.Serializer):
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
+    tier = serializers.CharField(source="active_tier", read_only=True)
+    tier_display = serializers.SerializerMethodField()
     status = serializers.CharField(source="effective_status", read_only=True)
     status_display = serializers.SerializerMethodField()
     plan_display = serializers.CharField(source="get_plan_display", read_only=True)
     is_valid = serializers.BooleanField(read_only=True)
+    is_premium = serializers.BooleanField(read_only=True)
     days_remaining = serializers.IntegerField(read_only=True)
+    premium_days_remaining = serializers.IntegerField(read_only=True)
+    basic_days_remaining = serializers.IntegerField(read_only=True)
     is_trial = serializers.BooleanField(read_only=True)
     summary = serializers.SerializerMethodField()
 
@@ -117,16 +122,23 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = [
             "id",
+            "tier",
+            "tier_display",
             "status",
             "status_display",
             "plan",
             "plan_display",
             "start_date",
             "expires_at",
+            "premium_expires_at",
+            "basic_expires_at",
             "trial_ends_at",
             "is_trial_used",
             "is_valid",
+            "is_premium",
             "days_remaining",
+            "premium_days_remaining",
+            "basic_days_remaining",
             "is_trial",
             "notes",
             "last_payment_date",
@@ -134,6 +146,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "last_payment_reference",
             "summary",
         ]
+
+    def get_tier_display(self, obj):
+        return dict(Subscription.Tier.choices).get(obj.active_tier, obj.active_tier)
 
     def get_status_display(self, obj):
         return dict(Subscription.Status.choices).get(obj.effective_status, obj.effective_status)
@@ -217,10 +232,17 @@ class AdminStoreOverviewSerializer(serializers.Serializer):
             "id": sub.id,
             "status": sub.effective_status,
             "status_display": dict(Subscription.Status.choices).get(sub.effective_status, sub.effective_status),
+            "tier": sub.active_tier,
+            "tier_display": dict(Subscription.Tier.choices).get(sub.active_tier, sub.active_tier),
+            "is_premium": sub.is_premium,
             "plan": sub.plan,
             "plan_display": sub.get_plan_display(),
             "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
+            "premium_expires_at": sub.premium_expires_at.isoformat() if sub.premium_expires_at else None,
+            "basic_expires_at": sub.basic_expires_at.isoformat() if sub.basic_expires_at else None,
             "days_remaining": sub.days_remaining,
+            "premium_days_remaining": sub.premium_days_remaining,
+            "basic_days_remaining": sub.basic_days_remaining,
             "is_valid": sub.is_valid,
             "notes": sub.notes,
             "last_payment_date": sub.last_payment_date.isoformat() if sub.last_payment_date else None,

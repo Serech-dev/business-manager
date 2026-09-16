@@ -29,6 +29,9 @@ function Sidebar({
         isSuperuser,
         isExpiringSoon,
         daysRemaining,
+        isPremium,
+        tier,
+        isTrial,
         openSubscriptionModal,
     } = useSubscription();
 
@@ -138,15 +141,31 @@ function Sidebar({
                 px-5
                 py-4
             ">
-                <p className="
-                    text-xs
-                    font-medium
-                    uppercase
-                    tracking-wider
-                    text-[var(--primary)]
-                ">
-                    Administrador
-                </p>
+                <div className="flex items-center justify-between">
+                    <p className="
+                        text-xs
+                        font-medium
+                        uppercase
+                        tracking-wider
+                        text-[var(--primary)]
+                    ">
+                        Administrador
+                    </p>
+                    <button
+                        type="button"
+                        onClick={openSubscriptionModal}
+                        className={`rounded-sm px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition ${
+                            isPremium || isSuperuser
+                                ? "badge-gold hover:opacity-95"
+                                : isTrial
+                                ? "badge-gold-subtle"
+                                : "bg-[var(--surface-muted)] text-[var(--text-secondary)] border border-[var(--border)] hover:text-[var(--text-primary)]"
+                        }`}
+                        title="Ver plan y opciones de suscripción"
+                    >
+                        {isSuperuser ? "Admin" : isTrial ? "Prueba" : isPremium ? "Premium" : "Básico"}
+                    </button>
+                </div>
 
                 <h1 className="
                     mt-0.5
@@ -372,6 +391,7 @@ function Sidebar({
                         flex
                         w-full
                         items-center
+                        justify-between
                         rounded-lg
                         border-l-2
                         px-4
@@ -397,7 +417,12 @@ function Sidebar({
                         }
                     `}
                 >
-                    Proveedores
+                    <span>Proveedores</span>
+                    {!isPremium && !isSuperuser && (
+                        <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                            PRO
+                        </span>
+                    )}
                 </button>
 
                 <button

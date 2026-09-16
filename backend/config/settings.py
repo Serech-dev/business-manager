@@ -20,7 +20,8 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env from backend directory and current directory
+# Load .env from root directory, backend directory and current working directory
+load_dotenv(BASE_DIR.parent / ".env")
 load_dotenv(BASE_DIR / ".env")
 load_dotenv()
 
@@ -164,26 +165,77 @@ BACKEND_URL = os.getenv("BACKEND_URL", "").rstrip("/")
 
 # Subscription Pricing (ARS)
 SUBSCRIPTION_PRICES = {
-    "monthly": {
-        "title": "Business Manager - Plan Mensual (30 días)",
-        "description": "Licencia de uso del sistema Business Manager por 30 días (gestión de ventas, caja, stock y reportes).",
+    "basic_monthly": {
+        "title": "Business Manager - Plan Básico Mensual (30 días)",
+        "description": "Punto de venta, caja diaria, catálogo de productos y libreta de fiado.",
         "category_id": "services",
         "picture_url": os.getenv(
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_MONTHLY", "10000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_MONTHLY", "10000.00")),
         "days": 30,
+        "tier": "basic",
+    },
+    "basic_yearly": {
+        "title": "Business Manager - Plan Básico Anual (1 año)",
+        "description": "Punto de venta, caja diaria, catálogo de productos y libreta con precio congelado por 1 año.",
+        "category_id": "services",
+        "picture_url": os.getenv(
+            "SUBSCRIPTION_LOGO_URL",
+            "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
+        ),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_YEARLY", "100000.00")),
+        "days": 365,
+        "tier": "basic",
+    },
+    "premium_monthly": {
+        "title": "Business Manager - Plan Premium Mensual (30 días)",
+        "description": "Acceso total: gestión de empleados, reportes de ganancia neta, cuentas de proveedores y personalización.",
+        "category_id": "services",
+        "picture_url": os.getenv(
+            "SUBSCRIPTION_LOGO_URL",
+            "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
+        ),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_PREMIUM_MONTHLY", "20000.00")),
+        "days": 30,
+        "tier": "premium",
+    },
+    "premium_yearly": {
+        "title": "Business Manager - Plan Premium Anual (1 año)",
+        "description": "Acceso total con precio congelado: gestión de empleados, reportes de ganancia neta, cuentas de proveedores.",
+        "category_id": "services",
+        "picture_url": os.getenv(
+            "SUBSCRIPTION_LOGO_URL",
+            "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
+        ),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_PREMIUM_YEARLY", "200000.00")),
+        "days": 365,
+        "tier": "premium",
+    },
+    # Backwards compatibility aliases
+    "monthly": {
+        "title": "Business Manager - Plan Básico Mensual (30 días)",
+        "description": "Punto de venta, caja diaria, catálogo de productos y libreta de fiado.",
+        "category_id": "services",
+        "picture_url": os.getenv(
+            "SUBSCRIPTION_LOGO_URL",
+            "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
+        ),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_MONTHLY", "10000.00")),
+        "days": 30,
+        "tier": "basic",
     },
     "yearly": {
-        "title": "Business Manager - Plan Anual (1 año)",
-        "description": "Licencia de uso del sistema Business Manager por 365 días (acceso total a todas las herramientas con precio congelado).",
+        "title": "Business Manager - Plan Básico Anual (1 año)",
+        "description": "Punto de venta, caja diaria, catálogo de productos y libreta con precio congelado por 1 año.",
         "category_id": "services",
         "picture_url": os.getenv(
             "SUBSCRIPTION_LOGO_URL",
             "https://raw.githubusercontent.com/Serech-dev/business-manager/develop-phase-2/frontend/public/tabicon.png"
         ),
-        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_YEARLY", "100000.00")),
+        "amount": Decimal(os.getenv("SUBSCRIPTION_PRICE_BASIC_YEARLY", "100000.00")),
         "days": 365,
+        "tier": "basic",
     },
 }

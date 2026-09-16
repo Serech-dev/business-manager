@@ -2,6 +2,7 @@ import { logout } from "../services/auth";
 import ThemeSelector from "./ThemeSelector";
 import ChangePinModal from "./ChangePinModal";
 import GuideModal from "./GuideModal";
+import TermsModal from "./subscription/TermsModal";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { APP_VERSION } from "../utils/version";
@@ -12,6 +13,7 @@ function AccountMenu() {
     const [isOpen, setIsOpen] = useState(false);
     const [isPinModalOpen, setIsPinModalOpen] = useState(false);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const menuRef = useRef(null);
 
     const navigate = useNavigate();
@@ -77,6 +79,11 @@ function AccountMenu() {
             <GuideModal
                 isOpen={isGuideModalOpen}
                 onClose={() => setIsGuideModalOpen(false)}
+            />
+
+            <TermsModal
+                isOpen={isTermsModalOpen}
+                onClose={() => setIsTermsModalOpen(false)}
             />
 
             <div ref={menuRef} className="relative">
@@ -279,6 +286,35 @@ function AccountMenu() {
                                         </span>
                                         <span className="text-[11px] text-[var(--text-secondary)]">
                                             Tutorial interactivo y atajos
+                                        </span>
+                                    </div>
+                                </div>
+                                <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition">
+                                    →
+                                </span>
+                            </button>
+
+                            {/* LEGAL TERMS & CANCELLATION */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    setIsTermsModalOpen(true);
+                                }}
+                                className="flex w-full items-center justify-between rounded-xl p-2.5 text-left transition hover:bg-[var(--surface-accent)] group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/20">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] block">
+                                            Términos & Privacidad
+                                        </span>
+                                        <span className="text-[11px] text-[var(--text-secondary)]">
+                                            Condiciones del servicio y políticas
                                         </span>
                                     </div>
                                 </div>

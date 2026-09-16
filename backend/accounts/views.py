@@ -122,9 +122,9 @@ class CreateCheckoutPreferenceView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        plan = request.data.get("plan", "monthly")
+        plan = request.data.get("plan", "basic_monthly")
         if plan not in settings.SUBSCRIPTION_PRICES:
-            plan = "monthly"
+            plan = "basic_monthly"
 
         plan_info = settings.SUBSCRIPTION_PRICES[plan]
         user = request.user
@@ -318,10 +318,18 @@ class MercadoPagoWebhookView(APIView):
             notification.raw_data = payment
 
             if mp_status == "approved":
-                days = 365 if plan == "yearly" else 30
-                target_plan = Subscription.Plan.YEARLY if plan == "yearly" else Subscription.Plan.MONTHLY
+                is_premium = "premium" in plan
+                is_yearly = "yearly" in plan
+                tier = Subscription.Tier.PREMIUM if is_premium else Subscription.Tier.BASIC
+                days = 365 if is_yearly else 30
+                if is_premium:
+                    target_plan = Subscription.Plan.PREMIUM_YEARLY if is_yearly else Subscription.Plan.PREMIUM_MONTHLY
+                else:
+                    target_plan = Subscription.Plan.BASIC_YEARLY if is_yearly else Subscription.Plan.BASIC_MONTHLY
+
                 subscription.extend(
                     days=days,
+                    tier=tier,
                     plan=target_plan,
                     amount=amount,
                     reference=f"Mercado Pago #{payment_id}",
@@ -348,20 +356,28 @@ class VerifyPaymentStatusView(APIView):
         user = request.user
         subscription = Subscription.get_or_create_for_user(user)
         payment_id = request.query_params.get("payment_id")
-        plan = request.query_params.get("plan", "monthly")
+        plan = request.query_params.get("plan", "basic_monthly")
         notification_id = request.query_params.get("notification_id")
         is_mock_simulation = request.query_params.get("payment_status") == "mock_simulate"
 
+        is_premium = "premium" in plan
+        is_yearly = "yearly" in plan
+        tier = Subscription.Tier.PREMIUM if is_premium else Subscription.Tier.BASIC
+        days = 365 if is_yearly else 30
+        if is_premium:
+            target_plan = Subscription.Plan.PREMIUM_YEARLY if is_yearly else Subscription.Plan.PREMIUM_MONTHLY
+        else:
+            target_plan = Subscription.Plan.BASIC_YEARLY if is_yearly else Subscription.Plan.BASIC_MONTHLY
+
         # Mock simulation for development environment
         if is_mock_simulation:
-            days = 365 if plan == "yearly" else 30
-            target_plan = Subscription.Plan.YEARLY if plan == "yearly" else Subscription.Plan.MONTHLY
-            plan_info = settings.SUBSCRIPTION_PRICES.get(plan, settings.SUBSCRIPTION_PRICES["monthly"])
+            plan_info = settings.SUBSCRIPTION_PRICES.get(plan, settings.SUBSCRIPTION_PRICES.get("basic_monthly"))
 
             subscription.extend(
                 days=days,
+                tier=tier,
                 plan=target_plan,
-                amount=plan_info["amount"],
+                amount=plan_info["amount"] if plan_info else Decimal("10000.00"),
                 reference="Simulación de prueba (Local)",
             )
 
@@ -378,7 +394,7 @@ class VerifyPaymentStatusView(APIView):
                 "status": "approved",
                 "simulated": True,
                 "subscription": subscription.get_summary(),
-                "detail": "¡Licencia activada con éxito en modo de prueba!",
+                "detail": f"¡Licencia {subscription.get_plan_display()} activada con éxito en modo de prueba!",
             })
 
         # Live verification via Mercado Pago SDK
@@ -391,11 +407,10 @@ class VerifyPaymentStatusView(APIView):
                 mp_status = payment.get("status")
 
                 if mp_status == "approved":
-                    days = 365 if plan == "yearly" else 30
-                    target_plan = Subscription.Plan.YEARLY if plan == "yearly" else Subscription.Plan.MONTHLY
                     amount = payment.get("transaction_amount")
                     subscription.extend(
                         days=days,
+                        tier=tier,
                         plan=target_plan,
                         amount=amount,
                         reference=f"Mercado Pago #{payment_id}",
@@ -493,39 +508,72 @@ class AdminManageSubscriptionView(APIView):
         amount = request.data.get("amount")
         reference = request.data.get("reference", "").strip()
 
-        if action == "extend_30":
+        if action in ["extend_30", "extend_30_basic"]:
             subscription.extend(
                 days=30,
-                plan=Subscription.Plan.MONTHLY,
+                tier=Subscription.Tier.BASIC,
+                plan=Subscription.Plan.BASIC_MONTHLY,
                 amount=amount or Decimal("10000.00"),
-                reference=reference or "Renovación manual 30 días",
+                reference=reference or "Renovación manual Básico 30 días",
             )
-        elif action == "extend_365":
+        elif action in ["extend_365", "extend_365_basic"]:
             subscription.extend(
                 days=365,
-                plan=Subscription.Plan.YEARLY,
+                tier=Subscription.Tier.BASIC,
+                plan=Subscription.Plan.BASIC_YEARLY,
                 amount=amount or Decimal("100000.00"),
-                reference=reference or "Renovación manual 1 año",
+                reference=reference or "Renovación manual Básico 1 año",
+            )
+        elif action == "extend_30_premium":
+            subscription.extend(
+                days=30,
+                tier=Subscription.Tier.PREMIUM,
+                plan=Subscription.Plan.PREMIUM_MONTHLY,
+                amount=amount or Decimal("20000.00"),
+                reference=reference or "Renovación manual Premium 30 días",
+            )
+        elif action == "extend_365_premium":
+            subscription.extend(
+                days=365,
+                tier=Subscription.Tier.PREMIUM,
+                plan=Subscription.Plan.PREMIUM_YEARLY,
+                amount=amount or Decimal("200000.00"),
+                reference=reference or "Renovación manual Premium 1 año",
             )
         elif action == "activate_trial":
             days = int(request.data.get("days", 14))
             subscription.activate_trial(days=days)
         elif action == "lifetime":
-            subscription.activate_lifetime(notes=notes or "Licencia vitalicia otorgada por admin")
+            subscription.activate_lifetime(notes=notes or "Licencia vitalicia premium otorgada por admin")
         elif action == "suspend":
             subscription.suspend(reason=notes or "Suspendido por administrador")
         elif action == "reactivate":
             subscription.reactivate()
+        elif action == "expire_now":
+            past = timezone.now() - timedelta(days=1)
+            subscription.expires_at = past
+            subscription.premium_expires_at = past
+            subscription.basic_expires_at = past
+            subscription.trial_ends_at = past
+            subscription.status = Subscription.Status.EXPIRED
+            subscription.save()
         elif action == "custom_extend":
             days = int(request.data.get("days", 30))
+            tier = request.data.get("tier", Subscription.Tier.BASIC)
             plan = request.data.get("plan")
-            subscription.extend(days=days, plan=plan, amount=amount, reference=reference)
+            subscription.extend(days=days, tier=tier, plan=plan, amount=amount, reference=reference)
         elif action == "set_expiration":
             expires_at_str = request.data.get("expires_at")
+            premium_expires_at_str = request.data.get("premium_expires_at")
+            basic_expires_at_str = request.data.get("basic_expires_at")
             if expires_at_str:
                 subscription.expires_at = expires_at_str
-                subscription.status = Subscription.Status.ACTIVE
-                subscription.save()
+            if premium_expires_at_str:
+                subscription.premium_expires_at = premium_expires_at_str
+            if basic_expires_at_str:
+                subscription.basic_expires_at = basic_expires_at_str
+            subscription.status = Subscription.Status.ACTIVE
+            subscription.save()
         else:
             return Response(
                 {"error": f"Acción '{action}' no reconocida."},
@@ -565,11 +613,19 @@ class AdminReviewPaymentNotificationView(APIView):
         admin_notes = request.data.get("admin_notes", "").strip()
 
         if decision == "approve":
-            days = 365 if payment.plan == PaymentNotification.PlanRequested.YEARLY else 30
-            target_plan = Subscription.Plan.YEARLY if payment.plan == PaymentNotification.PlanRequested.YEARLY else Subscription.Plan.MONTHLY
+            plan_str = payment.plan
+            is_premium = "premium" in plan_str
+            is_yearly = "yearly" in plan_str
+            tier = Subscription.Tier.PREMIUM if is_premium else Subscription.Tier.BASIC
+            days = 365 if is_yearly else 30
+            if is_premium:
+                target_plan = Subscription.Plan.PREMIUM_YEARLY if is_yearly else Subscription.Plan.PREMIUM_MONTHLY
+            else:
+                target_plan = Subscription.Plan.BASIC_YEARLY if is_yearly else Subscription.Plan.BASIC_MONTHLY
 
             payment.subscription.extend(
                 days=days,
+                tier=tier,
                 plan=target_plan,
                 amount=payment.amount,
                 reference=payment.reference_code or f"Pago #{payment.id} aprobado por panel",
@@ -581,7 +637,7 @@ class AdminReviewPaymentNotificationView(APIView):
             payment.save()
 
             return Response({
-                "message": f"Pago #{payment.id} aprobado. Licencia de {payment.user.email} extendida por {days} días.",
+                "message": f"Pago #{payment.id} aprobado. Licencia de {payment.user.email} extendida por {days} días ({payment.subscription.get_tier_display()}).",
                 "payment": PaymentNotificationSerializer(payment).data,
             })
 

@@ -23,6 +23,8 @@ import ImportCatalogModal from "../components/products/ImportCatalogModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
+import { exportToCsv } from "../utils/exportCsv";
 
 const PRODUCTS_TOUR_STEPS = [
     {
@@ -96,11 +98,54 @@ function CustomCheckbox({ checked, indeterminate = false, onChange, ariaLabel })
 function ProductList() {
     const navigate = useNavigate();
     const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
+    const { isPremium, hasFeature, openSubscriptionModal } = useSubscriptionTier();
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [providers, setProviders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    function handleExportCatalog() {
+        if (!isPremium && !hasFeature("export_excel")) {
+            openSubscriptionModal();
+            return;
+        }
+
+        try {
+            const headers = [
+                "ID",
+                "Código de Barra",
+                "Nombre",
+                "Categoría",
+                "Precio Costo ($)",
+                "Precio Venta ($)",
+                "Margen (%)",
+                "Stock Actual",
+                "Unidad",
+                "Proveedor",
+                "Estado",
+            ];
+
+            const rows = products.map((p) => [
+                p.id,
+                p.barcode || "",
+                p.name || "",
+                p.category_name || "",
+                p.cost_price ?? "",
+                p.sale_price ?? "",
+                p.margin_percentage ?? "",
+                p.stock ?? "",
+                p.unit_type || "unit",
+                p.provider_name || "",
+                p.is_active ? "Activo" : "Inactivo",
+            ]);
+
+            exportToCsv("catalogo_productos.csv", headers, rows);
+            toast.success(`Se exportaron ${rows.length} productos a Excel.`);
+        } catch (err) {
+            toast.error(err.message || "Error al exportar productos.");
+        }
+    }
 
     // Filters & Search
     const [search, setSearch] = useState("");
@@ -172,15 +217,26 @@ function ProductList() {
 
     async function loadData() {
         try {
+            const fetchProviders = (isPremium || hasFeature("provider_debts"))
+                ? getProviders()
+                : Promise.resolve([]);
+
             const [prodsData, catsData, provsData] = await Promise.all([
                 getProducts(),
                 getCategories(),
-                getProviders(),
+                fetchProviders,
             ]);
             setProducts(prodsData);
             setCategories(catsData);
-            setProviders(provsData);
+            setProviders(provsData || []);
         } catch (error) {
+            if (
+                error?.response?.status === 403 ||
+                error?.isFeatureRequiresPremium ||
+                error?.isSubscriptionExpired
+            ) {
+                return;
+            }
             console.error("Error loading products:", error);
             toast.error("No se pudieron cargar los productos.");
         } finally {
@@ -190,7 +246,7 @@ function ProductList() {
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [isPremium, hasFeature]);
 
     // Filter products with precision search scoring
     const filteredProducts = useMemo(() => {
@@ -520,10 +576,33 @@ function ProductList() {
 
                     <button
                         type="button"
-                        onClick={() => requireOwnerAccess(() => setIsProviderModalOpen(true))}
-                        className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        onClick={() => requireOwnerAccess(() => navigate("/providers"))}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        title="Gestionar libreta de proveedores y cuentas por pagar"
                     >
-                        Proveedores ({providers.length})
+                        <span>Proveedores {providers.length > 0 ? `(${providers.length})` : ""}</span>
+                        {!isPremium && (
+                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                                PRO
+                            </span>
+                        )}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handleExportCatalog}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        title="Exportar catálogo completo a formato Excel (CSV)"
+                    >
+                        <svg className="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        <span>Exportar</span>
+                        {!isPremium && (
+                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                                PRO
+                            </span>
+                        )}
                     </button>
 
                     <button

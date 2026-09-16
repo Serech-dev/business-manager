@@ -21,6 +21,7 @@ import ReceiptModal from "../components/transactions/ReceiptModal";
 import ProductModal from "../components/products/ProductModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useStoreSettings } from "../context/StoreSettingsContext";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
 
 const NEW_SALE_TOUR_STEPS = [
     {
@@ -102,13 +103,19 @@ function NewTransaction() {
     const [newProductUnitType, setNewProductUnitType] = useState("unit");
     const [targetOperationIndex, setTargetOperationIndex] = useState(0);
 
+    const { isPremium, hasFeature } = useSubscriptionTier();
+
     useEffect(() => {
         async function loadCatalog() {
             try {
+                const fetchProviders = (isPremium || hasFeature("provider_debts"))
+                    ? getProviders()
+                    : Promise.resolve([]);
+
                 const [prodsData, catsData, provsData] = await Promise.all([
                     getProducts(),
                     getCategories(),
-                    getProviders().catch(() => []),
+                    fetchProviders,
                 ]);
                 setProducts(prodsData);
                 setCategories(catsData);
@@ -118,7 +125,7 @@ function NewTransaction() {
             }
         }
         loadCatalog();
-    }, []);
+    }, [isPremium, hasFeature]);
 
     function handleProductUpdated(updatedProduct) {
         setProducts((prev) => prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)));

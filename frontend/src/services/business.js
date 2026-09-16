@@ -197,8 +197,15 @@ export async function deleteClient(id) {
 }
 
 export async function getProviders() { 
-    const response = await api.get( "business/providers/" ); 
-    return response.data; 
+    try {
+        const response = await api.get("business/providers/"); 
+        return response.data;
+    } catch (error) {
+        if (error.response?.status === 403 || error.isFeatureRequiresPremium) {
+            return [];
+        }
+        throw error;
+    }
 }
 
 

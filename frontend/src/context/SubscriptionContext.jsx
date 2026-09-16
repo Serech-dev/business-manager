@@ -188,17 +188,36 @@ export function SubscriptionProvider({ children }) {
     const isSuperuser = !isSuspended && Boolean(subscription?.is_superuser);
     const isValid = !isSuspended && (isSuperuser || Boolean(subscription?.is_valid));
     const isExpired = Boolean(subscription && (!isValid || isSuspended));
+    const tier = subscription?.tier || (isSuperuser ? "premium" : "none");
+    const isPremium = !isSuspended && (isSuperuser || Boolean(subscription?.is_premium) || tier === "premium" || tier === "trial");
     const daysRemaining = subscription?.days_remaining ?? 0;
+    const premiumDaysRemaining = subscription?.premium_days_remaining ?? (isPremium ? daysRemaining : 0);
+    const basicDaysRemaining = subscription?.basic_days_remaining ?? 0;
     const isExpiringSoon = Boolean(
         subscription && !isSuperuser && !isSuspended && isValid && daysRemaining <= 3 && subscription.plan !== "lifetime"
     );
-    const isTrial = !isSuspended && Boolean(subscription?.is_trial);
+    const isTrial = !isSuspended && Boolean(subscription?.is_trial || tier === "trial");
     const hasPendingPayment = myPayments.some((p) => p.status === "pending");
+    const features = subscription?.features || {};
+
+    const hasFeature = useCallback(
+        (featureKey) => {
+            if (isSuperuser) return true;
+            if (isSuspended || !isValid) return false;
+            if (isPremium) return true;
+            return Boolean(features[featureKey]);
+        },
+        [isSuperuser, isSuspended, isValid, isPremium, features]
+    );
 
     return (
         <SubscriptionContext.Provider
             value={{
                 subscription,
+                tier,
+                isPremium,
+                features,
+                hasFeature,
                 isLoading,
                 isExpired,
                 isSuspended,
@@ -206,6 +225,8 @@ export function SubscriptionProvider({ children }) {
                 isValid,
                 isTrial,
                 daysRemaining,
+                premiumDaysRemaining,
+                basicDaysRemaining,
                 isSuperuser,
                 myPayments,
                 hasPendingPayment,

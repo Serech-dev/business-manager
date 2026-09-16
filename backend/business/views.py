@@ -3,8 +3,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction as db_transaction
 from django.db.models import Q, Sum, Count, F
 from django.utils import timezone
-from rest_framework import generics, status
-from accounts.permissions import HasActiveSubscription
+from rest_framework import exceptions, generics, status
+from accounts.permissions import HasActiveSubscription, RequiresFeature
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -515,7 +515,7 @@ class ProviderListCreateView(
     generics.ListCreateAPIView
 ):
     serializer_class = ProviderSerializer
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("provider_debts")]
 
     def get_queryset(self):
         return (
@@ -539,7 +539,7 @@ class ProviderDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = ProviderSerializer
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("provider_debts")]
 
     def get_queryset(self):
         return (
@@ -562,6 +562,23 @@ class AnalyticsView(APIView):
         period = request.query_params.get("period", "today")
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
+
+        # Period gating for advanced reporting
+        if period in ["month", "custom"]:
+            sub = getattr(request.user, "subscription", None)
+            is_allowed = (
+                request.user.is_superuser
+                or request.user.is_staff
+                or (sub and sub.has_feature("advanced_reports"))
+            )
+            if not is_allowed:
+                raise exceptions.PermissionDenied(
+                    detail={
+                        "detail": "Los reportes mensuales y personalizados requieren Plan Premium.",
+                        "code": "feature_requires_premium",
+                        "feature": "advanced_reports",
+                    }
+                )
 
         data = calculate_analytics(
             user=request.user,
@@ -819,7 +836,7 @@ class BulkDeleteProductsView(APIView):
 
 
 class BulkAssignProductProviderView(APIView):
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("provider_debts")]
 
     @db_transaction.atomic
     def post(self, request):

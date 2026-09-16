@@ -9,6 +9,7 @@ import { useBarcodeScanner } from "../../hooks/useBarcodeScanner";
 import { findInNationalCatalog } from "../../utils/nationalCatalog";
 import { lookupBarcodeDetails } from "../../utils/barcodeLookup";
 import { filterAndRankProducts } from "../../utils/productSearch";
+import { useSubscriptionTier } from "../../hooks/useSubscriptionTier";
 
 function ProductModal({
     isOpen,
@@ -26,6 +27,7 @@ function ProductModal({
     onOpenProviderModal,
 }) {
     const isEditing = Boolean(product && product.id);
+    const { isPremium, hasFeature, openSubscriptionModal } = useSubscriptionTier();
 
     const [name, setName] = useState("");
     const [unitType, setUnitType] = useState("unit"); // 'unit' | 'kg' | '100g'
@@ -1017,26 +1019,54 @@ function ProductModal({
                             {/* PROVIDER */}
                             <div>
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                                        Proveedor Habitual
-                                    </label>
-                                    {onOpenProviderModal && (
+                                    <div className="flex items-center gap-1.5">
+                                        <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                                            Proveedor Habitual
+                                        </label>
+                                        {!isPremium && !hasFeature("provider_debts") && (
+                                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[8px] font-bold uppercase tracking-wider">
+                                                PRO
+                                            </span>
+                                        )}
+                                    </div>
+                                    {!isPremium && !hasFeature("provider_debts") ? (
                                         <button
                                             type="button"
-                                            onClick={onOpenProviderModal}
-                                            className="text-[11px] font-bold text-[var(--primary)] hover:underline"
+                                            onClick={openSubscriptionModal}
+                                            className="text-[11px] font-bold text-amber-500 dark:text-amber-400 hover:underline"
                                         >
-                                            + Gestionar
+                                            Ver Plan PRO
                                         </button>
+                                    ) : (
+                                        onOpenProviderModal && (
+                                            <button
+                                                type="button"
+                                                onClick={onOpenProviderModal}
+                                                className="text-[11px] font-bold text-[var(--primary)] hover:underline"
+                                            >
+                                                + Gestionar
+                                            </button>
+                                        )
                                     )}
                                 </div>
                                 <div className="relative">
                                     <select
                                         value={providerId}
-                                        onChange={(e) => setProviderId(e.target.value)}
-                                        className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] cursor-pointer"
+                                        onChange={(e) => {
+                                            if (!isPremium && !hasFeature("provider_debts")) {
+                                                openSubscriptionModal();
+                                                return;
+                                            }
+                                            setProviderId(e.target.value);
+                                        }}
+                                        disabled={!isPremium && !hasFeature("provider_debts")}
+                                        className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        <option value="">Sin proveedor asignado</option>
+                                        <option value="">
+                                            {!isPremium && !hasFeature("provider_debts")
+                                                ? "Plan Premium: Seguimiento de proveedores"
+                                                : "Sin proveedor asignado"}
+                                        </option>
                                         {providers.map((p) => (
                                             <option key={p.id} value={p.id}>
                                                 {p.name}

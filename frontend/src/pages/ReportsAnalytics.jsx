@@ -3,6 +3,9 @@ import toast from "react-hot-toast";
 
 import { getAnalytics } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
+import { exportToCsv } from "../utils/exportCsv";
+import PremiumGate from "../components/subscription/PremiumGate";
 
 function formatDateIso(dateObj) {
     return dateObj.toISOString().split("T")[0];
@@ -14,11 +17,50 @@ function ReportsAnalytics() {
     const [startDate, setStartDate] = useState(formatDateIso(new Date()));
     const [endDate, setEndDate] = useState(formatDateIso(new Date()));
 
+    const { isPremium, hasFeature, openSubscriptionModal } = useSubscriptionTier();
+
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hoveredHour, setHoveredHour] = useState(null);
 
+    function handleExportReport() {
+        if (!isPremium && !hasFeature("export_excel")) {
+            openSubscriptionModal();
+            return;
+        }
+
+        if (!data || !data.summary) {
+            toast.error("No hay datos cargados para exportar.");
+            return;
+        }
+
+        try {
+            const headers = ["Métrica", "Valor"];
+            const rows = [
+                ["Período", data.period_label || period],
+                ["Ingresos Totales ($)", summary.total_income],
+                ["Gastos / Proveedores ($)", summary.total_expenses],
+                ["Balance Neto ($)", summary.net_balance],
+                ["Cantidad de Operaciones", summary.total_transactions],
+                ["Ticket Promedio ($)", summary.average_ticket],
+                ["Hora Pico", summary.peak_hour ? `${summary.peak_hour}:00hs` : "N/A"],
+                ["Ingreso en Hora Pico ($)", summary.peak_hour_income || 0],
+            ];
+
+            exportToCsv(`reporte_negocio_${period}.csv`, headers, rows);
+            toast.success("Reporte exportado a Excel.");
+        } catch (err) {
+            toast.error(err.message || "Error al exportar reporte.");
+        }
+    }
+
     const loadData = useCallback(async () => {
+        // If the selected period is gated and user is on Basic, the PremiumGate UI handles it directly
+        if ((period === "month" || period === "custom") && !isPremium && !hasFeature("advanced_reports")) {
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         try {
             const params = { period };
@@ -32,12 +74,19 @@ function ReportsAnalytics() {
             const res = await getAnalytics(params);
             setData(res);
         } catch (error) {
+            if (
+                error?.response?.status === 403 ||
+                error?.isFeatureRequiresPremium ||
+                error?.isSubscriptionExpired
+            ) {
+                return;
+            }
             console.error(error);
             toast.error("No se pudieron cargar los reportes.");
         } finally {
             setIsLoading(false);
         }
-    }, [period, selectedDate, startDate, endDate]);
+    }, [period, selectedDate, startDate, endDate, isPremium, hasFeature]);
 
     useEffect(() => {
         loadData();
@@ -109,13 +158,13 @@ function ReportsAnalytics() {
                         </h1>
                     </div>
 
-                    {/* PERIOD TABS */}
+                    {/* PERIOD TABS & EXPORT BUTTON */}
                     <div className="flex flex-wrap items-center gap-2">
                         {[
-                            { id: "today", label: "Hoy / Por Día" },
-                            { id: "week", label: "Esta Semana" },
-                            { id: "month", label: "Este Mes" },
-                            { id: "custom", label: "Personalizado" },
+                            { id: "today", label: "Hoy / Por Día", isPro: false },
+                            { id: "week", label: "Esta Semana", isPro: false },
+                            { id: "month", label: "Este Mes", isPro: true },
+                            { id: "custom", label: "Personalizado", isPro: true },
                         ].map((p) => {
                             const isSelected = period === p.id;
                             return (
@@ -124,6 +173,7 @@ function ReportsAnalytics() {
                                     type="button"
                                     onClick={() => setPeriod(p.id)}
                                     className={`
+                                        inline-flex items-center gap-1.5
                                         rounded-md
                                         px-3.5
                                         py-2
@@ -137,10 +187,32 @@ function ReportsAnalytics() {
                                         }
                                     `}
                                 >
-                                    {p.label}
+                                    <span>{p.label}</span>
+                                    {p.isPro && !isPremium && (
+                                        <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                                            PRO
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
+
+                        <button
+                            type="button"
+                            onClick={handleExportReport}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2 text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition"
+                            title="Exportar métricas a formato Excel (CSV)"
+                        >
+                            <svg className="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            <span>Exportar Excel</span>
+                            {!isPremium && (
+                                <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                                    PRO
+                                </span>
+                            )}
+                        </button>
                     </div>
                 </div>
 
@@ -212,8 +284,23 @@ function ReportsAnalytics() {
                     </div>
                 )}
 
-                {/* 4 TOP FINANCIAL KPIS */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {/* ADVANCED PERIOD GATE FOR BASIC USERS */}
+                {(period === "month" || period === "custom") && !isPremium && !hasFeature("advanced_reports") ? (
+                    <PremiumGate
+                        feature="advanced_reports"
+                        title="Métricas Avanzadas & Filtro por Período"
+                        description="Accedé a balances mensuales consolidados, rangos de fechas personalizados sin límite y análisis de horarios pico."
+                        benefits={[
+                            "Informes mensuales y anuales históricos",
+                            "Filtro de fechas personalizado sin límite de días",
+                            "Análisis horario y franjas de mayor afluencia comercial",
+                            "Exportación de balances y métricas a Excel",
+                        ]}
+                    />
+                ) : (
+                    <>
+                        {/* 4 TOP FINANCIAL KPIS */}
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {/* INGRESOS */}
                     <div className="border border-[var(--border)] bg-[var(--surface)] p-5">
                         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -519,8 +606,10 @@ function ReportsAnalytics() {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </>
+        )}
+    </div>
+</div>
     );
 }
 

@@ -39,16 +39,22 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("subscription", response.data)
         self.assertEqual(response.data["subscription"]["plan"], Subscription.Plan.TRIAL)
+        self.assertEqual(response.data["subscription"]["tier"], Subscription.Tier.TRIAL)
         self.assertEqual(response.data["subscription"]["status"], Subscription.Status.TRIAL)
         self.assertTrue(response.data["subscription"]["is_valid"])
+        self.assertTrue(response.data["subscription"]["is_premium"])
         self.assertGreaterEqual(response.data["subscription"]["days_remaining"], 13)
 
     def test_subscription_expiration_logic(self):
         sub = Subscription.get_or_create_for_user(self.user)
         self.assertTrue(sub.is_valid)
 
-        # Set expiration in past
-        sub.expires_at = timezone.now() - timedelta(days=1)
+        # Set all expiration dates in past
+        past = timezone.now() - timedelta(days=1)
+        sub.expires_at = past
+        sub.trial_ends_at = past
+        sub.premium_expires_at = past
+        sub.basic_expires_at = past
         sub.save()
 
         self.assertFalse(sub.is_valid)
@@ -57,7 +63,11 @@ class SubscriptionTests(TestCase):
 
     def test_business_api_blocked_when_subscription_expired(self):
         sub = Subscription.get_or_create_for_user(self.user)
-        sub.expires_at = timezone.now() - timedelta(days=1)
+        past = timezone.now() - timedelta(days=1)
+        sub.expires_at = past
+        sub.trial_ends_at = past
+        sub.premium_expires_at = past
+        sub.basic_expires_at = past
         sub.save()
 
         self.client.force_authenticate(user=self.user)
@@ -69,6 +79,8 @@ class SubscriptionTests(TestCase):
     def test_business_api_accessible_with_valid_trial_or_license(self):
         sub = Subscription.get_or_create_for_user(self.user)
         sub.expires_at = timezone.now() + timedelta(days=10)
+        sub.trial_ends_at = timezone.now() + timedelta(days=10)
+        sub.premium_expires_at = timezone.now() + timedelta(days=10)
         sub.save()
 
         self.client.force_authenticate(user=self.user)
@@ -77,7 +89,11 @@ class SubscriptionTests(TestCase):
 
     def test_subscription_view_accessible_even_if_expired(self):
         sub = Subscription.get_or_create_for_user(self.user)
-        sub.expires_at = timezone.now() - timedelta(days=5)
+        past = timezone.now() - timedelta(days=5)
+        sub.expires_at = past
+        sub.trial_ends_at = past
+        sub.premium_expires_at = past
+        sub.basic_expires_at = past
         sub.save()
 
         self.client.force_authenticate(user=self.user)
@@ -86,20 +102,52 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.data["status"], Subscription.Status.EXPIRED)
         self.assertIn("payment_info", response.data["summary"])
 
-    def test_notify_payment_and_admin_review(self):
+    def test_multi_tier_time_consumption_and_feature_gating(self):
         sub = Subscription.get_or_create_for_user(self.user)
-        sub.expires_at = timezone.now() - timedelta(days=1)
+        now = timezone.now()
+
+        # Extend 30 days Basic + 10 days Premium
+        sub.extend(days=30, tier=Subscription.Tier.BASIC, plan=Subscription.Plan.BASIC_MONTHLY)
+        sub.extend(days=10, tier=Subscription.Tier.PREMIUM, plan=Subscription.Plan.PREMIUM_MONTHLY)
+
+        # Active tier should be PREMIUM while premium_expires_at is active
+        self.assertEqual(sub.active_tier, Subscription.Tier.PREMIUM)
+        self.assertTrue(sub.is_premium)
+        self.assertTrue(sub.has_feature("employees"))
+        self.assertTrue(sub.has_feature("pos_checkout"))
+
+        # Fast forward time: simulate premium expired, basic still has 20 days left
+        sub.premium_expires_at = now - timedelta(days=1)
+        sub.trial_ends_at = now - timedelta(days=1)
+        sub.basic_expires_at = now + timedelta(days=20)
+        sub.expires_at = sub.basic_expires_at
         sub.save()
 
-        # Client reports payment
+        # Now active tier should gracefully fall back to BASIC
+        self.assertEqual(sub.active_tier, Subscription.Tier.BASIC)
+        self.assertFalse(sub.is_premium)
+        self.assertTrue(sub.is_valid)
+        self.assertFalse(sub.has_feature("employees"))
+        self.assertTrue(sub.has_feature("pos_checkout"))
+
+    def test_notify_payment_and_admin_review(self):
+        sub = Subscription.get_or_create_for_user(self.user)
+        past = timezone.now() - timedelta(days=1)
+        sub.expires_at = past
+        sub.trial_ends_at = past
+        sub.premium_expires_at = past
+        sub.basic_expires_at = past
+        sub.save()
+
+        # Client reports premium yearly payment
         self.client.force_authenticate(user=self.user)
         notify_res = self.client.post(
             "/api/auth/subscription/notify-payment/",
             {
-                "plan": "yearly",
-                "amount": 100000,
+                "plan": "premium_yearly",
+                "amount": 200000,
                 "reference_code": "TRANSF-998877",
-                "payer_notes": "Transferencia de Banco Galicia",
+                "payer_notes": "Transferencia por Plan Premium Anual",
             },
             format="json",
         )
@@ -123,36 +171,49 @@ class SubscriptionTests(TestCase):
         )
         self.assertEqual(approve_res.status_code, status.HTTP_200_OK)
 
-        # User's subscription should now be active for 365 days
+        # User's subscription should now be active for 365 days on PREMIUM
         sub.refresh_from_db()
         self.assertTrue(sub.is_valid)
-        self.assertEqual(sub.plan, Subscription.Plan.YEARLY)
+        self.assertTrue(sub.is_premium)
+        self.assertEqual(sub.active_tier, Subscription.Tier.PREMIUM)
+        self.assertEqual(sub.plan, Subscription.Plan.PREMIUM_YEARLY)
         self.assertEqual(sub.status, Subscription.Status.ACTIVE)
         self.assertGreaterEqual(sub.days_remaining, 360)
 
-    def test_admin_quick_action_extend_and_suspend(self):
+    def test_admin_quick_actions(self):
         self.client.force_authenticate(user=self.admin_user)
 
-        # Extend +30
+        # Extend +30 Basic
         res = self.client.post(
             f"/api/auth/admin/subscriptions/{self.user.id}/action/",
-            {"action": "extend_30"},
+            {"action": "extend_30_basic"},
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
         sub = Subscription.objects.get(user=self.user)
-        self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
+        self.assertEqual(sub.plan, Subscription.Plan.BASIC_MONTHLY)
         self.assertEqual(sub.status, Subscription.Status.ACTIVE)
-        self.assertGreaterEqual(sub.days_remaining, 29)
+        self.assertGreaterEqual(sub.basic_days_remaining, 29)
+
+        # Extend +30 Premium
+        res_prem = self.client.post(
+            f"/api/auth/admin/subscriptions/{self.user.id}/action/",
+            {"action": "extend_30_premium"},
+            format="json",
+        )
+        self.assertEqual(res_prem.status_code, status.HTTP_200_OK)
+        sub.refresh_from_db()
+        self.assertEqual(sub.active_tier, Subscription.Tier.PREMIUM)
+        self.assertGreaterEqual(sub.premium_days_remaining, 29)
 
         # Suspend
-        res = self.client.post(
+        res_susp = self.client.post(
             f"/api/auth/admin/subscriptions/{self.user.id}/action/",
             {"action": "suspend", "notes": "Falta de pago reiterada"},
             format="json",
         )
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_susp.status_code, status.HTTP_200_OK)
         sub.refresh_from_db()
         self.assertEqual(sub.status, Subscription.Status.SUSPENDED)
         self.assertFalse(sub.is_valid)
@@ -167,19 +228,18 @@ class SubscriptionTests(TestCase):
         self.client.force_authenticate(user=self.user)
         res = self.client.post(
             "/api/auth/subscription/create-checkout/",
-            {"plan": "yearly"},
+            {"plan": "premium_yearly"},
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertIn("init_point", res.data)
         self.assertIn("notification_id", res.data)
-        self.assertEqual(res.data["plan"], "yearly")
+        self.assertEqual(res.data["plan"], "premium_yearly")
         self.assertEqual(res.data["mode"], "mock")
 
-        # Verify PaymentNotification was created with method mercadopago
         notif = PaymentNotification.objects.get(id=res.data["notification_id"])
         self.assertEqual(notif.payment_method, PaymentNotification.PaymentMethod.MERCADOPAGO)
-        self.assertEqual(notif.plan, PaymentNotification.PlanRequested.YEARLY)
+        self.assertEqual(notif.plan, PaymentNotification.PlanRequested.PREMIUM_YEARLY)
 
     @override_settings(MERCADOPAGO_ACCESS_TOKEN="TEST-1234567890")
     @patch("mercadopago.SDK")
@@ -197,7 +257,7 @@ class SubscriptionTests(TestCase):
         self.client.force_authenticate(user=self.user)
         res = self.client.post(
             "/api/auth/subscription/create-checkout/",
-            {"plan": "monthly"},
+            {"plan": "premium_monthly"},
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -207,22 +267,28 @@ class SubscriptionTests(TestCase):
 
     def test_verify_payment_status_mock_simulation(self):
         sub = Subscription.get_or_create_for_user(self.user)
-        sub.expires_at = timezone.now() - timedelta(days=2)
+        past = timezone.now() - timedelta(days=2)
+        sub.expires_at = past
+        sub.trial_ends_at = past
+        sub.premium_expires_at = past
+        sub.basic_expires_at = past
         sub.save()
         self.assertFalse(sub.is_valid)
 
         self.client.force_authenticate(user=self.user)
         res = self.client.get(
-            "/api/auth/subscription/verify-payment/?payment_status=mock_simulate&plan=monthly",
+            "/api/auth/subscription/verify-payment/?payment_status=mock_simulate&plan=premium_monthly",
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["status"], "approved")
 
         sub.refresh_from_db()
         self.assertTrue(sub.is_valid)
-        self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
+        self.assertTrue(sub.is_premium)
+        self.assertEqual(sub.active_tier, Subscription.Tier.PREMIUM)
+        self.assertEqual(sub.plan, Subscription.Plan.PREMIUM_MONTHLY)
         self.assertEqual(sub.status, Subscription.Status.ACTIVE)
-        self.assertGreaterEqual(sub.days_remaining, 29)
+        self.assertGreaterEqual(sub.premium_days_remaining, 29)
 
     @override_settings(MERCADOPAGO_ACCESS_TOKEN="TEST-1234567890")
     @patch("mercadopago.SDK")
@@ -237,10 +303,10 @@ class SubscriptionTests(TestCase):
                 "status_detail": "accredited",
                 "payment_method_id": "account_money",
                 "payment_type_id": "account_money",
-                "transaction_amount": 15000.0,
+                "transaction_amount": 20000.0,
                 "metadata": {
                     "user_id": self.user.id,
-                    "plan": "monthly",
+                    "plan": "premium_monthly",
                     "days": 30,
                 },
             },
@@ -259,8 +325,9 @@ class SubscriptionTests(TestCase):
 
         sub = Subscription.objects.get(user=self.user)
         self.assertTrue(sub.is_valid)
-        self.assertEqual(sub.plan, Subscription.Plan.MONTHLY)
-        self.assertGreaterEqual(sub.days_remaining, 29)
+        self.assertTrue(sub.is_premium)
+        self.assertEqual(sub.plan, Subscription.Plan.PREMIUM_MONTHLY)
+        self.assertGreaterEqual(sub.premium_days_remaining, 29)
 
     def test_suspended_account_is_not_valid_and_blocked(self):
         sub = Subscription.get_or_create_for_user(self.user)
@@ -322,5 +389,6 @@ class SubscriptionTests(TestCase):
         self.assertEqual(sub.status, Subscription.Status.ACTIVE)
         self.assertTrue(sub.is_valid)
         self.assertGreaterEqual(sub.days_remaining, 13)
+
 
 

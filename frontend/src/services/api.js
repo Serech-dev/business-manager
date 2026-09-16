@@ -4,18 +4,21 @@ import toast from "react-hot-toast";
 const AUTH_TOKEN_KEY = "businessManagerAuthToken"; 
 const AUTH_USER_KEY = "businessManagerAuthUser";
 
-// Wrap toast.error to suppress redundant noise when subscription is expired
+// Wrap toast.error to suppress redundant noise when subscription is expired or feature requires premium
 const originalToastError = toast.error.bind(toast);
 toast.error = (message, options) => {
     // If subscription is expired and caller didn't explicitly permit toasts (e.g. checkout errors)
     if (window.__BM_SUBSCRIPTION_EXPIRED__ && !options?.allowWhileExpired) {
         return null;
     }
-    // If message is related to subscription expired, suppress generic popups
+    // If message is related to subscription expired or premium feature required, suppress generic popups
     if (
         typeof message === "string" &&
-        message.toLowerCase().includes("suscripción") &&
-        message.toLowerCase().includes("expirad")
+        (message.toLowerCase().includes("suscripción") ||
+            message.toLowerCase().includes("expirad") ||
+            message.toLowerCase().includes("plan premium") ||
+            message.toLowerCase().includes("exclusiva del plan") ||
+            message.toLowerCase().includes("requiere una suscripción"))
     ) {
         return null;
     }
@@ -60,6 +63,11 @@ api.interceptors.response.use(
                 })
             );
             error.isSubscriptionExpired = true;
+        } else if (
+            error.response?.status === 403 &&
+            error.response?.data?.code === "feature_requires_premium"
+        ) {
+            error.isFeatureRequiresPremium = true;
         }
 
         return Promise.reject(error);
@@ -73,7 +81,9 @@ export function getApiError(
     if (
         error?.response?.status === 403 &&
         (error?.response?.data?.code === "subscription_expired" ||
-            error?.response?.data?.code === "subscription_suspended")
+            error?.response?.data?.code === "subscription_suspended" ||
+            error?.response?.data?.code === "feature_requires_premium" ||
+            error?.isFeatureRequiresPremium)
     ) {
         return "";
     }

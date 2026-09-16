@@ -201,8 +201,60 @@ body {
   color: var(--text-primary);
 }
 
-#root {
-  min-height: 100vh;
+/* ==========================================================================
+   REFINED PRO & PREMIUM ACCENT STYLES (Muted Amber / Champagne)
+   ========================================================================== */
+.badge-gold,
+.badge-pro {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+[data-theme="light"] .badge-gold,
+[data-theme="light"] .badge-pro {
+  background-color: rgba(217, 119, 6, 0.1);
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
+.badge-gold-subtle,
+.badge-pro-subtle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: rgba(245, 158, 11, 0.06);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+[data-theme="light"] .badge-gold-subtle,
+[data-theme="light"] .badge-pro-subtle {
+  background-color: rgba(217, 119, 6, 0.06);
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.15);
+}
+
+.gold-btn,
+.pro-btn {
+  background-color: #d97706;
+  color: #ffffff;
+  font-weight: 700;
+  transition: all 0.15s ease-in-out;
+}
+
+.gold-btn:hover,
+.pro-btn:hover {
+  background-color: #b45309;
 }
 
 /* ==========================================================================

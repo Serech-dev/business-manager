@@ -4,6 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { logout } from "../../services/auth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSubscription } from "../../context/SubscriptionContext";
+import TermsModal from "./TermsModal";
 
 function SubscriptionExpiredOverlay() {
     const {
@@ -18,10 +19,24 @@ function SubscriptionExpiredOverlay() {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const [selectedPlan, setSelectedPlan] = useState("yearly");
+    const [selectedTier, setSelectedTier] = useState("basic");
+    const [billingCycle, setBillingCycle] = useState("yearly");
     const [activeCheckout, setActiveCheckout] = useState(null);
     const [isChecking, setIsChecking] = useState(false);
+    const [isTermsOpen, setIsTermsOpen] = useState(false);
+    const [termsTab, setTermsTab] = useState("terms");
     const pollIntervalRef = useRef(null);
+
+    const currentPlanKey = `${selectedTier}_${billingCycle}`;
+
+    const PLAN_PRICES = {
+        basic_monthly: { amount: 10000, label: "$10.000", period: "/ mes", title: "Plan Básico Mensual" },
+        basic_yearly: { amount: 100000, label: "$100.000", period: "/ año", title: "Plan Básico Anual" },
+        premium_monthly: { amount: 20000, label: "$20.000", period: "/ mes", title: "Plan Premium Mensual" },
+        premium_yearly: { amount: 200000, label: "$200.000", period: "/ año", title: "Plan Premium Anual" },
+    };
+
+    const currentPriceInfo = PLAN_PRICES[currentPlanKey] || PLAN_PRICES.basic_monthly;
 
     const token = localStorage.getItem("businessManagerAuthToken");
     const isAuthRoute = location.pathname === "/login" || location.pathname === "/register";
@@ -77,7 +92,7 @@ function SubscriptionExpiredOverlay() {
 
     async function handleAutomatedCheckout() {
         try {
-            const preference = await startCheckout(selectedPlan, { openInNewTab: false });
+            const preference = await startCheckout(currentPlanKey, { openInNewTab: false });
             if (preference?.init_point) {
                 setActiveCheckout(preference);
                 toast.success("Código QR generado. Escaneá con tu celular o abrí la pasarela en una pestaña nueva.");
@@ -97,7 +112,7 @@ function SubscriptionExpiredOverlay() {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-fadeIn">
-            <div className="relative flex max-h-[95vh] w-full max-w-xl flex-col rounded-lg border border-[var(--danger-border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
+            <div className="relative flex max-h-[95vh] w-full max-w-xl flex-col rounded-md border border-[var(--danger-border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--danger-bg)]">
                     <div className="flex items-center gap-3">
@@ -134,40 +149,72 @@ function SubscriptionExpiredOverlay() {
                     {/* PLAN SELECTION */}
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div
-                            onClick={() => setSelectedPlan("monthly")}
+                            onClick={() => setSelectedTier("basic")}
                             className={`cursor-pointer rounded-md border p-3.5 transition ${
-                                selectedPlan === "monthly"
+                                selectedTier === "basic"
                                     ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
                                     : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--text-secondary)]"
                             }`}
                         >
-                            <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Mensual</span>
-                            <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">$10.000 <span className="text-xs font-medium text-[var(--text-secondary)]">/ mes</span></span>
+                            <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Básico</span>
+                            <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
+                                {billingCycle === "yearly" ? "$100.000" : "$10.000"}
+                                <span className="text-xs font-medium text-[var(--text-secondary)]"> {billingCycle === "yearly" ? "/ año" : "/ mes"}</span>
+                            </span>
                         </div>
 
                         <div
-                            onClick={() => setSelectedPlan("yearly")}
+                            onClick={() => setSelectedTier("premium")}
                             className={`relative cursor-pointer rounded-md border p-3.5 transition ${
-                                selectedPlan === "yearly"
+                                selectedTier === "premium"
                                     ? "border-[var(--primary)] bg-[var(--primary)]/5 ring-1 ring-[var(--primary)]"
                                     : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--text-secondary)]"
                             }`}
                         >
-                            <div className="absolute -top-2 right-2 rounded bg-[var(--primary)] px-2 py-0.5 text-[9px] font-bold text-white uppercase">
-                                2 meses gratis
+                            <div className="absolute -top-2 right-2 rounded-sm bg-[var(--primary)] px-2 py-0.5 text-[9px] font-bold text-white uppercase">
+                                Recomendado
                             </div>
-                            <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Anual</span>
-                            <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">$100.000 <span className="text-xs font-medium text-[var(--text-secondary)]">/ año</span></span>
+                            <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Premium</span>
+                            <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
+                                {billingCycle === "yearly" ? "$200.000" : "$20.000"}
+                                <span className="text-xs font-medium text-[var(--text-secondary)]"> {billingCycle === "yearly" ? "/ año" : "/ mes"}</span>
+                            </span>
                         </div>
+                    </div>
+
+                    {/* BILLING CYCLE SELECTOR */}
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setBillingCycle("monthly")}
+                            className={`flex-1 rounded-md border py-2 px-3 text-xs font-bold transition ${
+                                billingCycle === "monthly"
+                                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
+                            }`}
+                        >
+                            Mensual
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setBillingCycle("yearly")}
+                            className={`flex-1 rounded-md border py-2 px-3 text-xs font-bold transition ${
+                                billingCycle === "yearly"
+                                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)]"
+                            }`}
+                        >
+                            Anual (Ahorro 2 meses)
+                        </button>
                     </div>
 
                     {/* AUTOMATED CHECKOUT & QR DISPLAY */}
                     <div className="rounded-md border-2 border-[var(--primary)]/40 bg-[var(--primary)]/5 p-4 space-y-3">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">
-                                Pago Instantáneo (Recomendado)
+                                {currentPriceInfo.title} ({currentPriceInfo.label})
                             </span>
-                            <span className="rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                            <span className="rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                                 Desbloqueo Automático
                             </span>
                         </div>
@@ -175,11 +222,11 @@ function SubscriptionExpiredOverlay() {
                         {activeCheckout ? (
                             <div className="space-y-3 animate-fadeIn">
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Orden generada para el <strong>{selectedPlan === "yearly" ? "Plan Anual ($100.000)" : "Plan Mensual ($10.000)"}</strong>. Podés escanear el QR desde tu celular o continuar en una pestaña nueva.
+                                    Orden generada para <strong>{currentPriceInfo.title} ({currentPriceInfo.label})</strong>. Podés escanear el QR desde tu celular o continuar en una pestaña nueva.
                                 </p>
 
                                 {/* QR CODE CARD */}
-                                <div className="flex flex-col items-center justify-center p-3.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-center space-y-2.5 shadow-sm">
+                                <div className="flex flex-col items-center justify-center p-3.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-center space-y-2.5 shadow-xs">
                                     <div className="bg-white p-2.5 rounded-md shadow-inner border border-slate-200 inline-block">
                                         <QRCodeSVG
                                             value={activeCheckout.init_point}
@@ -189,10 +236,10 @@ function SubscriptionExpiredOverlay() {
                                     </div>
                                     <div className="space-y-0.5">
                                         <p className="text-xs font-bold text-[var(--text-primary)]">
-                                            Escanear con tu Celular
+                                            Escanear con Celular
                                         </p>
                                         <p className="text-[11px] text-[var(--text-secondary)]">
-                                            Cámara, app de <strong>Mercado Pago</strong> o tu banco favorito.
+                                            Cámara, app de <strong>Mercado Pago</strong> o tu banco favorito (QR interoperable).
                                         </p>
                                     </div>
 
@@ -202,7 +249,7 @@ function SubscriptionExpiredOverlay() {
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                         </span>
-                                        <span>Esperando pago... La pantalla se desbloqueará sola.</span>
+                                        <span>Esperando acreditación... Se desbloqueará sola.</span>
                                     </div>
                                 </div>
 
@@ -211,12 +258,12 @@ function SubscriptionExpiredOverlay() {
                                     <button
                                         type="button"
                                         onClick={() => window.open(activeCheckout.init_point, "_blank", "noopener,noreferrer")}
-                                        className="w-full rounded-md bg-[var(--primary)] py-2 px-3 text-xs font-bold text-white shadow hover:bg-[var(--primary-hover)] transition flex items-center justify-center gap-2"
+                                        className="w-full rounded-md bg-[var(--primary)] py-2 px-3 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] transition flex items-center justify-center gap-2"
                                     >
                                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                                         </svg>
-                                        <span>Abrir en nueva pestaña</span>
+                                        <span>Abrir Mercado Pago</span>
                                     </button>
 
                                     <button
@@ -245,14 +292,14 @@ function SubscriptionExpiredOverlay() {
                         ) : (
                             <div className="space-y-3">
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                                    Aboná con <strong>Mercado Pago</strong>, <strong>Tarjetas de Débito / Crédito</strong>, o transferencia desde <strong>cualquier Banco o Billetera Virtual</strong> (vía QR / CVU interoperable). Al pagar, tu pantalla se desbloquea al instante.
+                                    Aboná con <strong>Mercado Pago</strong>, <strong>Tarjetas de Débito / Crédito</strong> o <strong>QR Interoperable</strong> desde cualquier banco. Al pagar, tu pantalla se desbloquea al instante.
                                 </p>
 
                                 <button
                                     type="button"
                                     onClick={handleAutomatedCheckout}
                                     disabled={isProcessingCheckout}
-                                    className="w-full rounded-md bg-[var(--primary)] py-3 text-sm font-bold text-white shadow-md hover:bg-[var(--primary-hover)] disabled:opacity-50 transition flex items-center justify-center gap-2"
+                                    className="w-full rounded-md bg-[var(--primary)] py-3 text-sm font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] disabled:opacity-50 transition flex items-center justify-center gap-2"
                                 >
                                     {isProcessingCheckout ? (
                                         <>
@@ -260,7 +307,7 @@ function SubscriptionExpiredOverlay() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                                             </svg>
-                                            <span>Conectando con pasarela de pago...</span>
+                                            <span>Conectando con Mercado Pago...</span>
                                         </>
                                     ) : (
                                         <>
@@ -268,7 +315,7 @@ function SubscriptionExpiredOverlay() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75ZM6.75 16.5h.008v.008H6.75V16.5ZM16.5 6.75h.008v.008H16.5V6.75ZM13.5 13.5h3v3h-3v-3ZM13.5 19.5h6v-3h-3v3h-3ZM19.5 13.5h.008v.008H19.5V13.5Z" />
                                             </svg>
-                                            <span>Generar QR de Pago (${selectedPlan === "yearly" ? "100.000 Plan Anual" : "10.000 Plan Mensual"})</span>
+                                            <span>Generar QR ({currentPriceInfo.title} - {currentPriceInfo.label})</span>
                                         </>
                                     )}
                                 </button>
@@ -278,12 +325,25 @@ function SubscriptionExpiredOverlay() {
                 </div>
 
                 {/* FOOTER */}
-                <div className="flex items-center justify-between border-t border-[var(--border)] px-6 py-3 bg-[var(--surface-accent)]">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--border)] px-6 py-3 bg-[var(--surface-accent)]">
+                    <div className="text-[11px] text-[var(--text-secondary)] text-center sm:text-left">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setTermsTab("terms");
+                                setIsTermsOpen(true);
+                            }}
+                            className="font-medium text-[var(--text-secondary)] hover:text-[var(--primary)] hover:underline"
+                        >
+                            Términos del Servicio & Privacidad
+                        </button>
+                    </div>
+
                     <button
                         type="button"
                         onClick={handleCheckStatus}
                         disabled={isChecking}
-                        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition flex items-center gap-1.5"
+                        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition flex items-center gap-1.5 shrink-0"
                     >
                         <svg
                             className={`h-3.5 w-3.5 ${isChecking ? "animate-spin" : ""}`}
@@ -298,6 +358,13 @@ function SubscriptionExpiredOverlay() {
                     </button>
                 </div>
             </div>
+
+            {/* LEGAL TERMS & CANCELLATION MODAL */}
+            <TermsModal
+                isOpen={isTermsOpen}
+                onClose={() => setIsTermsOpen(false)}
+                initialTab={termsTab}
+            />
         </div>
     );
 }

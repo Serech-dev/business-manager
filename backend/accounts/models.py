@@ -12,16 +12,51 @@ class Subscription(models.Model):
         EXPIRED = "expired", "Vencida"
         SUSPENDED = "suspended", "Suspendida"
 
+    class Tier(models.TextChoices):
+        TRIAL = "trial", "Prueba (Acceso Total)"
+        BASIC = "basic", "Plan Básico"
+        PREMIUM = "premium", "Plan Premium"
+
     class Plan(models.TextChoices):
         TRIAL = "trial", "Prueba (14 días)"
+        BASIC_MONTHLY = "basic_monthly", "Plan Básico Mensual ($10.000/mes)"
+        BASIC_YEARLY = "basic_yearly", "Plan Básico Anual ($100.000/año)"
+        PREMIUM_MONTHLY = "premium_monthly", "Plan Premium Mensual ($20.000/mes)"
+        PREMIUM_YEARLY = "premium_yearly", "Plan Premium Anual ($200.000/año)"
+        LIFETIME = "lifetime", "Licencia Vitalicia Premium"
+        # Backwards compatibility
         MONTHLY = "monthly", "Plan Mensual ($10.000/mes)"
         YEARLY = "yearly", "Plan Anual ($100.000/año)"
-        LIFETIME = "lifetime", "Licencia Vitalicia"
+
+    PREMIUM_FEATURES = {
+        "employees",
+        "advanced_reports",
+        "export_excel",
+        "provider_debts",
+        "ticket_branding",
+        "audit_logs",
+    }
+
+    BASIC_FEATURES = {
+        "pos_checkout",
+        "catalog_management",
+        "combos_promos",
+        "daily_register",
+        "client_debts",
+        "basic_stock",
+        "basic_metrics",
+    }
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="subscription",
+    )
+
+    tier = models.CharField(
+        max_length=20,
+        choices=Tier.choices,
+        default=Tier.TRIAL,
     )
 
     status = models.CharField(
@@ -31,7 +66,7 @@ class Subscription(models.Model):
     )
 
     plan = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=Plan.choices,
         default=Plan.TRIAL,
     )
@@ -43,6 +78,19 @@ class Subscription(models.Model):
     expires_at = models.DateTimeField(
         null=True,
         blank=True,
+        help_text="Fecha de vencimiento general del servicio",
+    )
+
+    premium_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha de vencimiento de funciones Premium",
+    )
+
+    basic_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha de vencimiento de funciones Básicas",
     )
 
     trial_ends_at = models.DateTimeField(
@@ -90,21 +138,56 @@ class Subscription(models.Model):
         return f"{ident} - {self.get_plan_display()} ({self.get_status_display()})"
 
     @property
+    def active_tier(self):
+        """Calculates dynamic tier (trial, premium, basic, none)."""
+        if self.status == self.Status.SUSPENDED:
+            return "none"
+
+        if self.user.is_superuser or self.plan == self.Plan.LIFETIME:
+            return self.Tier.PREMIUM
+
+        now = timezone.now()
+
+        # 1. Trial period active (grants full Premium access)
+        if self.status == self.Status.TRIAL:
+            if self.trial_ends_at and now <= self.trial_ends_at:
+                return self.Tier.TRIAL
+            if self.expires_at and now <= self.expires_at:
+                return self.Tier.TRIAL
+
+        # 2. Premium time active
+        if self.premium_expires_at and now <= self.premium_expires_at:
+            return self.Tier.PREMIUM
+
+        # 3. Basic time active
+        if self.basic_expires_at and now <= self.basic_expires_at:
+            return self.Tier.BASIC
+
+        # 4. Fallback check on expires_at for backwards compatibility
+        if self.expires_at and now <= self.expires_at:
+            if self.tier == self.Tier.PREMIUM or self.plan in [self.Plan.PREMIUM_MONTHLY, self.Plan.PREMIUM_YEARLY]:
+                return self.Tier.PREMIUM
+            return self.Tier.BASIC
+
+        return "none"
+
+    @property
     def is_valid(self):
         """Returns True if the subscription allows using the application."""
         if self.status == self.Status.SUSPENDED:
             return False
 
-        if self.user.is_superuser or self.user.is_staff:
+        if self.user.is_superuser or self.user.is_staff or self.plan == self.Plan.LIFETIME:
             return True
 
-        if self.plan == self.Plan.LIFETIME and self.status == self.Status.ACTIVE:
+        return self.active_tier in [self.Tier.TRIAL, self.Tier.BASIC, self.Tier.PREMIUM]
+
+    @property
+    def is_premium(self):
+        """Returns True if the account currently has access to Premium features."""
+        if self.user.is_superuser or self.user.is_staff or self.plan == self.Plan.LIFETIME:
             return True
-
-        if self.expires_at is None:
-            return False
-
-        return timezone.now() <= self.expires_at
+        return self.active_tier in [self.Tier.TRIAL, self.Tier.PREMIUM]
 
     @property
     def effective_status(self):
@@ -112,51 +195,100 @@ class Subscription(models.Model):
         if self.status == self.Status.SUSPENDED:
             return self.Status.SUSPENDED
 
-        if self.user.is_superuser:
+        if self.user.is_superuser or self.plan == self.Plan.LIFETIME:
             return self.Status.ACTIVE
 
-        if self.plan == self.Plan.LIFETIME:
-            return self.Status.ACTIVE
-
-        if self.expires_at and timezone.now() > self.expires_at:
+        if not self.is_valid:
             return self.Status.EXPIRED
 
         return self.status
 
     @property
     def days_remaining(self):
-        """Returns integer remaining days until expiration, or None for lifetime / superuser."""
+        """Returns total remaining days across active tiers, or None for lifetime / superuser."""
         if self.status == self.Status.SUSPENDED or not self.is_valid:
             return 0
 
         if self.plan == self.Plan.LIFETIME or self.user.is_superuser:
             return None
 
-        if not self.expires_at:
-            return 0
-
         now = timezone.now()
-        if now >= self.expires_at:
+        valid_dates = [dt for dt in [self.expires_at, self.premium_expires_at, self.basic_expires_at, self.trial_ends_at] if dt]
+        if not valid_dates:
             return 0
 
-        diff = self.expires_at - now
+        furthest = max(valid_dates)
+        if now >= furthest:
+            return 0
+
+        diff = furthest - now
+        return diff.days + (1 if diff.seconds > 0 else 0)
+
+    @property
+    def premium_days_remaining(self):
+        if self.plan == self.Plan.LIFETIME or self.user.is_superuser:
+            return None
+        now = timezone.now()
+        target = self.trial_ends_at if self.is_trial else self.premium_expires_at
+        if not target or now >= target:
+            return 0
+        diff = target - now
+        return diff.days + (1 if diff.seconds > 0 else 0)
+
+    @property
+    def basic_days_remaining(self):
+        if self.plan == self.Plan.LIFETIME or self.user.is_superuser:
+            return None
+        now = timezone.now()
+        if not self.basic_expires_at or now >= self.basic_expires_at:
+            return 0
+        diff = self.basic_expires_at - now
         return diff.days + (1 if diff.seconds > 0 else 0)
 
     @property
     def is_trial(self):
         return self.effective_status == self.Status.TRIAL
 
-    def extend(self, days=30, plan=None, amount=None, reference=""):
-        """Extends current subscription by N days."""
-        now = timezone.now()
-        base_date = self.expires_at if (self.expires_at and self.expires_at > now) else now
-        self.expires_at = base_date + timedelta(days=days)
-        self.status = self.Status.ACTIVE
+    def has_feature(self, feature_key: str) -> bool:
+        """Determines if the current subscription tier permits using a specific feature."""
+        if self.user.is_superuser or self.user.is_staff or self.plan == self.Plan.LIFETIME:
+            return True
 
-        if plan:
-            self.plan = plan
-        elif self.plan == self.Plan.TRIAL:
-            self.plan = self.Plan.MONTHLY if days <= 60 else self.Plan.YEARLY
+        active = self.active_tier
+        if active in [self.Tier.TRIAL, self.Tier.PREMIUM]:
+            return True
+
+        if active == self.Tier.BASIC:
+            return feature_key in self.BASIC_FEATURES
+
+        return False
+
+    def extend(self, days=30, tier="basic", plan=None, amount=None, reference=""):
+        """Extends subscription by N days for the specified tier."""
+        now = timezone.now()
+        tier_str = str(tier).lower()
+
+        if tier_str == "premium" or plan in [self.Plan.PREMIUM_MONTHLY, self.Plan.PREMIUM_YEARLY]:
+            base_date = self.premium_expires_at if (self.premium_expires_at and self.premium_expires_at > now) else now
+            self.premium_expires_at = base_date + timedelta(days=days)
+            self.tier = self.Tier.PREMIUM
+            if not plan:
+                self.plan = self.Plan.PREMIUM_MONTHLY if days <= 60 else self.Plan.PREMIUM_YEARLY
+            else:
+                self.plan = plan
+        else:
+            base_date = self.basic_expires_at if (self.basic_expires_at and self.basic_expires_at > now) else now
+            self.basic_expires_at = base_date + timedelta(days=days)
+            if not self.premium_expires_at or self.premium_expires_at <= now:
+                self.tier = self.Tier.BASIC
+            if not plan:
+                self.plan = self.Plan.BASIC_MONTHLY if days <= 60 else self.Plan.BASIC_YEARLY
+            else:
+                self.plan = plan
+
+        self.status = self.Status.ACTIVE
+        valid_dates = [dt for dt in [self.premium_expires_at, self.basic_expires_at] if dt]
+        self.expires_at = max(valid_dates) if valid_dates else (now + timedelta(days=days))
 
         if amount is not None:
             self.last_payment_amount = Decimal(str(amount))
@@ -171,8 +303,11 @@ class Subscription(models.Model):
     def activate_lifetime(self, notes=""):
         """Grants lifetime license."""
         self.plan = self.Plan.LIFETIME
+        self.tier = self.Tier.PREMIUM
         self.status = self.Status.ACTIVE
         self.expires_at = None
+        self.premium_expires_at = None
+        self.basic_expires_at = None
         if notes:
             self.notes = f"{self.notes}\n{notes}".strip()
         self.save()
@@ -190,19 +325,22 @@ class Subscription(models.Model):
         """Reactivates suspended subscription."""
         now = timezone.now()
         if not self.expires_at or self.expires_at <= now:
-            self.expires_at = now + timedelta(days=30)
+            self.basic_expires_at = now + timedelta(days=30)
+            self.expires_at = self.basic_expires_at
         self.status = self.Status.ACTIVE
         self.save()
         return self
 
     def activate_trial(self, days=14):
-        """Activates or resets trial period."""
+        """Activates or resets 14-day trial period with full Premium access."""
         now = timezone.now()
         self.status = self.Status.TRIAL
+        self.tier = self.Tier.TRIAL
         self.plan = self.Plan.TRIAL
         self.start_date = now
         self.expires_at = now + timedelta(days=days)
         self.trial_ends_at = self.expires_at
+        self.premium_expires_at = self.expires_at
         self.is_trial_used = True
         self.save()
         return self
@@ -210,23 +348,49 @@ class Subscription(models.Model):
     def get_summary(self):
         is_admin_user = bool(self.user.is_superuser or self.user.is_staff)
         is_suspended = self.status == self.Status.SUSPENDED
+        active_tier = self.active_tier
+
         return {
             "status": self.effective_status,
             "status_display": dict(self.Status.choices).get(self.effective_status, self.effective_status),
+            "tier": active_tier,
+            "tier_display": dict(self.Tier.choices).get(active_tier, active_tier),
+            "is_premium": self.is_premium,
             "plan": self.plan,
             "plan_display": self.get_plan_display(),
             "is_valid": self.is_valid,
             "days_remaining": self.days_remaining,
+            "premium_days_remaining": self.premium_days_remaining,
+            "basic_days_remaining": self.basic_days_remaining,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "premium_expires_at": self.premium_expires_at.isoformat() if self.premium_expires_at else None,
+            "basic_expires_at": self.basic_expires_at.isoformat() if self.basic_expires_at else None,
             "is_trial": self.is_trial,
             "is_superuser": bool(is_admin_user and not is_suspended),
+            "features": {
+                "pos_checkout": True,
+                "catalog_management": True,
+                "combos_promos": True,
+                "daily_register": True,
+                "client_debts": True,
+                "basic_stock": True,
+                "basic_metrics": True,
+                "employees": self.has_feature("employees"),
+                "advanced_reports": self.has_feature("advanced_reports"),
+                "export_excel": self.has_feature("export_excel"),
+                "provider_debts": self.has_feature("provider_debts"),
+                "ticket_branding": self.has_feature("ticket_branding"),
+                "audit_logs": self.has_feature("audit_logs"),
+            },
             "payment_info": {
                 "alias": "gestor.negocios.mp",
                 "cbu": "0000003100010000000000",
                 "holder": "Business Manager Payments",
                 "email_contact": "soporte.businessmanager@gmail.com",
-                "monthly_price": 10000,
-                "yearly_price": 100000,
+                "basic_monthly_price": 10000,
+                "basic_yearly_price": 100000,
+                "premium_monthly_price": 20000,
+                "premium_yearly_price": 200000,
             },
         }
 
@@ -237,9 +401,11 @@ class Subscription(models.Model):
             user=user,
             defaults={
                 "status": cls.Status.TRIAL,
+                "tier": cls.Tier.TRIAL,
                 "plan": cls.Plan.TRIAL,
                 "start_date": timezone.now(),
                 "expires_at": timezone.now() + timedelta(days=14),
+                "premium_expires_at": timezone.now() + timedelta(days=14),
                 "trial_ends_at": timezone.now() + timedelta(days=14),
                 "is_trial_used": True,
             },
@@ -258,8 +424,12 @@ class PaymentNotification(models.Model):
         MANUAL_TRANSFER = "manual_transfer", "Transferencia Bancaria Manual"
 
     class PlanRequested(models.TextChoices):
-        MONTHLY = "monthly", "Plan Mensual ($10.000/mes)"
-        YEARLY = "yearly", "Plan Anual ($100.000/año)"
+        BASIC_MONTHLY = "basic_monthly", "Plan Básico Mensual ($10.000/mes)"
+        BASIC_YEARLY = "basic_yearly", "Plan Básico Anual ($100.000/año)"
+        PREMIUM_MONTHLY = "premium_monthly", "Plan Premium Mensual ($20.000/mes)"
+        PREMIUM_YEARLY = "premium_yearly", "Plan Premium Anual ($200.000/año)"
+        MONTHLY = "monthly", "Plan Básico Mensual ($10.000/mes)"
+        YEARLY = "yearly", "Plan Básico Anual ($100.000/año)"
 
     subscription = models.ForeignKey(
         Subscription,
@@ -274,9 +444,9 @@ class PaymentNotification(models.Model):
     )
 
     plan = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=PlanRequested.choices,
-        default=PlanRequested.MONTHLY,
+        default=PlanRequested.BASIC_MONTHLY,
     )
 
     payment_method = models.CharField(

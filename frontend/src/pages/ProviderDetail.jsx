@@ -19,8 +19,10 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import ProviderMovementModal from "../components/providers/ProviderMovementModal";
 import AssignProductsToProviderModal from "../components/providers/AssignProductsToProviderModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
+import PremiumGate from "../components/subscription/PremiumGate";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatStockQty, formatUnitType } from "../utils/formatStock";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
 
 const PROVIDER_DETAIL_TOUR_STEPS = [
     {
@@ -70,8 +72,15 @@ function ProviderDetail({ isNewProvider = false }) {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [unlinkingProductId, setUnlinkingProductId] = useState(null);
 
+    const { isPremium, hasFeature } = useSubscriptionTier();
+
     async function loadData() {
         if (isNewProvider) {
+            setIsLoading(false);
+            return;
+        }
+
+        if (!isPremium && !hasFeature("provider_debts")) {
             setIsLoading(false);
             return;
         }
@@ -102,6 +111,13 @@ function ProviderDetail({ isNewProvider = false }) {
             setPhone(providerData.phone || "");
             setNotes(providerData.notes || "");
         } catch (error) {
+            if (
+                error?.response?.status === 403 ||
+                error?.isFeatureRequiresPremium ||
+                error?.isSubscriptionExpired
+            ) {
+                return;
+            }
             console.error("Error loading provider details:", error);
             toast.error("No se pudo cargar el proveedor.");
         } finally {
@@ -111,7 +127,7 @@ function ProviderDetail({ isNewProvider = false }) {
 
     useEffect(() => {
         loadData();
-    }, [id, isNewProvider]);
+    }, [id, isNewProvider, isPremium, hasFeature]);
 
     // Filter products assigned to this provider
     const assignedProducts = useMemo(() => {
@@ -295,20 +311,31 @@ function ProviderDetail({ isNewProvider = false }) {
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-            {/* TOP NAVIGATION / BREADCRUMB */}
-            <div className="mb-4 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                <button
-                    type="button"
-                    onClick={() => navigate("/providers")}
-                    className="hover:text-[var(--text-primary)] hover:underline"
-                >
-                    Proveedores
-                </button>
-                <span>/</span>
-                <span className="font-semibold text-[var(--text-primary)] truncate max-w-[200px]">
-                    {isNewProvider ? "Nuevo Proveedor" : provider.name}
-                </span>
-            </div>
+            <PremiumGate
+                feature="provider_debts"
+                title="Ficha del Proveedor & Cuentas por Pagar"
+                description="Gestioná compras a crédito, saldos pendientes y vinculación de artículos en lote con el Plan Premium de Business Manager."
+                benefits={[
+                    "Registro detallado de compras a crédito y fechas de pago",
+                    "Cálculo automático de saldos deudores ('Debo')",
+                    "Vinculación y cambio de proveedor en lote para productos",
+                    "Historial de pagos y movimientos por distribuidor",
+                ]}
+            >
+                {/* TOP NAVIGATION / BREADCRUMB */}
+                <div className="mb-4 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    <button
+                        type="button"
+                        onClick={() => navigate("/providers")}
+                        className="hover:text-[var(--text-primary)] hover:underline"
+                    >
+                        Proveedores
+                    </button>
+                    <span>/</span>
+                    <span className="font-semibold text-[var(--text-primary)] truncate max-w-[200px]">
+                        {isNewProvider ? "Nuevo Proveedor" : provider?.name || ""}
+                    </span>
+                </div>
 
             {/* HEADER */}
             <header className="flex flex-col gap-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs sm:flex-row sm:items-center sm:justify-between">
@@ -954,6 +981,7 @@ function ProviderDetail({ isNewProvider = false }) {
                     steps={PROVIDER_DETAIL_TOUR_STEPS}
                 />
             )}
+            </PremiumGate>
         </div>
     );
 }

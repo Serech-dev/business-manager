@@ -21,6 +21,7 @@ import ProductModal from "../components/products/ProductModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
 
 const STOCK_TOUR_STEPS = [
     {
@@ -101,19 +102,32 @@ function StockManagement() {
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
 
+    const { isPremium, hasFeature } = useSubscriptionTier();
+
     async function loadMasterData() {
         try {
+            const fetchProviders = (isPremium || hasFeature("provider_debts"))
+                ? getProviders()
+                : Promise.resolve([]);
+
             const [prodsData, catsData, provsData, summaryData] = await Promise.all([
                 getProducts(),
                 getCategories(),
-                getProviders(),
+                fetchProviders,
                 getStockAlertsSummary().catch(() => null),
             ]);
             setProducts(prodsData);
             setCategories(catsData);
-            setProviders(provsData);
+            setProviders(provsData || []);
             setAlertsSummary(summaryData);
         } catch (error) {
+            if (
+                error?.response?.status === 403 ||
+                error?.isFeatureRequiresPremium ||
+                error?.isSubscriptionExpired
+            ) {
+                return;
+            }
             console.error("Error loading stock master data:", error);
             toast.error("No se pudieron cargar los datos de stock.");
         } finally {
