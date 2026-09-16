@@ -340,3 +340,4 @@ export function SimplePriceChecker({ onNavigateToPos }) {
 }
 
 export default SimplePriceChecker;
+

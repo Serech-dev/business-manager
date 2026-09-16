@@ -428,3 +428,4 @@ export function SimpleCashRegister() {
 }
 
 export default SimpleCashRegister;
+

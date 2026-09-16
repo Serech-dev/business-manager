@@ -312,3 +312,4 @@ export function MobileCameraScanner({
 }
 
 export default MobileCameraScanner;
+

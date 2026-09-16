@@ -355,7 +355,7 @@ function AccountMenu() {
                                     </div>
                                     <div>
                                         <span className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] block">
-                                            {isSimpleMode ? "Modo Escritorio" : "Modo Simple (PWA)"}
+                                            {isSimpleMode ? "Modo Escritorio" : "Modo Simple (BETA)"}
                                         </span>
                                         <span className="text-[11px] text-[var(--text-secondary)]">
                                             {isSimpleMode ? "Cambiar a panel completo" : "Punto de venta táctil y escáner"}

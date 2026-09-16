@@ -59,9 +59,12 @@ export function MobileSimpleLayout() {
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                            <h1 className="font-bold text-xs text-[var(--text-primary)] truncate max-w-[130px] sm:max-w-xs">
+                            <h1 className="font-bold text-xs text-[var(--text-primary)] truncate max-w-[120px] sm:max-w-xs">
                                 {settings?.store_name || "Mi Negocio"}
                             </h1>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                                BETA
+                            </span>
                             {tierBadge}
                         </div>
                         <span className="text-[10px] text-[var(--text-secondary)] block truncate">
@@ -102,7 +105,7 @@ export function MobileSimpleLayout() {
             </header>
 
             {/* Main Tab Content / Subroute */}
-            <main className="flex-1 pb-16">
+            <main className="flex-1 pb-20">
                 {isSubRoute ? (
                     <div className="p-3">
                         <Outlet
@@ -122,7 +125,7 @@ export function MobileSimpleLayout() {
                         )}
 
                         {activeTab === "scanner" && (
-                            <div className="h-[calc(100vh-120px)]">
+                            <div className="h-[calc(100vh-130px)]">
                                 <MobileCameraScanner
                                     onScan={(code) => {
                                         setActiveTab("prices");
@@ -199,73 +202,16 @@ export function MobileSimpleLayout() {
                 )}
             </main>
 
-            {/* Bottom Tab Navigation Bar */}
-            <nav className="fixed bottom-0 inset-x-0 z-30 bg-[var(--surface)] border-t border-[var(--border)] px-2 py-1.5 flex items-center justify-around shadow-lg safe-area-bottom">
-                {/* 1. POS */}
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (isSubRoute) navigate("/");
-                        setActiveTab("pos");
-                    }}
-                    className={`flex flex-col items-center justify-center py-1 px-3 rounded-md transition-colors ${
-                        !isSubRoute && activeTab === "pos"
-                            ? "text-[var(--primary)] font-bold"
-                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                >
-                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span className="text-[10px] tracking-tight">Vender</span>
-                </button>
-
-                {/* 2. Camera Scanner */}
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (isSubRoute) navigate("/");
-                        setActiveTab("scanner");
-                    }}
-                    className={`flex flex-col items-center justify-center py-1 px-3 rounded-md transition-colors ${
-                        !isSubRoute && activeTab === "scanner"
-                            ? "text-[var(--primary)] font-bold"
-                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                >
-                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                    </svg>
-                    <span className="text-[10px] tracking-tight">Escanear</span>
-                </button>
-
-                {/* 3. Price Checker */}
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (isSubRoute) navigate("/");
-                        setActiveTab("prices");
-                    }}
-                    className={`flex flex-col items-center justify-center py-1 px-3 rounded-md transition-colors ${
-                        !isSubRoute && activeTab === "prices"
-                            ? "text-[var(--primary)] font-bold"
-                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                >
-                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    <span className="text-[10px] tracking-tight">Precios</span>
-                </button>
-
-                {/* 4. Cash Register */}
+            {/* Bottom Tab Navigation Bar with Center Elevated Main Button */}
+            <nav className="fixed bottom-0 inset-x-0 z-30 bg-[var(--surface)] border-t border-[var(--border)] px-1 py-1.5 flex items-center justify-around shadow-xl safe-area-bottom">
+                {/* 1. Cash Register */}
                 <button
                     type="button"
                     onClick={() => {
                         if (isSubRoute) navigate("/");
                         setActiveTab("cash");
                     }}
-                    className={`flex flex-col items-center justify-center py-1 px-3 rounded-md transition-colors ${
+                    className={`flex-1 flex flex-col items-center justify-center py-1 transition-colors ${
                         !isSubRoute && activeTab === "cash"
                             ? "text-[var(--primary)] font-bold"
                             : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -277,6 +223,66 @@ export function MobileSimpleLayout() {
                     <span className="text-[10px] tracking-tight">Caja</span>
                 </button>
 
+                {/* 2. Price Checker */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (isSubRoute) navigate("/");
+                        setActiveTab("prices");
+                    }}
+                    className={`flex-1 flex flex-col items-center justify-center py-1 transition-colors ${
+                        !isSubRoute && activeTab === "prices"
+                            ? "text-[var(--primary)] font-bold"
+                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    }`}
+                >
+                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    <span className="text-[10px] tracking-tight">Precios</span>
+                </button>
+
+                {/* 3. CENTER HIGHLIGHTED MAIN BUTTON: VENDER */}
+                <div className="relative -top-3 px-1">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (isSubRoute) navigate("/");
+                            setActiveTab("pos");
+                        }}
+                        className={`w-13 h-13 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-[var(--background)] ring-2 ring-[var(--primary)]/30 active:scale-95 transition-all ${
+                            !isSubRoute && activeTab === "pos"
+                                ? "bg-[var(--primary)] text-white scale-105"
+                                : "bg-[var(--primary)] text-white hover:opacity-95"
+                        }`}
+                        title="Nueva Venta / Operación"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* 4. Camera Scanner */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (isSubRoute) navigate("/");
+                        setActiveTab("scanner");
+                    }}
+                    className={`flex-1 flex flex-col items-center justify-center py-1 transition-colors ${
+                        !isSubRoute && activeTab === "scanner"
+                            ? "text-[var(--primary)] font-bold"
+                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    }`}
+                >
+                    <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-[10px] tracking-tight">Escanear</span>
+                </button>
+
                 {/* 5. More / Settings */}
                 <button
                     type="button"
@@ -284,7 +290,7 @@ export function MobileSimpleLayout() {
                         if (isSubRoute) navigate("/");
                         setActiveTab("more");
                     }}
-                    className={`flex flex-col items-center justify-center py-1 px-3 rounded-md transition-colors ${
+                    className={`flex-1 flex flex-col items-center justify-center py-1 transition-colors ${
                         !isSubRoute && activeTab === "more"
                             ? "text-[var(--primary)] font-bold"
                             : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
