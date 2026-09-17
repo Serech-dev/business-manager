@@ -5,6 +5,7 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { createBatchStockRestock } from "../../services/business";
 import { formatStockQty, formatUnitType } from "../../utils/formatStock";
 import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
+import ProductSelectSearch from "../common/ProductSelectSearch";
 
 function RestockModal({
     isOpen,
@@ -296,7 +297,7 @@ function RestockModal({
                                 return (
                                     <div
                                         key={idx}
-                                        className="relative rounded-xl border border-[var(--border)] bg-[var(--background)] p-3.5 transition"
+                                        className="relative rounded-md border border-[var(--border)] bg-[var(--background)] p-3.5 transition"
                                     >
                                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
                                             {/* Product Select */}
@@ -304,31 +305,12 @@ function RestockModal({
                                                 <label className="mb-1 block text-[11px] font-semibold text-[var(--text-secondary)]">
                                                     Producto #{idx + 1}
                                                 </label>
-                                                <div className="relative">
-                                                    <select
-                                                        value={item.productId}
-                                                        onChange={(e) => handleUpdateItem(idx, "productId", e.target.value)}
-                                                        className="w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-3 pr-8 py-2 text-sm font-medium text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-hidden"
-                                                    >
-                                                        <option value="" className="bg-[var(--surface)] text-[var(--text-primary)]">Seleccionar producto...</option>
-                                                        {sortedProducts.map((p) => (
-                                                            <option key={p.id} value={p.id} className="bg-[var(--surface)] text-[var(--text-primary)]">
-                                                                {p.name} {p.stock !== null ? `(Stock act: ${formatStockQty(p.stock, p.unit_type)} ${formatUnitType(p.unit_type, false, p.stock)})` : "(Sin seg.)"}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
-                                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                                        </svg>
-                                                    </div>
-                                                </div>
-                                                {selectedProd && (
-                                                    <div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--text-secondary)]">
-                                                        <span>Tipo: <b className="text-[var(--text-primary)]">{formatUnitType(selectedProd.unit_type, true, 1)}</b></span>
-                                                        <span>Venta: <b className="text-[var(--text-primary)]">{formatCurrency(selectedProd.sale_price)}</b></span>
-                                                    </div>
-                                                )}
+                                                <ProductSelectSearch
+                                                    products={products}
+                                                    value={item.productId}
+                                                    onChange={(prodId) => handleUpdateItem(idx, "productId", prodId)}
+                                                    placeholder="Escribir nombre o código de barras..."
+                                                />
                                             </div>
 
                                             {/* Quantity */}

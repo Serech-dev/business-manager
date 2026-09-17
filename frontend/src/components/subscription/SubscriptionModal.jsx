@@ -36,9 +36,9 @@ function SubscriptionModal({ isOpen, onClose }) {
     // Pricing dictionary
     const PLAN_PRICES = {
         basic_monthly: { amount: 9900, label: "$9.900", period: "/ mes", title: "Plan Básico Mensual" },
-        basic_yearly: { amount: 99000, label: "$99.000", period: "/ año", monthlyEquiv: "$8.250/mes", title: "Plan Básico Anual", discount: "2 meses gratis" },
+        basic_yearly: { amount: 99000, originalLabel: "$118.800", label: "$99.000", period: "/ año", monthlyEquiv: "$8.250/mes", title: "Plan Básico Anual", discount: "2 meses gratis" },
         premium_monthly: { amount: 19900, label: "$19.900", period: "/ mes", title: "Plan Premium Mensual" },
-        premium_yearly: { amount: 199000, label: "$199.000", period: "/ año", monthlyEquiv: "$16.583/mes", title: "Plan Premium Anual", discount: "2 meses gratis" },
+        premium_yearly: { amount: 199000, originalLabel: "$238.800", label: "$199.000", period: "/ año", monthlyEquiv: "$16.583/mes", title: "Plan Premium Anual", discount: "2 meses gratis" },
     };
 
     const currentPriceInfo = PLAN_PRICES[currentPlanKey] || PLAN_PRICES.basic_monthly;
@@ -342,13 +342,39 @@ function SubscriptionModal({ isOpen, onClose }) {
                                                 {selectedTier === "basic" && <span className="h-2 w-2 rounded-full bg-white" />}
                                             </span>
                                         </div>
-                                        <div className="mt-2 flex items-baseline gap-1">
-                                            <span className="text-2xl font-black text-[var(--text-primary)]">
-                                                {billingCycle === "yearly" ? "$99.000" : "$9.900"}
-                                            </span>
-                                            <span className="text-xs text-[var(--text-secondary)] font-medium">
-                                                {billingCycle === "yearly" ? "/ año" : "/ mes"}
-                                            </span>
+                                        <div className="mt-2.5">
+                                            {billingCycle === "yearly" ? (
+                                                <div>
+                                                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                                                        <span className="text-sm font-semibold text-[var(--text-secondary)] line-through decoration-red-500/80 decoration-2">
+                                                            $118.800
+                                                        </span>
+                                                        <span className="text-2xl font-black text-[var(--text-primary)]">
+                                                            $99.000
+                                                        </span>
+                                                        <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                                            / año
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 flex items-center gap-2">
+                                                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            $8.250 / mes
+                                                        </span>
+                                                        <span className="rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold uppercase">
+                                                            Ahorro 2 meses
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-2xl font-black text-[var(--text-primary)]">
+                                                        $9.900
+                                                    </span>
+                                                    <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                                        / mes
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                         <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
                                             Punto de venta, control de caja, catálogo, combos/ofertas y libreta de fiados.
@@ -374,13 +400,39 @@ function SubscriptionModal({ isOpen, onClose }) {
                                                 {selectedTier === "premium" && <span className="h-2 w-2 rounded-full bg-white" />}
                                             </span>
                                         </div>
-                                        <div className="mt-2 flex items-baseline gap-1">
-                                            <span className="text-2xl font-black text-[var(--text-primary)]">
-                                                {billingCycle === "yearly" ? "$199.000" : "$19.900"}
-                                            </span>
-                                            <span className="text-xs text-[var(--text-secondary)] font-medium">
-                                                {billingCycle === "yearly" ? "/ año" : "/ mes"}
-                                            </span>
+                                        <div className="mt-2.5">
+                                            {billingCycle === "yearly" ? (
+                                                <div>
+                                                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                                                        <span className="text-sm font-semibold text-[var(--text-secondary)] line-through decoration-red-500/80 decoration-2">
+                                                            $238.800
+                                                        </span>
+                                                        <span className="text-2xl font-black text-[var(--text-primary)]">
+                                                            $199.000
+                                                        </span>
+                                                        <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                                            / año
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 flex items-center gap-2">
+                                                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            $16.583 / mes
+                                                        </span>
+                                                        <span className="rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold uppercase">
+                                                            Ahorro 2 meses
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-2xl font-black text-[var(--text-primary)]">
+                                                        $19.900
+                                                    </span>
+                                                    <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                                        / mes
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                         <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
                                             Todo lo Básico + Empleados/Roles, Reportes de Ganancia Neta, Excel y Libreta de Proveedores.
@@ -430,9 +482,17 @@ function SubscriptionModal({ isOpen, onClose }) {
                                         </span>
                                         <div>
                                             <p className="text-xs font-bold text-[var(--text-primary)]">Pago Anual (365 días)</p>
-                                            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                                                {selectedTier === "premium" ? "$199.000 / año ($16.583/mes)" : "$99.000 / año ($8.250/mes)"}
-                                            </p>
+                                            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] mt-0.5 flex-wrap">
+                                                <span className="line-through decoration-red-500/80 decoration-1 text-[10px] text-[var(--text-secondary)]/70">
+                                                    {selectedTier === "premium" ? "$238.800" : "$118.800"}
+                                                </span>
+                                                <span className="font-bold text-[var(--text-primary)]">
+                                                    {selectedTier === "premium" ? "$199.000 / año" : "$99.000 / año"}
+                                                </span>
+                                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                                    ({selectedTier === "premium" ? "$16.583/mes" : "$8.250/mes"})
+                                                </span>
+                                            </div>
                                         </div>
                                         <span className={`h-4 w-4 rounded-full border flex items-center justify-center ${billingCycle === "yearly" ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border)]"}`}>
                                             {billingCycle === "yearly" && <span className="h-2 w-2 rounded-full bg-white" />}

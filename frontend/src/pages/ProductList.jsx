@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -174,6 +174,19 @@ function ProductList() {
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+    const actionsMenuRef = useRef(null);
+
+    // Close actions dropdown on click outside
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target)) {
+                setIsActionsMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const isAnyModalOpen =
         isProductModalOpen ||
@@ -523,11 +536,11 @@ function ProductList() {
                     </h1>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={() => navigate("/stock")}
-                        className="inline-flex items-center gap-2 rounded-lg border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3.5 py-2.5 text-xs font-bold text-[var(--primary)] transition hover:bg-[var(--primary)]/20"
+                        className="inline-flex items-center gap-2 rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3.5 py-2.5 text-xs font-bold text-[var(--primary)] transition hover:bg-[var(--primary)]/20 shadow-xs"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
@@ -539,7 +552,7 @@ function ProductList() {
                         type="button"
                         data-tour="products-bulk-price"
                         onClick={() => requireOwnerAccess(() => setIsBulkPriceModalOpen(true))}
-                        className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                        className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] shadow-xs"
                     >
                         <svg
                             className="h-4 w-4 text-[var(--primary)]"
@@ -557,53 +570,103 @@ function ProductList() {
                         <span>Aumento Masivo</span>
                     </button>
 
-                    <button
-                        type="button"
-                        data-tour="products-import-catalog"
-                        onClick={() => requireOwnerAccess(() => setIsImportModalOpen(true))}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
-                    >
-                        <span>Catálogo Base</span>
-                    </button>
+                    {/* MORE ACTIONS DROPDOWN */}
+                    <div ref={actionsMenuRef} className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setIsActionsMenuOpen((prev) => !prev)}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] shadow-xs"
+                        >
+                            <span>Más Opciones</span>
+                            <svg
+                                className={`h-3.5 w-3.5 text-[var(--text-secondary)] transition-transform ${isActionsMenuOpen ? "rotate-180" : ""}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
 
-                    <button
-                        type="button"
-                        onClick={() => requireOwnerAccess(() => setIsCategoryModalOpen(true))}
-                        className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
-                    >
-                        Categorías ({categories.length})
-                    </button>
+                        {isActionsMenuOpen && (
+                            <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-md border border-[var(--border)] bg-[var(--surface)] p-1 shadow-xl divide-y divide-[var(--border)] animate-fadeIn">
+                                <div className="py-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsActionsMenuOpen(false);
+                                            requireOwnerAccess(() => setIsCategoryModalOpen(true));
+                                        }}
+                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+                                            </svg>
+                                            <span>Categorías</span>
+                                        </div>
+                                        <span className="text-[10px] text-[var(--text-secondary)] font-semibold">({categories.length})</span>
+                                    </button>
 
-                    <button
-                        type="button"
-                        onClick={() => requireOwnerAccess(() => navigate("/providers"))}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
-                        title="Gestionar libreta de proveedores y cuentas por pagar"
-                    >
-                        <span>Proveedores {providers.length > 0 ? `(${providers.length})` : ""}</span>
-                        {!isPremium && (
-                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
-                                PRO
-                            </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsActionsMenuOpen(false);
+                                            requireOwnerAccess(() => navigate("/providers"));
+                                        }}
+                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V3.75A1.125 1.125 0 0 0 13.125 2.625h-9.75A1.125 1.125 0 0 0 2.25 3.75v10.5c0 .621.504 1.125 1.125 1.125h1.5" />
+                                            </svg>
+                                            <span>Proveedores</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            {providers.length > 0 && <span className="text-[10px] text-[var(--text-secondary)] font-semibold">({providers.length})</span>}
+                                            {!isPremium && <span className="badge-gold px-1 py-0.2 rounded-sm text-[8px]">PRO</span>}
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <div className="py-1">
+                                    <button
+                                        type="button"
+                                        data-tour="products-import-catalog"
+                                        onClick={() => {
+                                            setIsActionsMenuOpen(false);
+                                            requireOwnerAccess(() => setIsImportModalOpen(true));
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
+                                    >
+                                        <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                        </svg>
+                                        <span>Catálogo Base Sugerido</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsActionsMenuOpen(false);
+                                            handleExportCatalog();
+                                        }}
+                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                            </svg>
+                                            <span>Exportar a Excel (CSV)</span>
+                                        </div>
+                                        {!isPremium && <span className="badge-gold px-1 py-0.2 rounded-sm text-[8px]">PRO</span>}
+                                    </button>
+                                </div>
+                            </div>
                         )}
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handleExportCatalog}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3 py-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
-                        title="Exportar catálogo completo a formato Excel (CSV)"
-                    >
-                        <svg className="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                        </svg>
-                        <span>Exportar</span>
-                        {!isPremium && (
-                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
-                                PRO
-                            </span>
-                        )}
-                    </button>
+                    </div>
 
                     <button
                         type="button"
@@ -626,11 +689,11 @@ function ProductList() {
             </header>
 
             {/* SEARCH & FILTERS TOOLBAR */}
-            <div data-tour="products-search-bar" className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
+            <div data-tour="products-search-bar" className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-4 shadow-xs space-y-3">
                 {/* PRIMARY CONTROLS ROW */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-12">
                     {/* SEARCH INPUT */}
-                    <div className="relative sm:col-span-12 md:col-span-4">
+                    <div className="relative sm:col-span-2 lg:col-span-4 xl:col-span-5">
                         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
                             <svg
                                 className="h-4 w-4"
@@ -651,7 +714,7 @@ function ProductList() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por nombre, código o marca..."
-                            className="h-10.5 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-8 text-xs font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-10 pr-8 text-xs font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 shadow-xs"
                         />
                         {search && (
                             <button
@@ -673,11 +736,11 @@ function ProductList() {
                     </div>
 
                     {/* CATEGORY SELECT */}
-                    <div className="relative sm:col-span-6 md:col-span-3">
+                    <div className="relative sm:col-span-1 lg:col-span-3 xl:col-span-3">
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="h-10.5 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 shadow-xs"
                         >
                             <option value="">Todas las categorías</option>
                             {categories.map((c) => {
@@ -699,11 +762,11 @@ function ProductList() {
                     </div>
 
                     {/* PROVIDER SELECT */}
-                    <div className="relative sm:col-span-6 md:col-span-3">
+                    <div className="relative sm:col-span-1 lg:col-span-3 xl:col-span-2">
                         <select
                             value={selectedProvider}
                             onChange={(e) => setSelectedProvider(e.target.value)}
-                            className="h-10.5 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 shadow-xs"
                         >
                             <option value="">Todos los proveedores</option>
                             {providers.map((p) => {
@@ -725,11 +788,11 @@ function ProductList() {
                     </div>
 
                     {/* SORT SELECT */}
-                    <div className="relative sm:col-span-6 md:col-span-2">
+                    <div className="relative sm:col-span-2 lg:col-span-2 xl:col-span-2">
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="h-10.5 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 pr-9 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 shadow-xs"
                         >
                             <option value="name_asc">Nombre: A → Z</option>
                             <option value="name_desc">Nombre: Z → A</option>

@@ -1,3 +1,21 @@
+v1.7.0 (Responsive Layouts, Autocomplete Search, Charm Crossover Pricing & UI Polish)
+
+- Responsive Layouts & Low-Resolution Optimizations (1024px–1366px):
+  - Consolidated `ProductList.jsx` action toolbar: grouped secondary actions into a clean "Más Opciones ▾" dropdown (Categories, Providers, Base Catalog, CSV Export), eliminating multi-row header button wrapping.
+  - Refactored `ProductList.jsx` search and filter grid to a responsive 12-column layout with quick clear buttons.
+  - Structured `StockManagement.jsx` Tab 1 ("Control de inventario") filters into a 2-tier card: top search/rubro/provider grid and bottom status pill filters with live count badges and counter.
+  - Refactored Tab 2 ("Historial de compras & temporadas") and Tab 3 ("Notas & pedidos") filter bars for fluid wrapping on lower resolution laptop displays.
+  - Strict Modern Structured Sharp design system: standardized on `rounded-md` (6px) micro-radii and 1px borders across all cards, panels, and buttons.
+- Standardized Product Autocomplete Search (`ProductSelectSearch.jsx`):
+  - Replaced endless scrolling select dropdowns in provider associations (`ProviderDetail.jsx`) and stock modals (`RestockModal.jsx`, `StockNoteModal.jsx`) with a type-to-search product selector that opens only upon user input.
+- Store Configuration & Surcharges Consolidation (`StoreSettingsModal.jsx`):
+  - Consolidated store configuration into 3 streamlined tabs ("Datos del Comercio", "Comisiones y Recargos", "Cuentas y Billeteras").
+  - Fixed tab header border alignment and z-index stacking, preventing scrolling content from overlapping tab titles.
+  - Suppressed phantom scrollbars on tab bars using `.no-scrollbar` utility.
+  - Updated surcharges and fees to colloquial Argentine merchant terminology.
+- Yearly Subscription Crossover Pricing:
+  - Added psychological monthly strikethrough crossover pricing on yearly plans (`~~$118.800~~ $99.000` / `~~$238.800~~ $199.000`) across `SubscriptionModal.jsx`, `PlanComparisonTable.jsx`, and `SubscriptionExpiredOverlay.jsx`.
+
 v1.6.0 (Modo Simple Mobile PWA - BETA, In-App Notifications & Subscription Tiers)
 
 - Modo Simple & Progressive Web App (PWA - BETA):

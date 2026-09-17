@@ -233,14 +233,14 @@ function StockManagement() {
                 </div>
 
                 {/* Main Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={() => {
                             setEditingNote(null);
                             setIsNoteModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-xs font-semibold text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--surface-accent)]"
+                        className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] shadow-xs transition hover:bg-[var(--surface-accent)]"
                     >
                         <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
@@ -255,7 +255,7 @@ function StockManagement() {
                             setRestockProduct(null);
                             setIsRestockModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] active:scale-98"
+                        className="inline-flex items-center gap-2 rounded-md bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] active:scale-98"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -267,7 +267,7 @@ function StockManagement() {
 
             {/* KPI Summary Cards */}
             <div data-tour="stock-kpis" className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-4">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                         Artículos con seguimiento
                     </span>
@@ -277,7 +277,7 @@ function StockManagement() {
                     <span className="text-[11px] text-[var(--text-secondary)]">de {products.length} productos</span>
                 </div>
 
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                             Stock bajo
@@ -290,7 +290,7 @@ function StockManagement() {
                     <span className="text-[11px] text-[var(--text-secondary)]">Por debajo del mínimo</span>
                 </div>
 
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                             Sin stock
@@ -303,7 +303,7 @@ function StockManagement() {
                     <span className="text-[11px] text-[var(--text-secondary)]">Agotados</span>
                 </div>
 
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                             Valor total en mercadería
@@ -382,11 +382,12 @@ function StockManagement() {
             {/* TAB 1: INVENTORY & STOCK TABLE */}
             {activeTab === "inventory" && (
                 <div className="space-y-4">
-                    {/* Filters Row */}
-                    <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-1 flex-wrap items-center gap-2.5">
+                    {/* Filters Toolbar Card */}
+                    <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-4 shadow-xs space-y-3">
+                        {/* Tier 1: Search, Category, Provider Grid */}
+                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-12">
                             {/* Search */}
-                            <div className="relative min-w-[220px] flex-1">
+                            <div className="relative sm:col-span-2 lg:col-span-6">
                                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -396,17 +397,28 @@ function StockManagement() {
                                     type="text"
                                     value={invSearch}
                                     onChange={(e) => setInvSearch(e.target.value)}
-                                    placeholder="Buscar producto o código..."
-                                    className="h-9.5 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-9 pr-3 text-xs font-medium text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:outline-hidden"
+                                    placeholder="Buscar producto por nombre o código..."
+                                    className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-9 pr-8 text-xs font-medium text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 outline-none shadow-xs"
                                 />
+                                {invSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setInvSearch("")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
 
                             {/* Category Filter */}
-                            <div className="relative">
+                            <div className="relative sm:col-span-1 lg:col-span-3">
                                 <select
                                     value={invCategory}
                                     onChange={(e) => setInvCategory(e.target.value)}
-                                    className="h-9.5 appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] pl-3 pr-8 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-hidden"
+                                    className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 outline-none shadow-xs"
                                 >
                                     <option value="" className="bg-[var(--surface)] text-[var(--text-primary)]">Todas las categorías</option>
                                     {categories.map((c) => (
@@ -423,11 +435,11 @@ function StockManagement() {
                             </div>
 
                             {/* Provider Filter */}
-                            <div className="relative">
+                            <div className="relative sm:col-span-1 lg:col-span-3">
                                 <select
                                     value={invProvider}
                                     onChange={(e) => setInvProvider(e.target.value)}
-                                    className="h-9.5 appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] pl-3 pr-8 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-hidden"
+                                    className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs font-semibold text-[var(--text-primary)] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 outline-none shadow-xs"
                                 >
                                     <option value="" className="bg-[var(--surface)] text-[var(--text-primary)]">Todos los proveedores</option>
                                     {providers.map((p) => (
@@ -444,33 +456,50 @@ function StockManagement() {
                             </div>
                         </div>
 
-                        {/* Status segmented filters */}
-                        <div className="flex flex-wrap items-center gap-1 border-t border-[var(--border)] pt-2 sm:border-t-0 sm:pt-0">
-                            {[
-                                { id: "all", label: "Todos" },
-                                { id: "out_of_stock", label: "Sin stock" },
-                                { id: "low_stock", label: "Stock bajo" },
-                                { id: "in_stock", label: "Stock normal" },
-                                { id: "untracked", label: "Sin seguimiento" },
-                            ].map((st) => (
-                                <button
-                                    key={st.id}
-                                    type="button"
-                                    onClick={() => setInvStatus(st.id)}
-                                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                                        invStatus === st.id
-                                            ? "bg-[var(--primary)] text-white shadow-xs"
-                                            : "text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
-                                    }`}
-                                >
-                                    {st.label}
-                                </button>
-                            ))}
+                        {/* Tier 2: Status segmented filters + result count */}
+                        <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[var(--border)] pt-3 text-xs">
+                            <div className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/40 p-1 flex-wrap">
+                                {[
+                                    { id: "all", label: "Todos", count: products.length },
+                                    { id: "out_of_stock", label: "Sin stock", count: alertsSummary?.out_of_stock_count ?? 0 },
+                                    { id: "low_stock", label: "Stock bajo", count: alertsSummary?.low_stock_count ?? 0 },
+                                    { id: "in_stock", label: "Stock normal" },
+                                    { id: "untracked", label: "Sin seguimiento" },
+                                ].map((st) => (
+                                    <button
+                                        key={st.id}
+                                        type="button"
+                                        onClick={() => setInvStatus(st.id)}
+                                        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                                            invStatus === st.id
+                                                ? "bg-[var(--primary)] text-white shadow-xs"
+                                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)]"
+                                        }`}
+                                    >
+                                        <span>{st.label}</span>
+                                        {st.count !== undefined && (
+                                            <span
+                                                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                                                    invStatus === st.id
+                                                        ? "bg-white/20 text-white"
+                                                        : "bg-[var(--surface)] text-[var(--text-secondary)]"
+                                                }`}
+                                            >
+                                                {st.count}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="text-xs text-[var(--text-secondary)]">
+                                Mostrando <strong className="text-[var(--text-primary)]">{filteredProducts.length}</strong> de {products.length} productos
+                            </div>
                         </div>
                     </div>
 
                     {/* Table */}
-                    <div data-tour="stock-table-actions" className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                    <div data-tour="stock-table-actions" className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs text-[var(--text-primary)]">
                                 <thead className="border-b border-[var(--border)] bg-[var(--surface-accent)]/50 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -590,7 +619,7 @@ function StockManagement() {
                                                                     setAdjustProduct(prod);
                                                                     setIsAdjustModalOpen(true);
                                                                 }}
-                                                                className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-accent)]"
+                                                                className="rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-accent)]"
                                                             >
                                                                 Recuento
                                                             </button>
@@ -601,7 +630,7 @@ function StockManagement() {
                                                                     setRestockProduct(prod);
                                                                     setIsRestockModalOpen(true);
                                                                 }}
-                                                                className="rounded-lg bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary)]/20"
+                                                                className="rounded-md bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary)]/20"
                                                             >
                                                                 Ingreso
                                                             </button>
@@ -614,7 +643,7 @@ function StockManagement() {
                                                                         setIsProductModalOpen(true);
                                                                     });
                                                                 }}
-                                                                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                                                                className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
                                                                 title={isOwner ? "Editar producto" : "Requiere PIN de dueño"}
                                                             >
                                                                 Editar
@@ -636,9 +665,9 @@ function StockManagement() {
             {activeTab === "history" && (
                 <div className="space-y-6">
                     {/* Filters Toolbar */}
-                    <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-1 flex-wrap items-center gap-2.5">
-                            <div className="relative min-w-[200px] flex-1">
+                    <div className="flex flex-col gap-3 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-4 shadow-xs">
+                        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="relative min-w-[220px] flex-1">
                                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -649,14 +678,14 @@ function StockManagement() {
                                     value={historySearch}
                                     onChange={(e) => setHistorySearch(e.target.value)}
                                     placeholder="Filtrar por producto o etiqueta..."
-                                    className="h-9.5 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-9 pr-3 text-xs font-medium text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-hidden"
+                                    className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-9 pr-3 text-xs font-medium text-[var(--text-primary)] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 outline-hidden"
                                 />
                             </div>
 
                             <button
                                 type="button"
                                 onClick={loadHistoryData}
-                                className="h-9.5 rounded-lg bg-[var(--surface-accent)] px-3 text-xs font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                                className="h-10 shrink-0 rounded-md bg-[var(--surface-accent)] px-4 text-xs font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                             >
                                 Aplicar
                             </button>
@@ -664,14 +693,14 @@ function StockManagement() {
 
                         {/* Tag filter selector */}
                         {insights?.available_tags?.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border)] pt-2 sm:border-t-0 sm:pt-0">
+                            <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border)] pt-3">
                                 <span className="text-[11px] font-semibold text-[var(--text-secondary)]">Temporada:</span>
                                 <button
                                     type="button"
                                     onClick={() => setSelectedTag("")}
                                     className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                                         selectedTag === ""
-                                            ? "bg-[var(--primary)] text-white"
+                                            ? "bg-[var(--primary)] text-white shadow-xs"
                                             : "bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                     }`}
                                 >
@@ -684,7 +713,7 @@ function StockManagement() {
                                         onClick={() => setSelectedTag(tag === selectedTag ? "" : tag)}
                                         className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                                             selectedTag === tag
-                                                ? "bg-[var(--primary)] text-white"
+                                                ? "bg-[var(--primary)] text-white shadow-xs"
                                                 : "bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                         }`}
                                     >
@@ -697,7 +726,7 @@ function StockManagement() {
 
                     {/* Comparison Insights Card */}
                     {insights?.summary && (
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-4">
+                        <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h3 className="text-sm font-bold text-[var(--text-primary)]">
@@ -707,13 +736,13 @@ function StockManagement() {
                                         Análisis comparativo de unidades compradas, vendidas y remanente de inventario.
                                     </p>
                                 </div>
-                                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 self-start sm:self-auto">
                                     Vendido: {insights.summary.overall_sell_through_rate}%
                                 </span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                <div className="rounded-md border border-[var(--border)] bg-[var(--background)] p-3">
                                     <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Comprado / Ingresado</span>
                                     <div className="mt-1 text-lg font-black text-[var(--text-primary)] tabular-nums">
                                         {insights.summary.total_restocked_units} u.
@@ -723,7 +752,7 @@ function StockManagement() {
                                     </span>
                                 </div>
 
-                                <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                <div className="rounded-md border border-[var(--border)] bg-[var(--background)] p-3">
                                     <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Vendido</span>
                                     <div className="mt-1 text-lg font-black text-[var(--success)] tabular-nums">
                                         {insights.summary.total_sold_units} u.
@@ -733,7 +762,7 @@ function StockManagement() {
                                     </span>
                                 </div>
 
-                                <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                <div className="rounded-md border border-[var(--border)] bg-[var(--background)] p-3">
                                     <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Remanente en stock</span>
                                     <div className="mt-1 text-lg font-black text-[var(--text-primary)] tabular-nums">
                                         {Math.max(0, insights.summary.total_restocked_units - insights.summary.total_sold_units)} u.
@@ -743,7 +772,7 @@ function StockManagement() {
                                     </span>
                                 </div>
 
-                                <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                                <div className="rounded-md border border-[var(--border)] bg-[var(--background)] p-3">
                                     <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">Margen estimado</span>
                                     <div className={`mt-1 text-lg font-black tabular-nums ${insights.summary.net_margin >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
                                         {isOwner ? formatCurrency(insights.summary.net_margin) : "••••••"}
@@ -771,7 +800,7 @@ function StockManagement() {
                     )}
 
                     {/* Table */}
-                    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                    <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                         <div className="border-b border-[var(--border)] px-4 py-2.5 bg-[var(--surface-accent)]/30 font-bold text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">
                             Registro de movimientos de stock ({movements.length})
                         </div>
@@ -818,7 +847,7 @@ function StockManagement() {
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right text-[11px] text-[var(--text-secondary)] tabular-nums">
                                                         {isOwner ? (
-                                                            <>
+                                                             <>
                                                                 {mov.unit_cost ? formatCurrency(mov.unit_cost) : "—"}
                                                                 {mov.total_cost && ` (Tot: ${formatCurrency(mov.total_cost)})`}
                                                             </>
@@ -847,8 +876,8 @@ function StockManagement() {
             {activeTab === "notes" && (
                 <div className="space-y-4">
                     {/* Header bar */}
-                    <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-3 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase">Estado:</span>
                             <div className="flex flex-wrap gap-1">
                                 {[
@@ -861,7 +890,7 @@ function StockManagement() {
                                         key={st.id}
                                         type="button"
                                         onClick={() => setNotesStatusFilter(st.id)}
-                                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                                        className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                                             notesStatusFilter === st.id
                                                 ? "bg-[var(--primary)] text-white shadow-xs"
                                                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
@@ -879,7 +908,7 @@ function StockManagement() {
                                 setEditingNote(null);
                                 setIsNoteModalOpen(true);
                             }}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)]"
+                            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--primary)] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] shrink-0 self-start sm:self-auto"
                         >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -900,7 +929,7 @@ function StockManagement() {
                                 return (
                                     <div
                                         key={note.id}
-                                        className={`flex flex-col justify-between rounded-xl border p-4 shadow-xs transition ${
+                                        className={`flex flex-col justify-between rounded-md border p-4 shadow-xs transition ${
                                             note.status === "bought"
                                                 ? "border-emerald-500/20 bg-emerald-500/5"
                                                 : note.status === "dismissed"
@@ -943,7 +972,7 @@ function StockManagement() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleToggleNoteStatus(note.id, "bought")}
-                                                        className="rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition"
+                                                        className="rounded-md bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition"
                                                     >
                                                         Marcar resuelto
                                                     </button>
@@ -951,7 +980,7 @@ function StockManagement() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleToggleNoteStatus(note.id, "pending")}
-                                                        className="rounded-lg bg-[var(--surface-accent)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+                                                        className="rounded-md bg-[var(--surface-accent)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
                                                     >
                                                         Reabrir
                                                     </button>
@@ -961,7 +990,7 @@ function StockManagement() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleToggleNoteStatus(note.id, "dismissed")}
-                                                        className="rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--danger)] transition"
+                                                        className="rounded-md px-2 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--danger)] transition"
                                                     >
                                                         Descartar
                                                     </button>
@@ -975,7 +1004,7 @@ function StockManagement() {
                                                         setEditingNote(note);
                                                         setIsNoteModalOpen(true);
                                                     }}
-                                                    className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)] transition"
+                                                    className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)] transition"
                                                     title="Editar nota"
                                                 >
                                                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -987,7 +1016,7 @@ function StockManagement() {
                                                     onClick={() => {
                                                         requireOwnerAccess(() => setNoteToDelete(note));
                                                     }}
-                                                    className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] transition"
+                                                    className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] transition"
                                                     title={isOwner ? "Eliminar nota" : "Requiere PIN de dueño"}
                                                 >
                                                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">

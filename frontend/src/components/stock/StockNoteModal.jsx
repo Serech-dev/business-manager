@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
 import { createStockNote, updateStockNote } from "../../services/business";
+import ProductSelectSearch from "../common/ProductSelectSearch";
 
 function StockNoteModal({
     isOpen,
@@ -161,25 +162,17 @@ function StockNoteModal({
                         <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                             Asociar a Producto Existente (Opcional)
                         </label>
-                        <div className="relative">
-                            <select
-                                value={productId}
-                                onChange={(e) => handleProductSelect(e.target.value)}
-                                className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] pl-3.5 pr-9 py-2.5 text-sm font-medium text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-hidden"
-                            >
-                                <option value="" className="bg-[var(--surface)] text-[var(--text-primary)]">-- Artículo nuevo / no registrado --</option>
-                                {sortedProducts.map((p) => (
-                                    <option key={p.id} value={p.id} className="bg-[var(--surface)] text-[var(--text-primary)]">
-                                        {p.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                </svg>
-                            </div>
-                        </div>
+                        <ProductSelectSearch
+                            products={products}
+                            value={productId}
+                            onChange={(selectedId, prod) => {
+                                setProductId(selectedId);
+                                if (prod && !itemName) {
+                                    setItemName(prod.name);
+                                }
+                            }}
+                            placeholder="Escribir nombre o código para buscar producto..."
+                        />
                     </div>
 
                     {/* Item Name */}
@@ -192,7 +185,7 @@ function StockNoteModal({
                             value={itemName}
                             onChange={(e) => setItemName(e.target.value)}
                             placeholder="Ej: Yerba Playadito 1kg, Lavandina..."
-                            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] placeholder-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:outline-hidden"
+                            className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3.5 py-2.5 text-sm font-bold text-[var(--text-primary)] placeholder-[var(--text-secondary)]/50 focus:border-[var(--primary)] focus:outline-hidden"
                             autoFocus
                         />
                     </div>

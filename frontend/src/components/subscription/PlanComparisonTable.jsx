@@ -132,9 +132,17 @@ export function PlanComparisonTable({ onSelectPlan, currentTier }) {
                             </span>
                         )}
                     </div>
-                    <div className="mt-3 flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-[var(--text-primary)]">$9.900</span>
-                        <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes ($99.000/año)</span>
+                    <div className="mt-3">
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-[var(--text-primary)]">$9.900</span>
+                            <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes</span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] flex-wrap">
+                            <span>Anual:</span>
+                            <span className="line-through decoration-red-500/80 decoration-1 text-[var(--text-secondary)]/70">$118.800</span>
+                            <strong className="text-[var(--text-primary)]">$99.000</strong>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">(Ahorro 2 meses)</span>
+                        </div>
                     </div>
                     <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
                         Ideal para comercios que necesitan agilidad total en caja, control de stock, combos y libreta de clientes.
@@ -166,9 +174,17 @@ export function PlanComparisonTable({ onSelectPlan, currentTier }) {
                             </span>
                         )}
                     </div>
-                    <div className="mt-3 flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-[var(--text-primary)]">$19.900</span>
-                        <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes ($199.000/año)</span>
+                    <div className="mt-3">
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-[var(--text-primary)]">$19.900</span>
+                            <span className="text-xs text-[var(--text-secondary)] font-medium">/ mes</span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] flex-wrap">
+                            <span>Anual:</span>
+                            <span className="line-through decoration-red-500/80 decoration-1 text-[var(--text-secondary)]/70">$238.800</span>
+                            <strong className="text-[var(--text-primary)]">$199.000</strong>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">(Ahorro 2 meses)</span>
+                        </div>
                     </div>
                     <p className="mt-2 text-xs text-[var(--text-secondary)] leading-relaxed">
                         Para negocios en crecimiento que precisan múltiples empleados, reportes de rentabilidad y cuentas de proveedores.

@@ -31,9 +31,9 @@ function SubscriptionExpiredOverlay() {
 
     const PLAN_PRICES = {
         basic_monthly: { amount: 9900, label: "$9.900", period: "/ mes", title: "Plan Básico Mensual" },
-        basic_yearly: { amount: 99000, label: "$99.000", period: "/ año", title: "Plan Básico Anual" },
+        basic_yearly: { amount: 99000, originalLabel: "$118.800", label: "$99.000", period: "/ año", monthlyEquiv: "$8.250/mes", title: "Plan Básico Anual", discount: "2 meses gratis" },
         premium_monthly: { amount: 19900, label: "$19.900", period: "/ mes", title: "Plan Premium Mensual" },
-        premium_yearly: { amount: 199000, label: "$199.000", period: "/ año", title: "Plan Premium Anual" },
+        premium_yearly: { amount: 199000, originalLabel: "$238.800", label: "$199.000", period: "/ año", monthlyEquiv: "$16.583/mes", title: "Plan Premium Anual", discount: "2 meses gratis" },
     };
 
     const currentPriceInfo = PLAN_PRICES[currentPlanKey] || PLAN_PRICES.basic_monthly;
@@ -157,10 +157,31 @@ function SubscriptionExpiredOverlay() {
                             }`}
                         >
                             <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Básico</span>
-                            <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
-                                {billingCycle === "yearly" ? "$99.000" : "$9.900"}
-                                <span className="text-xs font-medium text-[var(--text-secondary)]"> {billingCycle === "yearly" ? "/ año" : "/ mes"}</span>
-                            </span>
+                            <div className="mt-1.5">
+                                {billingCycle === "yearly" ? (
+                                    <div>
+                                        <div className="flex items-baseline gap-1.5 flex-wrap">
+                                            <span className="text-xs font-semibold text-[var(--text-secondary)] line-through decoration-red-500/80 decoration-2">
+                                                $118.800
+                                            </span>
+                                            <span className="text-lg font-black text-[var(--text-primary)]">
+                                                $99.000
+                                            </span>
+                                            <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                                / año
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                                            $8.250/mes (Ahorro 2 meses)
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span className="text-lg font-black text-[var(--text-primary)] block">
+                                        $9.900
+                                        <span className="text-xs font-medium text-[var(--text-secondary)]"> / mes</span>
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div
@@ -175,10 +196,31 @@ function SubscriptionExpiredOverlay() {
                                 Recomendado
                             </div>
                             <span className="text-xs font-bold text-[var(--text-primary)] block">Plan Premium</span>
-                            <span className="text-xl font-black text-[var(--text-primary)] mt-1 block">
-                                {billingCycle === "yearly" ? "$199.000" : "$19.900"}
-                                <span className="text-xs font-medium text-[var(--text-secondary)]"> {billingCycle === "yearly" ? "/ año" : "/ mes"}</span>
-                            </span>
+                            <div className="mt-1.5">
+                                {billingCycle === "yearly" ? (
+                                    <div>
+                                        <div className="flex items-baseline gap-1.5 flex-wrap">
+                                            <span className="text-xs font-semibold text-[var(--text-secondary)] line-through decoration-red-500/80 decoration-2">
+                                                $238.800
+                                            </span>
+                                            <span className="text-lg font-black text-[var(--text-primary)]">
+                                                $199.000
+                                            </span>
+                                            <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                                / año
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                                            $16.583/mes (Ahorro 2 meses)
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span className="text-lg font-black text-[var(--text-primary)] block">
+                                        $19.900
+                                        <span className="text-xs font-medium text-[var(--text-secondary)]"> / mes</span>
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 

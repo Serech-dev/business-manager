@@ -203,7 +203,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fadeIn">
             <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
-                <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--surface-accent)]">
+                <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--surface-accent)] shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -228,7 +228,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
                 </div>
 
                 {/* TABS (3 CONSOLIDATED TABS) */}
-                <div className="flex border-b border-[var(--border)] bg-[var(--surface-muted)] px-6 pt-1 overflow-x-auto">
+                <div className="flex border-b border-[var(--border)] bg-[var(--surface-muted)] px-6 overflow-x-auto overflow-y-hidden no-scrollbar shrink-0 relative z-10">
                     {[
                         { id: "general", label: "Datos del Comercio" },
                         { id: "fees", label: "Comisiones y Recargos" },
@@ -238,9 +238,9 @@ function StoreSettingsModal({ isOpen, onClose }) {
                             key={tab.id}
                             type="button"
                             onClick={() => setActiveTab(tab.id)}
-                            className={`border-b-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap transition ${
+                            className={`border-b-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap transition -mb-px ${
                                 activeTab === tab.id
-                                    ? "border-[var(--primary)] text-[var(--primary)]"
+                                    ? "border-[var(--primary)] text-[var(--primary)] bg-[var(--surface)]"
                                     : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                             }`}
                         >
@@ -250,7 +250,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
                 </div>
 
                 {/* FORM BODY */}
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 relative">
                     {/* TAB 1: GENERAL */}
                     {activeTab === "general" && (
                         <div className="space-y-4 text-xs">
