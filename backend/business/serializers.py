@@ -4,7 +4,7 @@ from django.db import transaction as db_transaction
 from django.db.models import F
 from rest_framework import serializers
 
-from .models import (BundleItem, Category, Client, MasterCatalogProduct, Product,
+from .models import (BankAccount, BundleItem, Category, Client, MasterCatalogProduct, Product,
                      Provider, Register, StockMovement, StockNote,
                      StoreSettings, Transaction, TransactionOperation,
                      TransactionOperationAmount, TransactionOperationItem)
@@ -67,12 +67,52 @@ class ClientSerializer(serializers.ModelSerializer):
         return debt
 
 
+class BankAccountSerializer(serializers.ModelSerializer):
+    account_type_display = serializers.CharField(source="get_account_type_display", read_only=True)
+
+    class Meta:
+        model = BankAccount
+        fields = [
+            "id",
+            "name",
+            "account_type",
+            "account_type_display",
+            "is_default",
+            "is_active",
+            "cbu_cvu",
+            "alias",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "account_type_display",
+        ]
+
+    def validate_name(self, value):
+        user = self.context["request"].user
+        qs = BankAccount.objects.filter(user=user, name__iexact=value.strip())
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Ya tenés una cuenta o billetera con este nombre.")
+        return value.strip()
+
+
 class TransactionOperationAmountSerializer(
     serializers.ModelSerializer
 ):
     received = serializers.BooleanField(
         default=False,
         required=False,
+    )
+    bank_account_name = serializers.CharField(
+        source="bank_account.name",
+        read_only=True,
+        default=None,
     )
 
     class Meta:
@@ -83,11 +123,21 @@ class TransactionOperationAmountSerializer(
             "method",
             "amount",
             "received",
+            "bank_account",
+            "bank_account_name",
         ]
 
         read_only_fields = [
             "id",
+            "bank_account_name",
         ]
+
+    def validate_bank_account(self, value):
+        if value is not None:
+            user = self.context.get("request").user if "request" in self.context else None
+            if user and value.user_id != user.id:
+                raise serializers.ValidationError("La cuenta bancaria no pertenece al usuario.")
+        return value
 
 
 class TransactionOperationItemSerializer(
@@ -281,6 +331,16 @@ class TransactionOperationSerializer(
             update_fields=["exchange_fee"]
         )
 
+        user = self.context["request"].user if "request" in self.context else getattr(operation.transaction, "user", None)
+        default_bank = BankAccount.objects.filter(user=user, is_default=True, is_active=True).first() if user else None
+
+        for amount in amounts:
+            if amount.get("method") in [
+                TransactionOperationAmount.Method.TRANSFER,
+                TransactionOperationAmount.Method.CARD,
+            ] and not amount.get("bank_account"):
+                amount["bank_account"] = default_bank
+
         TransactionOperationAmount.objects.bulk_create([
             TransactionOperationAmount(
                 operation=operation,
@@ -318,6 +378,16 @@ class TransactionOperationSerializer(
             )
 
             instance.amounts.all().delete()
+
+            user = self.context["request"].user if "request" in self.context else getattr(instance.transaction, "user", None)
+            default_bank = BankAccount.objects.filter(user=user, is_default=True, is_active=True).first() if user else None
+
+            for amount in amounts:
+                if amount.get("method") in [
+                    TransactionOperationAmount.Method.TRANSFER,
+                    TransactionOperationAmount.Method.CARD,
+                ] and not amount.get("bank_account"):
+                    amount["bank_account"] = default_bank
 
             TransactionOperationAmount.objects.bulk_create([
                 TransactionOperationAmount(
@@ -466,9 +536,15 @@ class TransactionSerializer(
                 )
             )
 
-            operation.save(
-                update_fields=["exchange_fee"]
-            )
+            user = self.context["request"].user if "request" in self.context else transaction.user
+            default_bank = BankAccount.objects.filter(user=user, is_default=True, is_active=True).first()
+
+            for amount in amounts:
+                if amount.get("method") in [
+                    TransactionOperationAmount.Method.TRANSFER,
+                    TransactionOperationAmount.Method.CARD,
+                ] and not amount.get("bank_account"):
+                    amount["bank_account"] = default_bank
 
             TransactionOperationAmount.objects.bulk_create([
                 TransactionOperationAmount(
@@ -814,6 +890,8 @@ class RegisterSerializer(
     bank_out = serializers.SerializerMethodField()
     expected_bank = serializers.SerializerMethodField()
 
+    bank_accounts_summary = serializers.SerializerMethodField()
+
     totals_by_method = serializers.SerializerMethodField()
     totals_by_type = serializers.SerializerMethodField()
 
@@ -859,6 +937,8 @@ class RegisterSerializer(
             "bank_out",
             "expected_bank",
 
+            "bank_accounts_summary",
+
             "totals_by_method",
             "totals_by_type",
 
@@ -885,7 +965,7 @@ class RegisterSerializer(
                         "client"
                     )
                     .prefetch_related(
-                        "operations__amounts",
+                        "operations__amounts__bank_account",
                         "operations__provider",
                     )
                     .order_by("-created_at", "-id")
@@ -1170,6 +1250,93 @@ class RegisterSerializer(
                 )
 
         return totals
+
+    def get_bank_accounts_summary(self, obj):
+        user = obj.user
+        user_accounts = list(BankAccount.objects.filter(user=user))
+        accounts_map = {
+            acc.id: {
+                "id": acc.id,
+                "name": acc.name,
+                "account_type": acc.account_type,
+                "account_type_display": acc.get_account_type_display(),
+                "is_default": acc.is_default,
+                "is_active": acc.is_active,
+                "money_in": Decimal("0.00"),
+                "money_out": Decimal("0.00"),
+                "net_movement": Decimal("0.00"),
+                "transaction_count": 0,
+            }
+            for acc in user_accounts
+        }
+
+        unassigned = {
+            "id": None,
+            "name": "General / Sin asignar",
+            "account_type": "other",
+            "account_type_display": "General",
+            "is_default": False,
+            "is_active": True,
+            "money_in": Decimal("0.00"),
+            "money_out": Decimal("0.00"),
+            "net_movement": Decimal("0.00"),
+            "transaction_count": 0,
+        }
+
+        txs = self._get_transactions(obj)
+        for tx in txs:
+            touched_account_ids_in_tx = set()
+
+            for op in tx.operations.all():
+                is_out = self._is_outgoing(op)
+
+                if op.type == TransactionOperation.Type.EXCHANGE:
+                    fee = op.exchange_fee or Decimal("0")
+                    for amount in op.amounts.all():
+                        if not self._is_money_movement(amount):
+                            continue
+                        if amount.method in [
+                            TransactionOperationAmount.Method.TRANSFER,
+                            TransactionOperationAmount.Method.CARD,
+                        ]:
+                            acc_id = amount.bank_account_id
+                            target = accounts_map.get(acc_id, unassigned if acc_id is None else None)
+                            if target:
+                                target["money_in"] += fee
+                                touched_account_ids_in_tx.add(acc_id)
+                        break
+                    continue
+
+                for amount in op.amounts.all():
+                    if not self._is_money_movement(amount):
+                        continue
+                    if amount.method in [
+                        TransactionOperationAmount.Method.TRANSFER,
+                        TransactionOperationAmount.Method.CARD,
+                    ]:
+                        acc_id = amount.bank_account_id
+                        target = accounts_map.get(acc_id, unassigned if acc_id is None else None)
+                        if target:
+                            if is_out:
+                                target["money_out"] += amount.amount
+                            else:
+                                target["money_in"] += amount.amount
+                            touched_account_ids_in_tx.add(acc_id)
+
+            for acc_id in touched_account_ids_in_tx:
+                target = accounts_map.get(acc_id, unassigned if acc_id is None else None)
+                if target:
+                    target["transaction_count"] += 1
+
+        summary_list = list(accounts_map.values())
+        for item in summary_list:
+            item["net_movement"] = item["money_in"] - item["money_out"]
+
+        if unassigned["money_in"] > 0 or unassigned["money_out"] > 0 or unassigned["transaction_count"] > 0:
+            unassigned["net_movement"] = unassigned["money_in"] - unassigned["money_out"]
+            summary_list.append(unassigned)
+
+        return summary_list
 
     def get_exchange_income(self, obj):
         return sum(

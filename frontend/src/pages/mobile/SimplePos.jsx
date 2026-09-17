@@ -7,6 +7,7 @@ import {
     getClients,
     createTransaction,
     createClient,
+    getBankAccounts,
 } from "../../services/business";
 import { filterAndRankProducts } from "../../utils/productSearch";
 import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
@@ -36,6 +37,8 @@ export function SimplePos({ register, onOpenRegister }) {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [clients, setClients] = useState([]);
+    const [bankAccounts, setBankAccounts] = useState([]);
+    const [selectedBankId, setSelectedBankId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     // Active Ticket (Cart) State
@@ -92,14 +95,16 @@ export function SimplePos({ register, onOpenRegister }) {
     const loadData = useCallback(async () => {
         try {
             setIsLoading(true);
-            const [prodsData, catsData, clientsData] = await Promise.all([
+            const [prodsData, catsData, clientsData, banksData] = await Promise.all([
                 getProducts(),
                 getCategories(),
                 getClients(),
+                getBankAccounts(true),
             ]);
             setProducts(Array.isArray(prodsData) ? prodsData : prodsData?.results || []);
             setCategories(Array.isArray(catsData) ? catsData : catsData?.results || []);
             setClients(Array.isArray(clientsData) ? clientsData : clientsData?.results || []);
+            setBankAccounts(Array.isArray(banksData) ? banksData : banksData?.results || []);
         } catch (err) {
             console.error("Error loading Simple POS data:", err);
             toast.error("Error al cargar datos del comercio.");
@@ -107,6 +112,10 @@ export function SimplePos({ register, onOpenRegister }) {
             setIsLoading(false);
         }
     }, []);
+
+    const defaultBank = useMemo(() => {
+        return bankAccounts.find((b) => b.is_default) || bankAccounts[0] || null;
+    }, [bankAccounts]);
 
     useEffect(() => {
         loadData();
@@ -593,6 +602,8 @@ export function SimplePos({ register, onOpenRegister }) {
 
             // Group ticket items into backend operations
             const operations = [];
+            const isDigital = paymentMethod === "mp" || paymentMethod === "card";
+            const targetBankId = isDigital ? (selectedBankId || defaultBank?.id || null) : null;
 
             // 1. Product & Manual items -> type 'sale'
             const saleItems = ticketItems.filter((i) => i.type === "product");
@@ -637,6 +648,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
                             amount: finalSaleAmount,
+                            ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
                     items: resolvedItems,
@@ -653,6 +665,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
                             amount: sube.subtotal,
+                            ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
                     items: [],
@@ -669,6 +682,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
                             amount: phone.subtotal,
+                            ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
                     items: [],
@@ -685,6 +699,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
                             amount: ex.subtotal,
+                            ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
                     items: [],
@@ -701,6 +716,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
                             amount: pay.subtotal,
+                            ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
                     items: [],
@@ -1317,6 +1333,34 @@ export function SimplePos({ register, onOpenRegister }) {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Bank Account Selector for MP/Transfer & Card */}
+                            {(paymentMethod === "mp" || paymentMethod === "card") && bankAccounts.length > 1 && (
+                                <div className="p-3 bg-[var(--surface-accent)]/70 border border-[var(--border)] rounded-2xl space-y-2">
+                                    <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block">
+                                        Cuenta / Billetera de Destino:
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {bankAccounts.map((acc) => {
+                                            const isSelected = (selectedBankId || defaultBank?.id) === acc.id;
+                                            return (
+                                                <button
+                                                    key={acc.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedBankId(acc.id)}
+                                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                                        isSelected
+                                                            ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-xs"
+                                                            : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                                    }`}
+                                                >
+                                                    {acc.name} {acc.is_default ? "(Principal)" : ""}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Card Surcharge Info */}
                             {paymentMethod === "card" && settings?.card_surcharge_enabled && (

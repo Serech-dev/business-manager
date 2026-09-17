@@ -8,11 +8,11 @@ from accounts.permissions import HasActiveSubscription, RequiresFeature
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import (Category, Client, MasterCatalogProduct, Product,
+from .models import (BankAccount, Category, Client, MasterCatalogProduct, Product,
                      Provider, Register, StockMovement, StockNote,
                      StoreSettings, Transaction, TransactionOperationAmount,
                      TransactionOperationItem)
-from .serializers import (CategorySerializer, ClientSerializer,
+from .serializers import (BankAccountSerializer, CategorySerializer, ClientSerializer,
                           MasterCatalogProductSerializer, ProductSerializer,
                           ProviderSerializer, RegisterListSerializer,
                           RegisterSerializer, StockAdjustmentSerializer,
@@ -20,6 +20,29 @@ from .serializers import (CategorySerializer, ClientSerializer,
                           StockNoteSerializer, StoreSettingsSerializer,
                           TransactionAmountReceivedSerializer,
                           TransactionSerializer)
+
+
+class BankAccountListCreateView(generics.ListCreateAPIView):
+    serializer_class = BankAccountSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        queryset = BankAccount.objects.filter(user=self.request.user)
+        active_only = self.request.query_params.get("active")
+        if active_only == "1" or active_only == "true":
+            queryset = queryset.filter(is_active=True)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class BankAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = BankAccountSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        return BankAccount.objects.filter(user=self.request.user)
 
 
 class ClientListCreateView(

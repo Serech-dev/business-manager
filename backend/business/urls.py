@@ -1,6 +1,7 @@
 from django.urls import path
 
-from .views import (AnalyticsView, BulkAssignProductProviderView,
+from .views import (AnalyticsView, BankAccountDetailView, BankAccountListCreateView,
+                     BulkAssignProductProviderView,
                      BulkDeleteProductsView, BulkUpdateProductPricesView,
                      CategoryDetailView, CategoryListCreateView,
                      ClientDetailView, ClientListCreateView, CloseRegisterView,
@@ -19,6 +20,16 @@ from .views import (AnalyticsView, BulkAssignProductProviderView,
                      TransactionListCreateView)
 
 urlpatterns = [
+    path(
+        "bank-accounts/",
+        BankAccountListCreateView.as_view(),
+        name="bank-account-list-create",
+    ),
+    path(
+        "bank-accounts/<int:pk>/",
+        BankAccountDetailView.as_view(),
+        name="bank-account-detail",
+    ),
     path(
         "analytics/",
         AnalyticsView.as_view(),

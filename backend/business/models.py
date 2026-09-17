@@ -280,6 +280,81 @@ class TransactionOperation(models.Model):
         return description
 
 
+class BankAccount(models.Model):
+    class AccountType(models.TextChoices):
+        VIRTUAL_WALLET = "virtual_wallet", "Billetera Virtual"
+        BANK = "bank", "Cuenta Bancaria"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bank_accounts",
+    )
+
+    name = models.CharField(
+        max_length=100,
+        help_text="Nombre de la cuenta o billetera (ej. Mercado Pago, Cuenta DNI, Banco Galicia)",
+    )
+
+    account_type = models.CharField(
+        max_length=30,
+        choices=AccountType.choices,
+        default=AccountType.VIRTUAL_WALLET,
+    )
+
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Indica si es la cuenta predeterminada para transferencias y tarjetas",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    cbu_cvu = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+    )
+
+    alias = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+    )
+
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "user",
+                name="unique_bank_account_name_per_user_ci",
+            )
+        ]
+        ordering = ["-is_default", "name"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            BankAccount.objects.filter(user=self.user, is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+
 class TransactionOperationAmount(models.Model):
     class Method(models.TextChoices):
         CASH = "cash", "Efectivo"
@@ -305,6 +380,14 @@ class TransactionOperationAmount(models.Model):
 
     received = models.BooleanField(
         default=False,
+    )
+
+    bank_account = models.ForeignKey(
+        BankAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="operation_amounts",
     )
 
     def __str__(self):

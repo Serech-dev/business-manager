@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
+import { getBankAccounts } from "../../services/business";
 
 function TransactionAmounts({
     amounts,
@@ -15,6 +16,24 @@ function TransactionAmounts({
 }) {
     const { settings, calculateDebtSurcharge, calculateCardSurcharge } = useStoreSettings();
     const isSingleMethod = amounts.length === 1;
+
+    const [bankAccounts, setBankAccounts] = useState([]);
+
+    useEffect(() => {
+        let isMounted = true;
+        getBankAccounts(true)
+            .then((data) => {
+                if (isMounted) setBankAccounts(data || []);
+            })
+            .catch((err) => console.error("Error loading bank accounts in TransactionAmounts:", err));
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const defaultBank = useMemo(() => {
+        return bankAccounts.find((b) => b.is_default) || bankAccounts[0] || null;
+    }, [bankAccounts]);
 
     function handleSelectSingleMethod(method) {
         if (method === "debt" && !hasClient) {
@@ -34,10 +53,14 @@ function TransactionAmounts({
             }
         }
 
+        const isDigital = method === "transfer" || method === "card";
+        const selectedBank = isDigital ? (amounts[0]?.bank_account || defaultBank?.id || null) : null;
+
         onAmountsChange([
             {
                 method,
                 amount: defaultAmount,
+                ...(selectedBank ? { bank_account: selectedBank } : {}),
             },
         ]);
     }
@@ -228,6 +251,31 @@ function TransactionAmounts({
                             />
                         </div>
 
+                        {["transfer", "card"].includes(amounts[0]?.method) && bankAccounts.length > 1 && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                                    Cuenta destino:
+                                </span>
+                                {bankAccounts.map((acc) => {
+                                    const isAccSelected = (amounts[0]?.bank_account || defaultBank?.id) === acc.id;
+                                    return (
+                                        <button
+                                            key={acc.id}
+                                            type="button"
+                                            onClick={() => updateAmount(0, "bank_account", acc.id)}
+                                            className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
+                                                isAccSelected
+                                                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                                    : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                            }`}
+                                        >
+                                            {acc.name} {acc.is_default ? "(Principal)" : ""}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         {amounts[0]?.method === "card" && settings.card_surcharge_enabled && (
                             <div className="rounded-lg border border-sky-500/25 bg-sky-500/10 p-2.5 text-xs text-sky-700 dark:text-sky-300 space-y-1">
                                 <div className="flex items-center justify-between font-bold">
@@ -325,6 +373,34 @@ function TransactionAmounts({
                                         ✕
                                     </button>
                                 </div>
+
+                                {["transfer", "card"].includes(item.method) && bankAccounts.length > 1 && (
+                                    <div className="flex items-center gap-2 pl-1">
+                                        <span className="text-[11px] text-[var(--text-secondary)]">Cuenta destino:</span>
+                                        <div className="relative">
+                                            <select
+                                                value={item.bank_account || defaultBank?.id || ""}
+                                                onChange={(e) =>
+                                                    updateAmount(
+                                                        index,
+                                                        "bank_account",
+                                                        e.target.value ? Number(e.target.value) : null
+                                                    )
+                                                }
+                                                className="h-7 appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] pl-2 pr-6 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                            >
+                                                {bankAccounts.map((acc) => (
+                                                    <option key={acc.id} value={acc.id}>
+                                                        {acc.name} {acc.is_default ? "(Principal)" : ""}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <svg className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {item.method === "debt" && !hasClient && (
                                     <div className="rounded-lg bg-[var(--warning)]/10 px-3 py-1.5 text-xs font-medium text-[var(--warning)]">

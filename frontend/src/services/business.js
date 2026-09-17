@@ -439,6 +439,27 @@ export async function searchMasterCatalog(query) {
     return response.data;
 }
 
+export async function getBankAccounts(activeOnly = false) {
+    const response = await api.get(
+        `business/bank-accounts/${activeOnly ? "?active=1" : ""}`
+    );
+    return response.data;
+}
+
+export async function createBankAccount(data) {
+    const response = await api.post("business/bank-accounts/", data);
+    return response.data;
+}
+
+export async function updateBankAccount(id, data) {
+    const response = await api.patch(`business/bank-accounts/${id}/`, data);
+    return response.data;
+}
+
+export async function deleteBankAccount(id) {
+    await api.delete(`business/bank-accounts/${id}/`);
+}
+
 
 
 

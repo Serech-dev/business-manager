@@ -5,6 +5,7 @@ import {
     createTransaction,
     getProviders,
     createProvider,
+    getBankAccounts,
 } from "../../services/business";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
@@ -17,6 +18,8 @@ function ProviderMovementModal({
     onSuccess,
 }) {
     const [providers, setProviders] = useState([]);
+    const [bankAccounts, setBankAccounts] = useState([]);
+    const [selectedBankId, setSelectedBankId] = useState(null);
     const [selectedProvider, setSelectedProvider] = useState(initialProvider);
     const [providerSearch, setProviderSearch] = useState("");
     const [type, setType] = useState("provider"); // "provider" | "provider_payment" | "expense" | "loss"
@@ -38,17 +41,23 @@ function ProviderMovementModal({
             setDescription("");
             setIsSubmitting(false);
 
-            loadProviders();
+            loadInitialData();
         }
     }, [isOpen, initialProvider, initialType]);
 
-    async function loadProviders() {
+    async function loadInitialData() {
         setIsLoadingProviders(true);
         try {
-            const data = await getProviders();
-            setProviders(data);
+            const [providersData, banksData] = await Promise.all([
+                getProviders(),
+                getBankAccounts(true),
+            ]);
+            setProviders(providersData || []);
+            setBankAccounts(banksData || []);
+            const defBank = (banksData || []).find((b) => b.is_default) || banksData?.[0];
+            if (defBank) setSelectedBankId(defBank.id);
         } catch (error) {
-            console.error("Error loading providers:", error);
+            console.error("Error loading provider modal data:", error);
         } finally {
             setIsLoadingProviders(false);
         }
@@ -78,7 +87,11 @@ function ProviderMovementModal({
             amounts.push({ method: "cash", amount: cashAmount });
         }
         if (allowsTransfer && Number(transferAmount) > 0) {
-            amounts.push({ method: "transfer", amount: transferAmount });
+            const transferObj = { method: "transfer", amount: transferAmount };
+            if (selectedBankId) {
+                transferObj.bank_account = selectedBankId;
+            }
+            amounts.push(transferObj);
         }
         if (allowsDebt && Number(debtAmount) > 0) {
             amounts.push({ method: "debt", amount: debtAmount });
@@ -526,38 +539,87 @@ function ProviderMovementModal({
 
                         {/* TRANSFER */}
                         {allowsTransfer && (
-                            <div className="flex items-center gap-3">
-                                <div className="w-40 shrink-0 text-sm text-[var(--text-secondary)]">
-                                    Transferencia
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-40 shrink-0 text-sm text-[var(--text-secondary)]">
+                                        Transferencia
+                                    </div>
+                                    <div className="relative flex-1">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-secondary)]">
+                                            $
+                                        </span>
+                                        <MoneyInput
+                                            value={transferAmount}
+                                            onChange={(e) => setTransferAmount(e.target.value)}
+                                            placeholder="0"
+                                            className="
+                                                w-full
+                                                rounded-md
+                                                border
+                                                border-[var(--border)]
+                                                bg-[var(--background)]
+                                                py-2
+                                                pl-7
+                                                pr-3
+                                                text-sm
+                                                tabular-nums
+                                                text-[var(--text-primary)]
+                                                outline-none
+                                                transition
+                                                focus:border-[var(--primary)]
+                                                focus:ring-2
+                                                focus:ring-[var(--primary)]/20
+                                            "
+                                        />
+                                    </div>
                                 </div>
-                                <div className="relative flex-1">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-secondary)]">
-                                        $
-                                    </span>
-                                    <MoneyInput
-                                        value={transferAmount}
-                                        onChange={(e) => setTransferAmount(e.target.value)}
-                                        placeholder="0"
-                                        className="
-                                            w-full
-                                            rounded-md
-                                            border
-                                            border-[var(--border)]
-                                            bg-[var(--background)]
-                                            py-2
-                                            pl-7
-                                            pr-3
-                                            text-sm
-                                            tabular-nums
-                                            text-[var(--text-primary)]
-                                            outline-none
-                                            transition
-                                            focus:border-[var(--primary)]
-                                            focus:ring-2
-                                            focus:ring-[var(--primary)]/20
-                                        "
-                                    />
-                                </div>
+                                {Number(transferAmount) > 0 && bankAccounts.length > 1 && (
+                                    <div className="flex items-center justify-end gap-2 pr-1">
+                                        <span className="text-xs text-[var(--text-secondary)]">
+                                            Cuenta origen:
+                                        </span>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedBankId || ""}
+                                                onChange={(e) =>
+                                                    setSelectedBankId(
+                                                        e.target.value ? Number(e.target.value) : null
+                                                    )
+                                                }
+                                                className="
+                                                    h-7
+                                                    appearance-none
+                                                    rounded-md
+                                                    border
+                                                    border-[var(--border)]
+                                                    bg-[var(--background)]
+                                                    pl-2
+                                                    pr-6
+                                                    text-xs
+                                                    font-semibold
+                                                    text-[var(--text-primary)]
+                                                    outline-none
+                                                    focus:border-[var(--primary)]
+                                                "
+                                            >
+                                                {bankAccounts.map((acc) => (
+                                                    <option key={acc.id} value={acc.id}>
+                                                        {acc.name} {acc.is_default ? "(Principal)" : ""}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <svg
+                                                className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-[var(--text-secondary)]"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                strokeWidth="2"
+                                                stroke="currentColor"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 

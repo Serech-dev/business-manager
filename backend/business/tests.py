@@ -5,7 +5,17 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from accounts.models import Subscription
-from .models import StoreSettings
+from .models import (
+    StoreSettings,
+    Register,
+    BankAccount,
+    Product,
+    Provider,
+    StockMovement,
+    Transaction,
+    TransactionOperation,
+    TransactionOperationAmount,
+)
 
 User = get_user_model()
 
@@ -352,5 +362,188 @@ class SpecialSalesAndBundleTests(TestCase):
         self.assertEqual(fernet_mov.quantity, Decimal("-2.00"))
         coca_mov = movements.get(product=coca)
         self.assertEqual(coca_mov.quantity, Decimal("-4.00"))
+
+
+class BankAccountTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="bankuser",
+            email="bank@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("10000.00"),
+            initial_bank=Decimal("5000.00"),
+        )
+
+    def test_bank_account_crud_and_default_singleton(self):
+        # Create MP (default)
+        res1 = self.client.post(
+            "/api/business/bank-accounts/",
+            {
+                "name": "Mercado Pago",
+                "account_type": "virtual_wallet",
+                "is_default": True,
+                "alias": "kiosco.mp",
+            },
+            format="json",
+        )
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED, res1.data)
+        mp_id = res1.data["id"]
+        self.assertTrue(res1.data["is_default"])
+
+        # Create Cuenta DNI (also mark default -> should unset MP as default)
+        res2 = self.client.post(
+            "/api/business/bank-accounts/",
+            {
+                "name": "Cuenta DNI",
+                "account_type": "virtual_wallet",
+                "is_default": True,
+                "alias": "kiosco.dni",
+            },
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED, res2.data)
+        dni_id = res2.data["id"]
+        self.assertTrue(res2.data["is_default"])
+
+        # Verify MP is no longer default
+        get_mp = self.client.get(f"/api/business/bank-accounts/{mp_id}/")
+        self.assertFalse(get_mp.data["is_default"])
+
+        # List accounts
+        list_res = self.client.get("/api/business/bank-accounts/")
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(list_res.data), 2)
+
+    def test_transaction_bank_account_fallback_and_register_summary(self):
+        # 1. Create two accounts: MP (default) and Galicia
+        mp_res = self.client.post(
+            "/api/business/bank-accounts/",
+            {
+                "name": "Mercado Pago",
+                "account_type": "virtual_wallet",
+                "is_default": True,
+            },
+            format="json",
+        )
+        mp_id = mp_res.data["id"]
+
+        galicia_res = self.client.post(
+            "/api/business/bank-accounts/",
+            {
+                "name": "Banco Galicia",
+                "account_type": "bank",
+                "is_default": False,
+            },
+            format="json",
+        )
+        galicia_id = galicia_res.data["id"]
+
+        # 2. Sale 1: Transfer with no bank_account specified -> should auto-link to MP (default)
+        tx1 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {
+                                "method": "transfer",
+                                "amount": 3500,
+                                "received": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(tx1.status_code, status.HTTP_201_CREATED, tx1.data)
+        op1_amt = tx1.data["operations"][0]["amounts"][0]
+        self.assertEqual(op1_amt["bank_account"], mp_id)
+        self.assertEqual(op1_amt["bank_account_name"], "Mercado Pago")
+
+        # 3. Sale 2: Card payment explicitly to Galicia
+        tx2 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {
+                                "method": "card",
+                                "amount": 8000,
+                                "bank_account": galicia_id,
+                                "received": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(tx2.status_code, status.HTTP_201_CREATED, tx2.data)
+        op2_amt = tx2.data["operations"][0]["amounts"][0]
+        self.assertEqual(op2_amt["bank_account"], galicia_id)
+        self.assertEqual(op2_amt["bank_account_name"], "Banco Galicia")
+
+        # 4. Provider expense paid via Transfer from MP ($1200)
+        provider = Provider.objects.create(user=self.user, name="Distribuidora Sur")
+        tx3 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "provider",
+                        "provider": provider.id,
+                        "amounts": [
+                            {
+                                "method": "transfer",
+                                "amount": 1200,
+                                "bank_account": mp_id,
+                                "received": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(tx3.status_code, status.HTTP_201_CREATED, tx3.data)
+
+        # 5. Check Current Register bank_accounts_summary while open
+        curr_res = self.client.get("/api/business/register/")
+        self.assertEqual(curr_res.status_code, status.HTTP_200_OK, curr_res.data)
+        summary = curr_res.data["bank_accounts_summary"]
+        self.assertEqual(len(summary), 2)
+
+        mp_summary = next(s for s in summary if s["id"] == mp_id)
+        self.assertEqual(Decimal(str(mp_summary["money_in"])), Decimal("3500.00"))
+        self.assertEqual(Decimal(str(mp_summary["money_out"])), Decimal("1200.00"))
+        self.assertEqual(Decimal(str(mp_summary["net_movement"])), Decimal("2300.00"))
+        self.assertEqual(mp_summary["transaction_count"], 2)
+
+        galicia_summary = next(s for s in summary if s["id"] == galicia_id)
+        self.assertEqual(Decimal(str(galicia_summary["money_in"])), Decimal("8000.00"))
+        self.assertEqual(Decimal(str(galicia_summary["money_out"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(galicia_summary["net_movement"])), Decimal("8000.00"))
+        self.assertEqual(galicia_summary["transaction_count"], 1)
+
+        # 6. Close register and check RegisterDetailView
+        close_res = self.client.post("/api/business/register/close/")
+        self.assertEqual(close_res.status_code, status.HTTP_200_OK, close_res.data)
+
+        reg_res = self.client.get(f"/api/business/registers/{self.register.id}/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK, reg_res.data)
+        closed_summary = reg_res.data["bank_accounts_summary"]
+        self.assertEqual(len(closed_summary), 2)
+
 
 

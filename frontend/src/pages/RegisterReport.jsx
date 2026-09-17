@@ -186,6 +186,7 @@ function RegisterReport() {
         providers: [],
     };
     const pendingTransfers = register.pending_transfers || [];
+    const bankAccountsSummary = register.bank_accounts_summary || [];
 
     const moneyIn = Number(register.money_in || 0);
     const moneyOut = Number(register.money_out || 0);
@@ -415,6 +416,7 @@ function RegisterReport() {
                                         <p className="text-[11px] text-[var(--text-secondary)]">
                                             {transfer.created_at && formatDate(transfer.created_at)}
                                             {transfer.client_name && ` · Cliente: ${transfer.client_name}`}
+                                            {transfer.bank_account_name && ` · Cuenta: ${transfer.bank_account_name}`}
                                         </p>
                                     </div>
 
@@ -557,6 +559,74 @@ function RegisterReport() {
                                 })}
                             </div>
                         </div>
+
+                        {/* DETALLE POR CUENTA / BILLETERA VIRTUAL */}
+                        {bankAccountsSummary.length > 0 && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                        Detalle por Cuenta / Billetera Virtual
+                                    </h3>
+                                    <span className="text-xs text-[var(--text-secondary)]">
+                                        {bankAccountsSummary.length} {bankAccountsSummary.length === 1 ? "cuenta registrada" : "cuentas registradas"}
+                                    </span>
+                                </div>
+
+                                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-xs">
+                                            <thead>
+                                                <tr className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                                    <th className="px-4 py-2.5">Cuenta / Billetera</th>
+                                                    <th className="px-4 py-2.5">Tipo</th>
+                                                    <th className="px-4 py-2.5 text-right">Ingresos (+)</th>
+                                                    <th className="px-4 py-2.5 text-right">Egresos (−)</th>
+                                                    <th className="px-4 py-2.5 text-right">Movimiento Neto</th>
+                                                    <th className="px-4 py-2.5 text-center">Operaciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-[var(--border)]">
+                                                {bankAccountsSummary.map((acc, idx) => {
+                                                    const net = Number(acc.net_movement || 0);
+                                                    const mIn = Number(acc.money_in || 0);
+                                                    const mOut = Number(acc.money_out || 0);
+
+                                                    return (
+                                                        <tr key={acc.id || `unassigned-${idx}`} className="hover:bg-[var(--surface-accent)]/30">
+                                                            <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span>{acc.name}</span>
+                                                                    {acc.is_default && (
+                                                                        <span className="rounded bg-[var(--primary)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--primary)]">
+                                                                            Principal
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-[var(--text-secondary)]">
+                                                                {acc.account_type_display || acc.account_type || "-"}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--success)]">
+                                                                {mIn > 0 ? `+${formatCurrency(mIn)}` : "$0"}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--danger)]">
+                                                                {mOut > 0 ? `−${formatCurrency(mOut)}` : "$0"}
+                                                            </td>
+                                                            <td className={`px-4 py-3 text-right font-bold tabular-nums ${net > 0 ? "text-[var(--success)]" : net < 0 ? "text-[var(--danger)]" : "text-[var(--text-primary)]"}`}>
+                                                                {net > 0 ? `+${formatCurrency(net)}` : formatCurrency(net)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center tabular-nums text-[var(--text-secondary)]">
+                                                                {acc.transaction_count || 0}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -696,7 +766,12 @@ function RegisterReport() {
                                                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
                                                     {ops.map((op, i) => (
                                                         <span key={i} className="rounded bg-[var(--surface-accent)] px-1.5 py-0.2">
-                                                            {getTransactionLabel(op.type)}: {(op.amounts || []).map((a) => `${getMethodLabel(a.method)} $${Number(a.amount).toLocaleString("es-AR")}`).join(", ")}
+                                                            {getTransactionLabel(op.type)}: {(op.amounts || []).map((a) => {
+                                                                const bankBadge = (a.bank_account_name && ["transfer", "card"].includes(a.method))
+                                                                    ? ` (${a.bank_account_name})`
+                                                                    : "";
+                                                                return `${getMethodLabel(a.method)}${bankBadge} $${Number(a.amount).toLocaleString("es-AR")}`;
+                                                            }).join(", ")}
                                                         </span>
                                                     ))}
                                                 </div>
