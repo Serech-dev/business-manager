@@ -13,6 +13,8 @@ from .models import (BankAccount, BundleItem, Category, Client, MasterCatalogPro
 class ClientSerializer(serializers.ModelSerializer):
     debt = serializers.SerializerMethodField()
 
+    effective_debt_limit = serializers.SerializerMethodField()
+
     class Meta:
         model = Client
 
@@ -22,6 +24,8 @@ class ClientSerializer(serializers.ModelSerializer):
             "phone",
             "notes",
             "initial_debt",
+            "debt_limit",
+            "effective_debt_limit",
             "created_at",
             "debt",
         ]
@@ -30,7 +34,11 @@ class ClientSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
             "debt",
+            "effective_debt_limit",
         ]
+
+    def get_effective_debt_limit(self, obj):
+        return obj.effective_debt_limit
 
     def get_debt(self, obj):
         debt = obj.initial_debt or Decimal("0")
@@ -433,6 +441,11 @@ class TransactionSerializer(
     operations = TransactionOperationSerializer(
         many=True
     )
+    allow_over_limit = serializers.BooleanField(
+        required=False,
+        default=False,
+        write_only=True,
+    )
 
     class Meta:
         model = Transaction
@@ -444,6 +457,7 @@ class TransactionSerializer(
             "created_at",
             "description",
             "operations",
+            "allow_over_limit",
         ]
 
         read_only_fields = [
@@ -472,19 +486,54 @@ class TransactionSerializer(
         )
 
         operations = attrs.get("operations", [])
+        allow_over_limit = attrs.get("allow_over_limit", False)
+        total_new_client_debt = Decimal("0")
+
         for op in operations:
+            op_type = op.get("type")
             is_payment = (
-                op.get("type") == TransactionOperation.Type.PAYMENT
+                op_type == TransactionOperation.Type.PAYMENT
             )
+            is_provider_op = op_type in [
+                TransactionOperation.Type.PROVIDER,
+                TransactionOperation.Type.PROVIDER_PAYMENT,
+            ]
             has_debt = any(
                 amt.get("method") == TransactionOperationAmount.Method.DEBT
                 for amt in op.get("amounts", [])
             )
-            if (is_payment or has_debt) and client is None:
-                raise serializers.ValidationError({
-                    "client":
-                        "El fiado requiere seleccionar un cliente para la transacción."
-                })
+
+            if is_provider_op:
+                if has_debt and not op.get("provider"):
+                    raise serializers.ValidationError({
+                        "provider":
+                            "Debe seleccionar un proveedor para registrar una compra a cuenta."
+                    })
+            else:
+                if (is_payment or has_debt) and client is None:
+                    raise serializers.ValidationError({
+                        "client":
+                            "El fiado requiere seleccionar un cliente para la transacción."
+                    })
+
+                if has_debt and client is not None:
+                    for amt in op.get("amounts", []):
+                        if amt.get("method") == TransactionOperationAmount.Method.DEBT:
+                            total_new_client_debt += Decimal(str(amt.get("amount", 0)))
+
+        # Validate credit limit if client is taking on new debt
+        if client is not None and total_new_client_debt > Decimal("0"):
+            effective_limit = client.effective_debt_limit
+            if effective_limit is not None and effective_limit > Decimal("0"):
+                current_debt = ClientSerializer().get_debt(client)
+                projected_debt = current_debt + total_new_client_debt
+                if projected_debt > effective_limit and not allow_over_limit:
+                    raise serializers.ValidationError({
+                        "debt_limit": (
+                            f"La deuda total (${projected_debt:,.0f}) superará el límite de fiado "
+                            f"asignado (${effective_limit:,.0f}). Requiere autorización."
+                        )
+                    })
 
         return attrs
 
@@ -496,6 +545,7 @@ class TransactionSerializer(
 
     @db_transaction.atomic
     def create(self, validated_data):
+        validated_data.pop("allow_over_limit", None)
         operations = validated_data.pop(
             "operations"
         )
@@ -2092,6 +2142,7 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             "debt_surcharge_type",
             "debt_surcharge_type_display",
             "debt_surcharge_value",
+            "global_debt_limit",
             "card_surcharge_enabled",
             "card_surcharge_type",
             "card_surcharge_type_display",

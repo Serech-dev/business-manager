@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
+import { formatCurrency } from "../../utils/formatCurrency";
 import {
     getBankAccounts,
     createBankAccount,
@@ -32,6 +33,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
     const [debtSurchargeEnabled, setDebtSurchargeEnabled] = useState(false);
     const [debtSurchargeType, setDebtSurchargeType] = useState("percentage");
     const [debtSurchargeValue, setDebtSurchargeValue] = useState("10");
+    const [globalDebtLimit, setGlobalDebtLimit] = useState("");
 
     const [cardSurchargeEnabled, setCardSurchargeEnabled] = useState(false);
     const [cardSurchargeType, setCardSurchargeType] = useState("percentage");
@@ -78,6 +80,11 @@ function StoreSettingsModal({ isOpen, onClose }) {
             setDebtSurchargeEnabled(Boolean(settings.debt_surcharge_enabled));
             setDebtSurchargeType(settings.debt_surcharge_type || "percentage");
             setDebtSurchargeValue(settings.debt_surcharge_value ? String(Math.round(Number(settings.debt_surcharge_value))) : "10");
+            setGlobalDebtLimit(
+                settings.global_debt_limit !== null && settings.global_debt_limit !== undefined
+                    ? String(Math.round(Number(settings.global_debt_limit)))
+                    : ""
+            );
             setCardSurchargeEnabled(Boolean(settings.card_surcharge_enabled));
             setCardSurchargeType(settings.card_surcharge_type || "percentage");
             setCardSurchargeValue(settings.card_surcharge_value ? String(Math.round(Number(settings.card_surcharge_value))) : "10");
@@ -115,6 +122,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
             toast.error("Ingresá un nombre para la cuenta o billetera.");
             return;
         }
+
         setIsSavingBank(true);
         try {
             const payload = {
@@ -125,49 +133,51 @@ function StoreSettingsModal({ isOpen, onClose }) {
                 alias: bankAlias.trim(),
                 notes: bankNotes.trim(),
             };
+
             if (editingBankId) {
                 await updateBankAccount(editingBankId, payload);
-                toast.success("Cuenta actualizada.");
+                toast.success("Cuenta bancaria actualizada.");
             } else {
                 await createBankAccount(payload);
-                toast.success("Cuenta agregada con éxito.");
+                toast.success("Cuenta bancaria registrada.");
             }
             setIsBankFormOpen(false);
-            await loadBanks();
-        } catch (err) {
-            console.error("Error saving bank account:", err);
-            toast.error(err?.response?.data?.name?.[0] || err?.response?.data?.detail || "Error al guardar la cuenta.");
+            loadBanks();
+        } catch (error) {
+            console.error("Error guardando cuenta bancaria:", error);
+            toast.error("No se pudo guardar la cuenta bancaria.");
         } finally {
             setIsSavingBank(false);
         }
     };
 
-    const handleDeleteBank = async (bankId) => {
-        if (!window.confirm("¿Seguro que deseás eliminar esta cuenta?")) return;
+    const handleDeleteBank = async (id, name) => {
+        if (!window.confirm(`¿Estás seguro de eliminar la cuenta "${name}"?`)) {
+            return;
+        }
+
         try {
-            await deleteBankAccount(bankId);
-            toast.success("Cuenta eliminada.");
-            await loadBanks();
-        } catch (err) {
-            console.error("Error deleting bank account:", err);
-            toast.error("No se pudo eliminar la cuenta.");
+            await deleteBankAccount(id);
+            toast.success("Cuenta bancaria eliminada.");
+            loadBanks();
+        } catch (error) {
+            console.error("Error eliminando cuenta bancaria:", error);
+            toast.error("No se pudo eliminar la cuenta bancaria.");
         }
     };
 
-    const handleSetDefaultBank = async (bank) => {
-        if (bank.is_default) return;
+    const handleSetDefaultBank = async (id) => {
         try {
-            await updateBankAccount(bank.id, { is_default: true });
-            toast.success(`${bank.name} establecida como cuenta principal.`);
-            await loadBanks();
-        } catch (err) {
-            console.error("Error setting default bank account:", err);
-            toast.error("No se pudo actualizar la cuenta principal.");
+            await setDefaultBankAccount(id);
+            toast.success("Cuenta predeterminada actualizada.");
+            loadBanks();
+        } catch (error) {
+            console.error("Error al establecer cuenta predeterminada:", error);
+            toast.error("No se pudo actualizar la cuenta predeterminada.");
         }
     };
 
-    const token = localStorage.getItem("businessManagerAuthToken");
-    if (!token || !isOpen) return null;
+    if (!isOpen) return null;
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -187,6 +197,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
                 debt_surcharge_enabled: debtSurchargeEnabled,
                 debt_surcharge_type: debtSurchargeType,
                 debt_surcharge_value: debtSurchargeValue,
+                global_debt_limit: globalDebtLimit.trim() === "" ? null : globalDebtLimit.trim(),
                 card_surcharge_enabled: cardSurchargeEnabled,
                 card_surcharge_type: cardSurchargeType,
                 card_surcharge_value: cardSurchargeValue,
@@ -200,7 +211,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fadeIn">
             <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--surface-accent)] shrink-0">
@@ -631,6 +642,39 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                             Desactivado. Las ventas fiadas se registran por el importe normal sin recargo.
                                         </p>
                                     )}
+
+                                    {/* LÍMITE GENERAL DE FIADO */}
+                                    <div className="pt-2.5 border-t border-[var(--border)] space-y-1.5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                            <div>
+                                                <span className="font-bold text-[var(--text-primary)] text-xs">
+                                                    Límite de Fiado General
+                                                </span>
+                                                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                                    Monto máximo total que cualquier cliente puede adeudar. Podés configurar límites personalizados por cliente desde su perfil.
+                                                </p>
+                                            </div>
+                                            <div className="relative w-32 shrink-0">
+                                                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
+                                                    $
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="100"
+                                                    placeholder="Sin límite"
+                                                    value={globalDebtLimit}
+                                                    onChange={(e) => setGlobalDebtLimit(e.target.value)}
+                                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] pl-6 pr-2 py-1 text-xs font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                />
+                                            </div>
+                                        </div>
+                                        {Number(globalDebtLimit) > 0 && (
+                                            <p className="text-[10px] text-[var(--primary)] font-semibold">
+                                                Tope por defecto: {formatCurrency(Number(globalDebtLimit))} por cliente.
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

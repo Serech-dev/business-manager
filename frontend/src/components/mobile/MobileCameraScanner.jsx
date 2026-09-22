@@ -302,7 +302,7 @@ export function MobileCameraScanner({
 
                 {/* Loading State */}
                 {isStarting && (
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-4">
                         <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-3"></div>
                         <p className="text-sm text-slate-300 font-medium">Iniciando cámara...</p>
                     </div>

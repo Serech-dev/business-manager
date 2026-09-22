@@ -17,11 +17,13 @@ import { formatCurrency } from "../utils/formatCurrency";
 import MoneyInput from "../components/MoneyInput";
 import ClientPaymentModal from "../components/clients/ClientPaymentModal";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useStoreSettings } from "../context/StoreSettingsContext";
 
 
 function ClientDetail({ isNewClient = false }) {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { settings, getClientDebtLimit } = useStoreSettings();
 
     const {
         isKioskDevice,
@@ -39,6 +41,7 @@ function ClientDetail({ isNewClient = false }) {
     const [phone, setPhone] = useState("");
     const [notes, setNotes] = useState("");
     const [initialDebt, setInitialDebt] = useState("");
+    const [debtLimit, setDebtLimit] = useState("");
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -79,6 +82,11 @@ function ClientDetail({ isNewClient = false }) {
                 ? Math.round(Number(clientData.initial_debt))
                 : 0;
             setInitialDebt(rawDebt > 0 ? String(rawDebt) : "");
+
+            const rawLimit = clientData.debt_limit !== undefined && clientData.debt_limit !== null
+                ? Math.round(Number(clientData.debt_limit))
+                : null;
+            setDebtLimit(rawLimit !== null ? String(rawLimit) : "");
         } catch (error) {
             console.error(error);
 
@@ -126,6 +134,7 @@ function ClientDetail({ isNewClient = false }) {
                 phone: phone.trim(),
                 notes: notes.trim(),
                 initial_debt: initialDebt ? Number(initialDebt) : 0,
+                debt_limit: debtLimit.trim() === "" ? null : Number(debtLimit.trim()),
             };
 
             const savedClient = isNewClient
@@ -243,6 +252,8 @@ function ClientDetail({ isNewClient = false }) {
                 );
             }, 0);
 
+    const effectiveLimit = getClientDebtLimit(client);
+    const availableCredit = effectiveLimit !== null ? Math.max(0, effectiveLimit - Math.max(0, debtTotal)) : null;
 
     return (
         <div className="
@@ -406,6 +417,28 @@ function ClientDetail({ isNewClient = false }) {
                                             ? "Tiene saldo a favor para sus compras"
                                             : "Cuenta al día (sin deuda)"}
                                 </p>
+
+                                {effectiveLimit !== null && effectiveLimit > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-[var(--border)] text-xs space-y-1">
+                                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                                            <span>Límite de fiado:</span>
+                                            <span className="font-semibold text-[var(--text-primary)]">
+                                                {formatCurrency(effectiveLimit)}
+                                                <span className="text-[10px] text-[var(--text-secondary)] ml-1 font-normal">
+                                                    ({client?.debt_limit ? "personalizado" : "general"})
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[var(--text-secondary)]">Crédito disponible:</span>
+                                            <span className={`font-bold tabular-nums ${debtTotal >= effectiveLimit ? "text-[var(--danger)]" : "text-[var(--success)]"}`}>
+                                                {debtTotal >= effectiveLimit
+                                                    ? "Límite alcanzado"
+                                                    : formatCurrency(availableCredit)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-4 border-t border-[var(--border)] pt-3">
@@ -662,6 +695,35 @@ function ClientDetail({ isNewClient = false }) {
 
                         </div>
 
+                        {/* CUSTOM DEBT LIMIT */}
+                        <div className="sm:col-span-2">
+                            <label
+                                htmlFor="debtLimit"
+                                className="text-sm font-medium text-[var(--text-primary)] inline-flex items-center gap-2"
+                            >
+                                <span>Límite de fiado personalizado ($)</span>
+                            </label>
+
+                            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+                                Monto máximo que este cliente puede adeudar. Dejá vacío para usar el límite general ({settings?.global_debt_limit ? formatCurrency(settings.global_debt_limit) : "Sin límite general"}).
+                            </p>
+
+                            <div className="relative mt-2">
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">
+                                    $
+                                </span>
+
+                                <MoneyInput
+                                    id="debtLimit"
+                                    value={debtLimit}
+                                    onChange={(event) =>
+                                        setDebtLimit(event.target.value)
+                                    }
+                                    placeholder={settings?.global_debt_limit ? String(Math.round(Number(settings.global_debt_limit))) : "Sin límite"}
+                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] py-2.5 pl-8 pr-3 text-sm tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                />
+                            </div>
+                        </div>
 
                         {/* NOTES */}
 

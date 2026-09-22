@@ -6,10 +6,12 @@ import {
     getClients,
 } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
+import { useStoreSettings } from "../context/StoreSettingsContext";
 
 
 function ClientList() {
     const navigate = useNavigate();
+    const { getClientDebtLimit } = useStoreSettings();
 
     const [clients, setClients] = useState([]);
     const [search, setSearch] = useState("");
@@ -282,52 +284,45 @@ function ClientList() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        {Number(client.debt || 0) > 0 && (
-                                            <span className="
-                                                rounded-full
-                                                border
-                                                border-[var(--danger)]/30
-                                                bg-[var(--danger)]/10
-                                                px-3
-                                                py-1
-                                                text-xs
-                                                font-semibold
-                                                text-[var(--danger)]
-                                            ">
-                                                Debe: {formatCurrency(client.debt)}
-                                            </span>
-                                        )}
-                                        {Number(client.debt || 0) < 0 && (
-                                            <span className="
-                                                rounded-full
-                                                border
-                                                border-[var(--success)]/30
-                                                bg-[var(--success)]/10
-                                                px-3
-                                                py-1
-                                                text-xs
-                                                font-semibold
-                                                text-[var(--success)]
-                                            ">
-                                                A favor: {formatCurrency(Math.abs(client.debt))}
-                                            </span>
-                                        )}
-                                        {Number(client.debt || 0) === 0 && (
-                                            <span className="
-                                                rounded-full
-                                                border
-                                                border-[var(--border)]
-                                                bg-[var(--surface-accent)]
-                                                px-3
-                                                py-1
-                                                text-xs
-                                                font-medium
-                                                text-[var(--text-secondary)]
-                                            ">
-                                                Al día
-                                            </span>
-                                        )}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {(() => {
+                                            const clientDebt = Number(client.debt || 0);
+                                            const limit = getClientDebtLimit(client);
+                                            const isOver = limit !== null && limit > 0 && clientDebt > limit;
+
+                                            return (
+                                                <>
+                                                    {limit !== null && limit > 0 && (
+                                                        <span
+                                                            className={`hidden sm:inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                                                                isOver
+                                                                    ? "border-rose-500/40 bg-rose-500/10 text-rose-500"
+                                                                    : "border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)]"
+                                                            }`}
+                                                            title={isOver ? "Límite de fiado superado" : `Límite: ${formatCurrency(limit)}`}
+                                                        >
+                                                            Límite: {formatCurrency(limit)}
+                                                        </span>
+                                                    )}
+
+                                                    {clientDebt > 0 && (
+                                                        <span className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--danger)]">
+                                                            Debe: {formatCurrency(client.debt)}
+                                                        </span>
+                                                    )}
+                                                    {clientDebt < 0 && (
+                                                        <span className="rounded-md border border-[var(--success)]/30 bg-[var(--success)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
+                                                            A favor: {formatCurrency(Math.abs(client.debt))}
+                                                        </span>
+                                                    )}
+                                                    {clientDebt === 0 && (
+                                                        <span className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
+                                                            Al día
+                                                        </span>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                         <span className="
                                             text-lg
                                             text-[var(--text-secondary)]

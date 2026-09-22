@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import Subscription
 from .models import (
+    Client,
     StoreSettings,
     Register,
     BankAccount,
@@ -544,6 +545,182 @@ class BankAccountTests(TestCase):
         self.assertEqual(reg_res.status_code, status.HTTP_200_OK, reg_res.data)
         closed_summary = reg_res.data["bank_accounts_summary"]
         self.assertEqual(len(closed_summary), 2)
+
+
+class ProviderDebtAndCreditLimitTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="limituser",
+            email="limit@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.register = Register.objects.create(user=self.user)
+
+    def test_provider_debt_transaction_success(self):
+        provider = Provider.objects.create(user=self.user, name="Distribuidora Sur")
+
+        # 1. Purchase by debt (should NOT 400 even though client is None)
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Compra de mercadería a cuenta",
+                "operations": [
+                    {
+                        "type": "provider",
+                        "provider": provider.id,
+                        "amounts": [
+                            {"method": "debt", "amount": 5000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+
+        # 2. Verify provider outstanding debt is updated
+        prov_res = self.client.get(f"/api/business/providers/{provider.id}/")
+        self.assertEqual(prov_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(prov_res.data["outstanding_debt"], Decimal("5000"))
+
+        # 3. Pay partial provider debt with cash
+        pay_res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Pago parcial a proveedor",
+                "operations": [
+                    {
+                        "type": "provider_payment",
+                        "provider": provider.id,
+                        "amounts": [
+                            {"method": "cash", "amount": 2000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(pay_res.status_code, status.HTTP_201_CREATED, pay_res.data)
+
+        # 4. Verify remaining debt
+        prov_res2 = self.client.get(f"/api/business/providers/{provider.id}/")
+        self.assertEqual(prov_res2.data["outstanding_debt"], Decimal("3000"))
+
+    def test_fiado_credit_limit_validation(self):
+        client_obj = Client.objects.create(
+            user=self.user,
+            name="Carlos Fiado",
+            debt_limit=Decimal("10000.00"),
+        )
+
+        # 1. Sale within credit limit ($8000 <= $10000)
+        res1 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {"method": "debt", "amount": 8000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED, res1.data)
+
+        # 2. Sale exceeding credit limit ($8000 + $3000 = $11000 > $10000) without allow_over_limit
+        res2 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {"method": "debt", "amount": 3000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("debt_limit", res2.data)
+
+        # 3. Sale exceeding credit limit with allow_over_limit=True -> Allowed
+        res3 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "allow_over_limit": True,
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {"method": "debt", "amount": 3000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res3.status_code, status.HTTP_201_CREATED, res3.data)
+
+    def test_global_debt_limit_fallback(self):
+        settings = StoreSettings.get_or_create_for_user(self.user)
+        settings.global_debt_limit = Decimal("15000.00")
+        settings.save()
+
+        # Client with no custom limit (inherits global limit of $15000)
+        client_obj = Client.objects.create(
+            user=self.user,
+            name="Roberto Gomez",
+            debt_limit=None,
+        )
+
+        # 1. Attempt sale exceeding global limit ($16000 > $15000)
+        res1 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {"method": "debt", "amount": 16000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res1.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("debt_limit", res1.data)
+
+        # 2. Authorized override
+        res2 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "allow_over_limit": True,
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {"method": "debt", "amount": 16000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED, res2.data)
 
 
 

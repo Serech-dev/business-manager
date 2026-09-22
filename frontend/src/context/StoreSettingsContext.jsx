@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
     debt_surcharge_enabled: false,
     debt_surcharge_type: "percentage",
     debt_surcharge_value: "10",
+    global_debt_limit: null,
     card_surcharge_enabled: false,
     card_surcharge_type: "percentage",
     card_surcharge_value: "10",
@@ -76,6 +77,12 @@ export function StoreSettingsProvider({ children }) {
             }
             if (cleanData.debt_surcharge_value !== undefined) {
                 cleanData.debt_surcharge_value = String(Math.round(Number(cleanData.debt_surcharge_value) || 0));
+            }
+            if (cleanData.global_debt_limit !== undefined) {
+                cleanData.global_debt_limit =
+                    cleanData.global_debt_limit === "" || cleanData.global_debt_limit === null
+                        ? null
+                        : String(Math.round(Number(cleanData.global_debt_limit) || 0));
             }
             if (cleanData.card_surcharge_value !== undefined) {
                 cleanData.card_surcharge_value = String(Math.round(Number(cleanData.card_surcharge_value) || 0));
@@ -214,6 +221,26 @@ export function StoreSettingsProvider({ children }) {
         ]
     );
 
+    const getClientDebtLimit = useCallback(
+        (client) => {
+            if (!client) return null;
+            if (client.debt_limit !== undefined && client.debt_limit !== null && client.debt_limit !== "") {
+                const limit = Number(client.debt_limit);
+                return isNaN(limit) ? null : limit;
+            }
+            if (client.effective_debt_limit !== undefined && client.effective_debt_limit !== null) {
+                const limit = Number(client.effective_debt_limit);
+                return isNaN(limit) ? null : limit;
+            }
+            if (settings?.global_debt_limit !== undefined && settings?.global_debt_limit !== null && settings?.global_debt_limit !== "") {
+                const limit = Number(settings.global_debt_limit);
+                return isNaN(limit) ? null : limit;
+            }
+            return null;
+        },
+        [settings?.global_debt_limit]
+    );
+
     const openSettingsModal = useCallback(() => setIsSettingsModalOpen(true), []);
     const closeSettingsModal = useCallback(() => setIsSettingsModalOpen(false), []);
 
@@ -231,6 +258,7 @@ export function StoreSettingsProvider({ children }) {
                 calculatePhoneFee,
                 calculateDebtSurcharge,
                 calculateCardSurcharge,
+                getClientDebtLimit,
                 isSettingsModalOpen,
                 openSettingsModal,
                 closeSettingsModal,

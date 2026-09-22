@@ -304,7 +304,7 @@ function BarcodeNotFoundModal({
     const markupPct = numCost > 0 ? Math.round(((numSale - numCost) / numCost) * 100) : null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 animate-fadeIn">
             <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3.5 bg-[var(--surface-accent)]">

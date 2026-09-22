@@ -20,6 +20,7 @@ import ReceiptModal from "../../components/transactions/ReceiptModal";
 import MoneyInput from "../../components/MoneyInput";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
 import { useSubscriptionTier } from "../../hooks/useSubscriptionTier";
+import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
 import { NATIONAL_PRODUCTS } from "../../utils/nationalCatalog";
 
 export function SimplePos({ register, onOpenRegister }) {
@@ -30,8 +31,13 @@ export function SimplePos({ register, onOpenRegister }) {
         calculateExchangeFee,
         calculateCardSurcharge,
         calculateDebtSurcharge,
+        getClientDebtLimit,
     } = useStoreSettings();
+    const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
     const { isPro } = useSubscriptionTier();
+
+    // Surcharge override state for debt
+    const [ignoreDebtSurcharge, setIgnoreDebtSurcharge] = useState(false);
 
     // Data State
     const [products, setProducts] = useState([]);
@@ -130,11 +136,11 @@ export function SimplePos({ register, onOpenRegister }) {
         if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
             return calculateCardSurcharge(grandTotal).totalWithSurcharge;
         }
-        if (paymentMethod === "debt" && settings?.debt_surcharge_enabled) {
+        if (paymentMethod === "debt" && settings?.debt_surcharge_enabled && !ignoreDebtSurcharge) {
             return calculateDebtSurcharge(grandTotal).totalWithSurcharge;
         }
         return grandTotal;
-    }, [paymentMethod, settings?.card_surcharge_enabled, settings?.debt_surcharge_enabled, grandTotal, calculateCardSurcharge, calculateDebtSurcharge]);
+    }, [paymentMethod, settings?.card_surcharge_enabled, settings?.debt_surcharge_enabled, ignoreDebtSurcharge, grandTotal, calculateCardSurcharge, calculateDebtSurcharge]);
 
     const totalSavings = useMemo(() => {
         return ticketItems.reduce((sum, item) => sum + (Number(item.promoSavings) || 0), 0);
@@ -494,6 +500,7 @@ export function SimplePos({ register, onOpenRegister }) {
         setTicketItems([]);
         setSelectedClient(null);
         setReceivedCash("");
+        setIgnoreDebtSurcharge(false);
         setIsCheckoutOpen(false);
     };
 
@@ -585,18 +592,7 @@ export function SimplePos({ register, onOpenRegister }) {
     // ==========================================
     // SUBMIT TRANSACTION
     // ==========================================
-    const handleCompleteTransaction = async () => {
-        if (grandTotal <= 0) {
-            toast.error("El monto de la operación debe ser mayor a $0.");
-            return;
-        }
-
-        const hasPaymentItem = ticketItems.some((i) => i.type === "payment");
-        if ((paymentMethod === "debt" || hasPaymentItem) && !selectedClient) {
-            toast.error("Seleccioná un cliente para registrar la operación a cuenta.");
-            return;
-        }
-
+    const executeCompleteTransaction = async (allowOverLimit = false) => {
         try {
             setIsSubmitting(true);
 
@@ -637,7 +633,7 @@ export function SimplePos({ register, onOpenRegister }) {
                 let finalSaleAmount = saleTotal;
                 if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
                     finalSaleAmount = calculateCardSurcharge(saleTotal).totalWithSurcharge;
-                } else if (paymentMethod === "debt" && settings?.debt_surcharge_enabled) {
+                } else if (paymentMethod === "debt" && settings?.debt_surcharge_enabled && !ignoreDebtSurcharge) {
                     finalSaleAmount = calculateDebtSurcharge(saleTotal).totalWithSurcharge;
                 }
 
@@ -738,6 +734,7 @@ export function SimplePos({ register, onOpenRegister }) {
                 change_amount:
                     paymentMethod === "cash" && calculatedChange > 0 ? calculatedChange : null,
                 operations,
+                ...(allowOverLimit ? { allow_over_limit: true } : {}),
             };
 
             const response = await createTransaction(payload);
@@ -749,17 +746,60 @@ export function SimplePos({ register, onOpenRegister }) {
             clearTicket();
         } catch (err) {
             console.error("Error creating mobile transaction:", err);
-            toast.error(err?.response?.data?.detail || "Error al registrar la venta.");
+            const message =
+                err.response?.data?.debt_limit ||
+                err.response?.data?.register ||
+                err.response?.data?.client ||
+                err.response?.data?.detail ||
+                err.response?.data?.non_field_errors?.[0] ||
+                "Error al registrar la venta.";
+            toast.error(message);
             playBeepWarning();
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const handleCompleteTransaction = async () => {
+        if (grandTotal <= 0) {
+            toast.error("El monto de la operación debe ser mayor a $0.");
+            return;
+        }
+
+        const hasPaymentItem = ticketItems.some((i) => i.type === "payment");
+        if ((paymentMethod === "debt" || hasPaymentItem) && !selectedClient) {
+            toast.error("Seleccioná un cliente para registrar la operación a cuenta.");
+            return;
+        }
+
+        if (paymentMethod === "debt" && selectedClient) {
+            const clientDebt = Number(selectedClient.debt || 0);
+            const effectiveLimit = getClientDebtLimit(selectedClient);
+            const projectedDebt = clientDebt + effectiveCheckoutTotal;
+            const isOverLimit = effectiveLimit !== null && effectiveLimit > 0 && projectedDebt > effectiveLimit && effectiveCheckoutTotal > 0;
+
+            if (isOverLimit) {
+                if (isKioskDevice && !isUnlocked) {
+                    requireOwnerAccess(() => executeCompleteTransaction(true));
+                    return;
+                }
+
+                const confirmMsg = `El cliente superará su límite de fiado (${formatCurrency(projectedDebt)} de ${formatCurrency(effectiveLimit)}).\n¿Deseás autorizar la venta fiada de todas formas?`;
+                if (!window.confirm(confirmMsg)) {
+                    return;
+                }
+                await executeCompleteTransaction(true);
+                return;
+            }
+        }
+
+        await executeCompleteTransaction(false);
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-[var(--background)] text-[var(--text-primary)] pb-28">
             {/* Top Store Status & Client Ribbon */}
-            <div className="sticky top-0 z-20 bg-[var(--surface)]/95 backdrop-blur-md border-b border-[var(--border)] px-3 py-2 shadow-xs">
+            <div className="sticky top-0 z-20 bg-[var(--surface)] border-b border-[var(--border)] px-3 py-2 shadow-xs">
                 <div className="flex items-center justify-between gap-2">
                     {/* Active Client Chip */}
                     <button
@@ -1283,7 +1323,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* CHECKOUT / PAYMENT BOTTOM DRAWER */}
             {isCheckoutOpen && (
-                <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-40 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl">
                         {/* Drawer Header */}
                         <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border)]">
@@ -1434,21 +1474,39 @@ export function SimplePos({ register, onOpenRegister }) {
 
                             {/* A Cuenta warning */}
                             {paymentMethod === "debt" && (
-                                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs space-y-1">
+                                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs space-y-2">
                                     <div className="flex items-center justify-between font-bold text-amber-400">
-                                        <span>Venta A Cuenta (Fiado)</span>
-                                        {settings?.debt_surcharge_enabled && (
-                                            <span className="tabular-nums">
-                                                +{formatCurrency(calculateDebtSurcharge(grandTotal).surcharge)}
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-1.5">
+                                            <span>Venta A Cuenta (Fiado)</span>
+                                            {settings?.debt_surcharge_enabled && ignoreDebtSurcharge && (
+                                                <span className="rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                                                    Omitido
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {settings?.debt_surcharge_enabled && !ignoreDebtSurcharge && (
+                                                <span className="tabular-nums">
+                                                    +{formatCurrency(calculateDebtSurcharge(grandTotal).surcharge)}
+                                                </span>
+                                            )}
+                                            {settings?.debt_surcharge_enabled && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIgnoreDebtSurcharge(!ignoreDebtSurcharge)}
+                                                    className="rounded-md border border-amber-500/30 bg-[var(--surface)] px-2 py-0.5 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20 transition cursor-pointer"
+                                                >
+                                                    {ignoreDebtSurcharge ? "Aplicar recargo" : "Omitir recargo"}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <p className="text-[11px] text-[var(--text-secondary)]">
                                         {selectedClient ? (
                                             <>
                                                 Se sumarán <strong>{formatCurrency(effectiveCheckoutTotal)}</strong> a la deuda de{" "}
                                                 <strong>{selectedClient.name}</strong>
-                                                {settings?.debt_surcharge_enabled && " (incluye recargo por fiado)"}.
+                                                {settings?.debt_surcharge_enabled && !ignoreDebtSurcharge && " (incluye recargo por fiado)"}.
                                             </>
                                         ) : (
                                             <span className="text-rose-400 font-bold">
@@ -1456,6 +1514,33 @@ export function SimplePos({ register, onOpenRegister }) {
                                             </span>
                                         )}
                                     </p>
+
+                                    {/* Client credit limit indicator */}
+                                    {selectedClient && (() => {
+                                        const clientDebt = Number(selectedClient.debt || 0);
+                                        const effectiveLimit = getClientDebtLimit(selectedClient);
+                                        const projected = clientDebt + effectiveCheckoutTotal;
+                                        const isOver = effectiveLimit !== null && effectiveLimit > 0 && projected > effectiveLimit;
+
+                                        if (effectiveLimit !== null && effectiveLimit > 0) {
+                                            return (
+                                                <div className={`pt-1.5 border-t border-amber-500/20 text-[11px] ${isOver ? "text-rose-400 font-semibold" : "text-[var(--text-secondary)]"}`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span>Límite de fiado:</span>
+                                                        <span className="font-mono font-bold">{formatCurrency(effectiveLimit)}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between mt-0.5">
+                                                        <span>Deuda proyectada:</span>
+                                                        <span className="font-mono font-bold">
+                                                            {formatCurrency(projected)}
+                                                            {isOver && " (Supera límite)"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -1488,7 +1573,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 1. Varios / Monto Manual Sheet */}
             {activeServiceSheet === "varios" && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
@@ -1560,7 +1645,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 2. SUBE Recharge Sheet */}
             {activeServiceSheet === "sube" && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <div>
@@ -1632,7 +1717,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 3. Phone Recharge Sheet */}
             {activeServiceSheet === "phone" && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <div>
@@ -1704,7 +1789,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 4. Exchange Sheet */}
             {activeServiceSheet === "exchange" && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <div>
@@ -1771,7 +1856,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 5. Debt Payment Sheet (Cobro A Cuenta) */}
             {activeServiceSheet === "payment" && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
@@ -1880,7 +1965,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 6. Weight Grams Editor Sheet */}
             {activeServiceSheet === "weight" && editingWeightItemIndex !== null && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
@@ -1941,7 +2026,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
             {/* 7. Custom Unit Price Edit Sheet */}
             {activeServiceSheet === "editPrice" && editingPriceItemIndex !== null && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-fadeIn">
+                <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
@@ -1993,7 +2078,7 @@ export function SimplePos({ register, onOpenRegister }) {
             {/* CLIENT SELECTOR & CREATION MODAL */}
             {/* ========================================================================= */}
             {isClientModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3">
                     <div className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-scaleUp">
                         <div className="p-3.5 border-b border-[var(--border)] flex items-center justify-between">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">

@@ -22,6 +22,7 @@ import ProductModal from "../components/products/ProductModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useStoreSettings } from "../context/StoreSettingsContext";
 import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
+import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 
 const NEW_SALE_TOUR_STEPS = [
     {
@@ -75,7 +76,8 @@ function createNewOperation() {
 
 function NewTransaction() {
     const navigate = useNavigate();
-    const { settings, calculateExchangeFee, calculateSubeFee, calculatePhoneFee, calculateDebtSurcharge, calculateCardSurcharge } = useStoreSettings();
+    const { settings, calculateExchangeFee, calculateSubeFee, calculatePhoneFee, calculateDebtSurcharge, calculateCardSurcharge, getClientDebtLimit } = useStoreSettings();
+    const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -84,6 +86,7 @@ function NewTransaction() {
     const [description, setDescription] = useState("");
     const [receivedCash, setReceivedCash] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
+    const [ignoreDebtSurcharge, setIgnoreDebtSurcharge] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Post-sale completion & ticket modal
@@ -202,7 +205,7 @@ function NewTransaction() {
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
+                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
                         } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
@@ -245,7 +248,7 @@ function NewTransaction() {
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
+                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
                         } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
@@ -267,7 +270,7 @@ function NewTransaction() {
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
+                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
                         } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
@@ -299,7 +302,7 @@ function NewTransaction() {
                 if (updatedAmounts.length === 1) {
                     const currentMethod = updatedAmounts[0]?.method || "cash";
                     let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                    if (currentMethod === "debt" && settings.debt_surcharge_enabled && targetTotal > 0) {
+                    if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
                         targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
                     } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
                         targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
@@ -315,6 +318,36 @@ function NewTransaction() {
                     items,
                     amounts: updatedAmounts,
                 };
+            })
+        );
+    }
+
+    function handleToggleIgnoreDebtSurcharge(ignored) {
+        setIgnoreDebtSurcharge(ignored);
+        setOperations((current) =>
+            current.map((op) => {
+                if (op.amounts.length === 1 && op.amounts[0]?.method === "debt") {
+                    let opTargetTotal = 0;
+                    if (op.type === "sale") {
+                        opTargetTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0);
+                    } else if (op.type === "exchange") {
+                        opTargetTotal = Number(op.exchangeAmount) || 0;
+                    }
+                    const nextAmount = (ignored || !settings.debt_surcharge_enabled)
+                        ? (opTargetTotal > 0 ? String(opTargetTotal) : "")
+                        : (opTargetTotal > 0 ? String(calculateDebtSurcharge(opTargetTotal).totalWithSurcharge) : "");
+
+                    return {
+                        ...op,
+                        amounts: [
+                            {
+                                ...op.amounts[0],
+                                amount: nextAmount,
+                            },
+                        ],
+                    };
+                }
+                return op;
             })
         );
     }
@@ -338,49 +371,7 @@ function NewTransaction() {
         );
     }, 0);
 
-    const handleSubmit = useCallback(async (event) => {
-        if (event) event.preventDefault();
-        if (isSubmitting || grandTotal <= 0) return;
-
-        // VALIDATION
-        const hasDebtAmount = operations.some((op) =>
-            op.amounts.some((a) => a.method === "debt" && Number(a.amount) > 0)
-        );
-
-        if ((hasPaymentOperation || hasDebtAmount) && !client) {
-            toast.error(
-                hasPaymentOperation
-                    ? "El pago a cuenta requiere seleccionar un cliente."
-                    : "Para registrar una venta a cuenta tenés que seleccionar o crear un cliente."
-            );
-            return;
-        }
-
-        for (let i = 0; i < operations.length; i++) {
-            const op = operations[i];
-            const opLabel =
-                operations.length > 1
-                    ? `En la operación #${i + 1} (${getTransactionLabel(op.type)}): `
-                    : "";
-
-            const validAmounts = op.amounts.filter(
-                (item) => item.amount !== "" && Number(item.amount) > 0
-            );
-
-            if (validAmounts.length === 0) {
-                toast.error(`${opLabel}Ingresá al menos un monto válido.`);
-                return;
-            }
-
-            if (
-                op.type === "exchange" &&
-                (!op.exchangeAmount || Number(op.exchangeAmount) <= 0)
-            ) {
-                toast.error(`${opLabel}Ingresá el monto de cambio.`);
-                return;
-            }
-        }
-
+    const executeSubmit = useCallback(async (allowOverLimit = false) => {
         setIsSubmitting(true);
 
         try {
@@ -409,23 +400,29 @@ function NewTransaction() {
                 const exchangeNum = Number(op.exchangeAmount) || 0;
                 const { clientAmount: exchangeClientAmount } = calculateExchangeFee(exchangeNum);
 
-                const resolvedItems = [];
+                let resolvedItems = [];
                 if (op.type === "sale" && op.items && op.items.length > 0) {
                     for (const it of op.items) {
-                        const qty =
-                            it.unitType === "kg"
-                                ? (Number(it.grams) || 0) / 1000
-                                : it.unitType === "100g"
-                                ? (Number(it.grams) || 0) / 100
-                                : Number(it.quantity) || 1;
+                        let productId = it.product?.id || null;
+                        if (it.product && !it.product.id && it.product.name) {
+                            const newProd = await createProduct({
+                                name: it.product.name,
+                                sale_price: it.product.sale_price,
+                                cost_price: it.product.cost_price || 0,
+                                unit_type: it.unitType || "unit",
+                                category: it.product.category || null,
+                            });
+                            productId = newProd.id;
+                        }
 
                         resolvedItems.push({
-                            product: it.product?.id || null,
+                            product: productId,
                             product_name: it.product?.name || "Producto",
                             unit_type: it.unitType || "unit",
-                            quantity: qty,
-                            unit_price: Number(it.unitPrice) || 0,
-                            subtotal: Number(it.subtotal) || 0,
+                            quantity: it.quantity || 1,
+                            grams: it.grams || 0,
+                            unit_price: it.unitPrice || 0,
+                            subtotal: it.subtotal || 0,
                         });
                     }
                 }
@@ -496,6 +493,7 @@ function NewTransaction() {
                 client: clientId,
                 description: finalDescription,
                 operations: resolvedOperations,
+                ...(allowOverLimit ? { allow_over_limit: true } : {}),
             };
 
             const createdTx = await createTransaction(payload);
@@ -523,6 +521,7 @@ function NewTransaction() {
         } catch (error) {
             console.error(error);
             const message =
+                error.response?.data?.debt_limit ||
                 error.response?.data?.register ||
                 error.response?.data?.client ||
                 error.response?.data?.non_field_errors?.[0] ||
@@ -535,14 +534,94 @@ function NewTransaction() {
         calculateExchangeFee,
         client,
         description,
-        grandTotal,
-        hasPaymentOperation,
-        isSubmitting,
         navigate,
         operations,
         printTicketOnSave,
         receivedCash,
         totalCashDue,
+    ]);
+
+    const handleSubmit = useCallback(async (event) => {
+        if (event) event.preventDefault();
+        if (isSubmitting || grandTotal <= 0) return;
+
+        // VALIDATION
+        const hasDebtAmount = operations.some((op) =>
+            op.amounts.some((a) => a.method === "debt" && Number(a.amount) > 0)
+        );
+
+        if ((hasPaymentOperation || hasDebtAmount) && !client) {
+            toast.error(
+                hasPaymentOperation
+                    ? "El pago a cuenta requiere seleccionar un cliente."
+                    : "Para registrar una venta a cuenta tenés que seleccionar o crear un cliente."
+            );
+            return;
+        }
+
+        for (let i = 0; i < operations.length; i++) {
+            const op = operations[i];
+            const opLabel =
+                operations.length > 1
+                    ? `En la operación #${i + 1} (${getTransactionLabel(op.type)}): `
+                    : "";
+
+            const validAmounts = op.amounts.filter(
+                (item) => item.amount !== "" && Number(item.amount) > 0
+            );
+
+            if (validAmounts.length === 0) {
+                toast.error(`${opLabel}Ingresá al menos un monto válido.`);
+                return;
+            }
+
+            if (
+                op.type === "exchange" &&
+                (!op.exchangeAmount || Number(op.exchangeAmount) <= 0)
+            ) {
+                toast.error(`${opLabel}Ingresá el monto de cambio.`);
+                return;
+            }
+        }
+
+        // Check credit limit if paying on account
+        const totalSaleDebt = operations.reduce((sum, op) => {
+            return sum + (op.amounts || [])
+                .filter((a) => a.method === "debt")
+                .reduce((s, a) => s + (Number(a.amount) || 0), 0);
+        }, 0);
+
+        const clientDebt = Number(client?.debt || 0);
+        const effectiveLimit = client ? getClientDebtLimit(client) : null;
+        const projectedDebt = clientDebt + totalSaleDebt;
+        const isOverLimit = effectiveLimit !== null && effectiveLimit > 0 && projectedDebt > effectiveLimit && totalSaleDebt > 0;
+
+        if (isOverLimit) {
+            if (isKioskDevice && !isUnlocked) {
+                requireOwnerAccess(() => executeSubmit(true));
+                return;
+            }
+
+            const confirmMsg = `El cliente superará su límite de fiado (${formatCurrency(projectedDebt)} de ${formatCurrency(effectiveLimit)}).\n¿Deseás autorizar la venta fiada de todas formas?`;
+            if (!window.confirm(confirmMsg)) {
+                return;
+            }
+            await executeSubmit(true);
+            return;
+        }
+
+        await executeSubmit(false);
+    }, [
+        client,
+        executeSubmit,
+        getClientDebtLimit,
+        grandTotal,
+        hasPaymentOperation,
+        isKioskDevice,
+        isSubmitting,
+        isUnlocked,
+        operations,
+        requireOwnerAccess,
     ]);
 
     // Global shortcut Ctrl+Enter or F9 to submit sale from anywhere
@@ -563,6 +642,7 @@ function NewTransaction() {
     function handleResetForm() {
         setOperations([createNewOperation()]);
         setClient(null);
+        setIgnoreDebtSurcharge(false);
         setDescription("");
         setReceivedCash("");
         setCompletedSale(null);
@@ -742,6 +822,9 @@ function NewTransaction() {
                                         }
                                         disableDebt={op.type === "payment"}
                                         hasClient={Boolean(client)}
+                                        client={client}
+                                        ignoreDebtSurcharge={ignoreDebtSurcharge}
+                                        onToggleIgnoreDebtSurcharge={handleToggleIgnoreDebtSurcharge}
                                         onRequireClient={() => {}}
                                         receivedCash={receivedCash}
                                         onReceivedCashChange={setReceivedCash}
@@ -891,7 +974,7 @@ function NewTransaction() {
             {showSuccessModal && completedSale && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div
-                        className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
+                        className="fixed inset-0 bg-black/70 transition-opacity"
                         onClick={() => navigate("/")}
                     />
                     <div className="relative w-full max-w-sm overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-5">

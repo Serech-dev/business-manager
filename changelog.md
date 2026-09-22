@@ -1,3 +1,20 @@
+v1.7.1 (Provider Debt Fix, Credit Limits, On-the-Fly Fiado Surcharge Toggle & Modal Performance Optimization)
+
+- Provider Debt Purchases (Cuenta Corriente Proveedor):
+  - Fixed 400 Bad Request error when registering purchases to providers on account (`type: "provider"`, `method: "debt"`).
+  - Serializer validation now properly validates provider association instead of incorrectly enforcing a client.
+- Global & Per-Client Fiado (Credit) Limits:
+  - Added global credit limit setting in Store Settings (`global_debt_limit`).
+  - Added per-client debt limit override in Client profile (`debt_limit`), with higher priority over the global limit.
+  - POS warnings and owner authorization: checks projected debt before completing a sale on account. If exceeded, requires owner PIN authorization on kiosk/clerk terminals or confirmation prompt for owner sessions.
+  - Added available credit headroom displays in Client balance cards and Client list table.
+- Flexible Fiado Surcharge Toggle (Omitir / Aplicar Recargo):
+  - Cashiers can now bypass the fiado surcharge on-the-fly (`[Omitir recargo]` / `[Aplicar recargo]`) for trusted customers in both desktop POS (`NewTransaction.jsx`) and mobile POS (`SimplePos.jsx`).
+- Client State Reset Fix on "+ Nueva Venta":
+  - Fixed issue where the previous customer's name persisted in the customer search input when clicking "+ Nueva Venta" from the receipt modal. Search input and dropdown are now cleanly reset when transitioning back to a new sale.
+- Modal Performance Optimization for Older POS Hardware:
+  - Eliminated GPU-heavy `backdrop-blur-*` filters across all modal overlays and bottom drawers in both desktop and mobile modes (replaced with solid alpha overlays `bg-black/70`), restoring smooth 60fps responsiveness on low-end Intel Celeron/Atom POS hardware.
+
 v1.7.0 (Responsive Layouts, Autocomplete Search, Charm Crossover Pricing & UI Polish)
 
 - Responsive Layouts & Low-Resolution Optimizations (1024px–1366px):

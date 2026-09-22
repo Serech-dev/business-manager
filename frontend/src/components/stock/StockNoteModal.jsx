@@ -94,7 +94,7 @@ function StockNoteModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4">
             <div className="flex w-full max-w-lg flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">

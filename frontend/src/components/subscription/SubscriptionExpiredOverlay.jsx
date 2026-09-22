@@ -111,7 +111,7 @@ function SubscriptionExpiredOverlay() {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 animate-fadeIn">
             <div className="relative flex max-h-[95vh] w-full max-w-xl flex-col rounded-md border border-[var(--danger-border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4 bg-[var(--danger-bg)]">

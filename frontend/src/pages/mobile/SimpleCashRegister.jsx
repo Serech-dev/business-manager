@@ -315,7 +315,7 @@ export function SimpleCashRegister() {
 
             {/* Close Register Confirmation Modal */}
             {isCloseModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-md p-5 shadow-2xl">
                         <h4 className="font-bold text-sm text-[var(--text-primary)] mb-1">Cierre de Caja Diaria</h4>
                         <p className="text-xs text-[var(--text-secondary)] mb-4">
@@ -356,7 +356,7 @@ export function SimpleCashRegister() {
 
             {/* Cash In / Expense Modal */}
             {isMovementModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div className="w-full max-w-xs bg-[var(--surface)] border border-[var(--border)] rounded-md p-4 shadow-xl">
                         <h4 className="font-bold text-sm text-[var(--text-primary)] mb-3">Movimiento de Caja</h4>
 

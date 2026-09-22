@@ -92,7 +92,7 @@ function FirstTimeSetupModal() {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 animate-fadeIn">
             <div className="relative flex max-h-[95vh] w-full max-w-xl flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden">
                 {/* HEADER */}
                 <div className="border-b border-[var(--border)] px-6 py-5 bg-[var(--surface-accent)]">

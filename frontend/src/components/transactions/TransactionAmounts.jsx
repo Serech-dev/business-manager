@@ -10,11 +10,14 @@ function TransactionAmounts({
     onAmountsChange,
     disableDebt = false,
     hasClient = false,
+    client = null,
     onRequireClient,
     receivedCash = "",
     onReceivedCashChange,
+    ignoreDebtSurcharge = false,
+    onToggleIgnoreDebtSurcharge,
 }) {
-    const { settings, calculateDebtSurcharge, calculateCardSurcharge } = useStoreSettings();
+    const { settings, calculateDebtSurcharge, calculateCardSurcharge, getClientDebtLimit } = useStoreSettings();
     const isSingleMethod = amounts.length === 1;
 
     const [bankAccounts, setBankAccounts] = useState([]);
@@ -42,7 +45,7 @@ function TransactionAmounts({
 
         let defaultAmount = amounts[0]?.amount || "";
         if (targetTotal > 0) {
-            if (method === "debt" && settings.debt_surcharge_enabled) {
+            if (method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
                 const surchargeInfo = calculateDebtSurcharge(targetTotal);
                 defaultAmount = String(surchargeInfo.totalWithSurcharge);
             } else if (method === "card" && settings.card_surcharge_enabled) {
@@ -236,51 +239,54 @@ function TransactionAmounts({
                             })}
                         </div>
 
-                        {/* Amount Input */}
-                        <div className="relative">
-                            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-secondary)]">
-                                $
-                            </span>
-                            <MoneyInput
-                                value={amounts[0]?.amount}
-                                onChange={(event) =>
-                                    updateAmount(0, "amount", event.target.value)
-                                }
-                                placeholder="0"
-                                className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
-                            />
+                        {/* Amount Input & Bank Destination (if transfer/card) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="relative">
+                                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-secondary)]">
+                                    $
+                                </span>
+                                <MoneyInput
+                                    value={amounts[0]?.amount || ""}
+                                    onChange={(e) => updateAmount(0, "amount", e.target.value)}
+                                    placeholder="0"
+                                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                />
+                            </div>
+
+                            {["transfer", "card"].includes(amounts[0]?.method) && bankAccounts.length > 0 && (
+                                <div className="relative flex items-center">
+                                    <select
+                                        value={amounts[0]?.bank_account || defaultBank?.id || ""}
+                                        onChange={(e) =>
+                                            updateAmount(
+                                                0,
+                                                "bank_account",
+                                                e.target.value ? Number(e.target.value) : null
+                                            )
+                                        }
+                                        className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] pl-3 pr-8 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
+                                    >
+                                        {bankAccounts.map((acc) => (
+                                            <option key={acc.id} value={acc.id}>
+                                                {acc.name} {acc.is_default ? "(Principal)" : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {["transfer", "card"].includes(amounts[0]?.method) && bankAccounts.length > 1 && (
-                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                                <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                                    Cuenta destino:
-                                </span>
-                                {bankAccounts.map((acc) => {
-                                    const isAccSelected = (amounts[0]?.bank_account || defaultBank?.id) === acc.id;
-                                    return (
-                                        <button
-                                            key={acc.id}
-                                            type="button"
-                                            onClick={() => updateAmount(0, "bank_account", acc.id)}
-                                            className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
-                                                isAccSelected
-                                                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
-                                                    : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                                            }`}
-                                        >
-                                            {acc.name} {acc.is_default ? "(Principal)" : ""}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-
+                        {/* Informational banners for card surcharge */}
                         {amounts[0]?.method === "card" && settings.card_surcharge_enabled && (
-                            <div className="rounded-lg border border-sky-500/25 bg-sky-500/10 p-2.5 text-xs text-sky-700 dark:text-sky-300 space-y-1">
+                            <div className="rounded-lg border border-purple-500/25 bg-purple-500/10 p-2.5 text-xs text-purple-700 dark:text-purple-300 space-y-1">
                                 <div className="flex items-center justify-between font-bold">
                                     <span>
-                                        Recargo por pago con tarjeta ({settings.card_surcharge_type === "percentage" ? `${Number(settings.card_surcharge_value)}%` : formatCurrency(Number(settings.card_surcharge_value))}):
+                                        Recargo por cobro con tarjeta ({settings.card_surcharge_type === "percentage" ? `${Number(settings.card_surcharge_value)}%` : formatCurrency(Number(settings.card_surcharge_value))}):
                                     </span>
                                     {targetTotal > 0 && (
                                         <span className="tabular-nums">
@@ -298,23 +304,60 @@ function TransactionAmounts({
                         )}
 
                         {amounts[0]?.method === "debt" && settings.debt_surcharge_enabled && (
-                            <div className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-300 space-y-1">
+                            <div className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-300 space-y-1.5">
                                 <div className="flex items-center justify-between font-bold">
-                                    <span>
-                                        Recargo por cuenta corriente ({settings.debt_surcharge_type === "percentage" ? `${Number(settings.debt_surcharge_value)}%` : formatCurrency(Number(settings.debt_surcharge_value))}):
-                                    </span>
-                                    {targetTotal > 0 && (
-                                        <span className="tabular-nums">
-                                            +{formatCurrency(calculateDebtSurcharge(targetTotal).surcharge)}
+                                    <div className="flex items-center gap-1.5">
+                                        <span>
+                                            Recargo por cuenta corriente ({settings.debt_surcharge_type === "percentage" ? `${Number(settings.debt_surcharge_value)}%` : formatCurrency(Number(settings.debt_surcharge_value))}):
                                         </span>
-                                    )}
+                                        {ignoreDebtSurcharge && (
+                                            <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                                                Omitido
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {targetTotal > 0 && !ignoreDebtSurcharge && (
+                                            <span className="tabular-nums">
+                                                +{formatCurrency(calculateDebtSurcharge(targetTotal).surcharge)}
+                                            </span>
+                                        )}
+                                        {onToggleIgnoreDebtSurcharge && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onToggleIgnoreDebtSurcharge(!ignoreDebtSurcharge)}
+                                                className="rounded-md border border-indigo-500/30 bg-[var(--surface)] px-2 py-0.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/10 transition shadow-2xs cursor-pointer"
+                                            >
+                                                {ignoreDebtSurcharge ? "Aplicar recargo" : "Omitir recargo"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 {targetTotal > 0 && (
                                     <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                                         <span>Base: {formatCurrency(targetTotal)}</span>
-                                        <span>Total sugerido con recargo: {formatCurrency(calculateDebtSurcharge(targetTotal).totalWithSurcharge)}</span>
+                                        <span>
+                                            {ignoreDebtSurcharge
+                                                ? `Total a cobrar (sin recargo): ${formatCurrency(targetTotal)}`
+                                                : `Total sugerido con recargo: ${formatCurrency(calculateDebtSurcharge(targetTotal).totalWithSurcharge)}`}
+                                        </span>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* LIMIT BREACH WARNING */}
+                        {isLimitBreached && (
+                            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-600 dark:text-rose-400 space-y-1">
+                                <div className="flex items-center gap-1.5 font-bold">
+                                    <svg className="h-4 w-4 shrink-0 text-rose-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>Límite de fiado superado</span>
+                                </div>
+                                <p className="text-[11px] leading-relaxed">
+                                    Deuda actual ({formatCurrency(clientDebt)}) + este fiado ({formatCurrency(debtAmountInOp)}) = <strong>{formatCurrency(projectedDebt)}</strong>. Supera el límite de <strong>{formatCurrency(effectiveLimit)}</strong>.
+                                </p>
                             </div>
                         )}
 
@@ -409,6 +452,21 @@ function TransactionAmounts({
                                 )}
                             </div>
                         ))}
+
+                        {/* LIMIT BREACH WARNING (SPLIT) */}
+                        {isLimitBreached && (
+                            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-600 dark:text-rose-400 space-y-1">
+                                <div className="flex items-center gap-1.5 font-bold">
+                                    <svg className="h-4 w-4 shrink-0 text-rose-500" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                    <span>Límite de fiado superado</span>
+                                </div>
+                                <p className="text-[11px] leading-relaxed">
+                                    Deuda actual ({formatCurrency(clientDebt)}) + este fiado ({formatCurrency(debtAmountInOp)}) = <strong>{formatCurrency(projectedDebt)}</strong>. Supera el límite de <strong>{formatCurrency(effectiveLimit)}</strong>.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
 

@@ -1386,7 +1386,7 @@ function ProductList() {
 
             {/* FLOATING SELECTION ACTION BAR (FOR SCROLLING CONVENIENCE) */}
             {selectedIds.length > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)]/95 px-5 py-3 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-4">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-3 shadow-2xl animate-in slide-in-from-bottom-4">
                     <span className="text-xs font-bold text-[var(--text-primary)]">
                         {selectedIds.length} seleccionado{selectedIds.length === 1 ? "" : "s"}
                     </span>

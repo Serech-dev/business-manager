@@ -30,6 +30,15 @@ class Client(models.Model):
         default=Decimal("0.00"),
     )
 
+    debt_limit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Límite personalizado de fiado ($). Si es nulo, se utiliza el límite general del comercio.",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -45,6 +54,14 @@ class Client(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def effective_debt_limit(self):
+        if self.debt_limit is not None:
+            return self.debt_limit
+        if hasattr(self.user, "store_settings") and self.user.store_settings:
+            return self.user.store_settings.global_debt_limit
+        return None
 
 class Register(models.Model):
     user = models.ForeignKey(
@@ -840,6 +857,15 @@ class StoreSettings(models.Model):
         max_digits=10,
         decimal_places=2,
         default=Decimal("10.00"),
+    )
+
+    global_debt_limit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Límite máximo general de fiado para clientes ($). Dejar vacío si no hay límite.",
     )
 
     # Card (Debit / Credit) Surcharge

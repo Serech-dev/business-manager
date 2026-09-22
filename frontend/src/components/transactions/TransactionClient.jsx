@@ -1,20 +1,34 @@
 import { useState, useEffect, useRef } from "react";
 import { getClients } from "../../services/business";
 import { formatCurrency } from "../../utils/formatCurrency";
+import { useStoreSettings } from "../../context/StoreSettingsContext";
 
 function TransactionClient({
     selectedClient,
     onSelectClient,
     required = false,
 }) {
+    const { getClientDebtLimit } = useStoreSettings();
     const [clientSearch, setClientSearch] = useState("");
     const [clientResults, setClientResults] = useState([]);
     const [isSearchingClients, setIsSearchingClients] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     const containerRef = useRef(null);
+    const prevSelectedClientRef = useRef(selectedClient);
 
     useEffect(() => {
+        // If transitioning from selected client to null (e.g. form reset, new sale)
+        if (prevSelectedClientRef.current && !selectedClient) {
+            setClientSearch("");
+            setClientResults([]);
+            setIsDropdownOpen(false);
+            prevSelectedClientRef.current = null;
+            return;
+        }
+
+        prevSelectedClientRef.current = selectedClient;
+
         if (selectedClient) {
             setClientSearch(selectedClient.name || "");
             setClientResults([]);
@@ -58,6 +72,10 @@ function TransactionClient({
     }, []);
 
     if (selectedClient) {
+        const effectiveLimit = getClientDebtLimit(selectedClient);
+        const clientDebt = Number(selectedClient?.debt || 0);
+        const remainingCredit = effectiveLimit !== null ? Math.max(0, effectiveLimit - Math.max(0, clientDebt)) : null;
+
         return (
             <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/5 px-3 py-2 text-xs transition">
                 <div className="flex items-center gap-2 min-w-0">
@@ -80,7 +98,7 @@ function TransactionClient({
                         </div>
 
                         {selectedClient.debt !== undefined && (
-                            <div className="flex items-center gap-1 text-[11px] mt-0.5">
+                            <div className="flex items-center gap-1.5 text-[11px] mt-0.5 flex-wrap">
                                 {Number(selectedClient.debt) > 0 ? (
                                     <span className="font-semibold text-[var(--danger)]">
                                         Deuda: {formatCurrency(selectedClient.debt)}
@@ -92,6 +110,22 @@ function TransactionClient({
                                 ) : (
                                     <span className="text-[var(--text-secondary)]">Al día ($0)</span>
                                 )}
+
+                                {effectiveLimit !== null && effectiveLimit > 0 && (
+                                    <span className="text-[var(--text-secondary)]">
+                                        · Límite: <strong className="text-[var(--text-primary)]">{formatCurrency(effectiveLimit)}</strong>
+                                        {remainingCredit > 0 ? (
+                                            <span className="text-[var(--success)] ml-1 font-semibold">
+                                                (Disp: {formatCurrency(remainingCredit)})
+                                            </span>
+                                        ) : (
+                                            <span className="text-[var(--danger)] ml-1 font-bold">
+                                                (Agotado)
+                                            </span>
+                                        )}
+                                    </span>
+                                )}
+
                                 {selectedClient.phone && (
                                     <span className="text-[var(--text-secondary)]">· {selectedClient.phone}</span>
                                 )}

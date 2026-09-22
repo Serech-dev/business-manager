@@ -514,7 +514,7 @@ function AdminPanel() {
 
             {/* MANUAL EDIT MODAL */}
             {editingStore && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
                     <div className="w-full max-w-lg rounded-md border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl space-y-4">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                             <h3 className="text-sm font-bold text-[var(--text-primary)]">
