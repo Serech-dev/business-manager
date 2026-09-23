@@ -170,6 +170,28 @@ function NewTransaction() {
 
     const hasPaymentOperation = operations.some((op) => op.type === "payment");
 
+    function handleSelectClient(selected) {
+        setClient(selected);
+        if (selected && Number(selected.debt) > 0) {
+            setOperations((prev) =>
+                prev.map((op) => {
+                    if (op.type === "payment" && op.amounts.length === 1 && !op.amounts[0].amount) {
+                        return {
+                            ...op,
+                            amounts: [
+                                {
+                                    ...op.amounts[0],
+                                    amount: String(Math.round(Number(selected.debt))),
+                                },
+                            ],
+                        };
+                    }
+                    return op;
+                })
+            );
+        }
+    }
+
     function handleAddOperation() {
         setOperations((current) => [...current, createNewOperation()]);
     }
@@ -199,6 +221,16 @@ function NewTransaction() {
                     if (value !== "sube" && value !== "phone") {
                         updated.rechargeAmount = "";
                     }
+                    if (value !== "sale") {
+                        updated.items = [];
+                        updated.manualAmount = "";
+                    }
+                    if (value === "payment") {
+                        // Payment of debt cannot be paid with debt! Default any 'debt' method to 'cash'
+                        updated.amounts = (updated.amounts || []).map((a) =>
+                            a.method === "debt" ? { ...a, method: "cash" } : a
+                        );
+                    }
                     // Recompute target total for the new type
                     let targetTotal = 0;
                     if (value === "sale") {
@@ -207,7 +239,14 @@ function NewTransaction() {
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
+                        if (value === "payment") {
+                            // If switching to payment, prefill with client debt if available, or keep previously entered amount
+                            if (client && Number(client.debt) > 0 && (!updated.amounts[0]?.amount || (op.items && op.items.length > 0))) {
+                                targetAmount = String(Math.round(Number(client.debt)));
+                            } else {
+                                targetAmount = updated.amounts[0]?.amount || "";
+                            }
+                        } else if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
                             targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
                         } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
                             targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
@@ -860,7 +899,7 @@ function NewTransaction() {
                             </div>
                             <TransactionClient
                                 selectedClient={client}
-                                onSelectClient={setClient}
+                                onSelectClient={handleSelectClient}
                                 required={hasPaymentOperation}
                             />
                         </div>

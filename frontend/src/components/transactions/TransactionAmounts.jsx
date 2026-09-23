@@ -34,6 +34,16 @@ function TransactionAmounts({
         };
     }, []);
 
+    // Ensure debt method is sanitized to cash when debt is disabled (e.g. debt payment)
+    useEffect(() => {
+        if (disableDebt && amounts && amounts.some((a) => a.method === "debt")) {
+            const sanitized = amounts.map((a) =>
+                a.method === "debt" ? { ...a, method: "cash" } : a
+            );
+            onAmountsChange?.(sanitized);
+        }
+    }, [disableDebt, amounts, onAmountsChange]);
+
     const defaultBank = useMemo(() => {
         return bankAccounts.find((b) => b.is_default) || bankAccounts[0] || null;
     }, [bankAccounts]);
@@ -100,7 +110,9 @@ function TransactionAmounts({
 
     function addAmount() {
         const usedMethods = new Set(amounts.map((a) => a.method));
-        const allMethods = ["cash", "transfer", "card", "debt"];
+        const allMethods = disableDebt
+            ? ["cash", "transfer", "card"]
+            : ["cash", "transfer", "card", "debt"];
         const nextMethod = allMethods.find((m) => !usedMethods.has(m)) || "transfer";
 
         if (targetTotal > 0) {

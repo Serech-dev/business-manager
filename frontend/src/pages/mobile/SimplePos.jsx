@@ -129,6 +129,14 @@ export function SimplePos({ register, onOpenRegister }) {
         loadData();
     }, [loadData]);
 
+    // Ensure payment method defaults to cash when ticket includes a debt payment
+    useEffect(() => {
+        const hasPaymentItem = ticketItems.some((i) => i.type === "payment");
+        if (hasPaymentItem && paymentMethod === "debt") {
+            setPaymentMethod("cash");
+        }
+    }, [ticketItems, paymentMethod]);
+
     // Financial Calculation of the Entire Ticket
     const grandTotal = useMemo(() => {
         return ticketItems.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
@@ -707,12 +715,13 @@ export function SimplePos({ register, onOpenRegister }) {
             // 5. Debt Payment Items (A Cuenta)
             const paymentItems = ticketItems.filter((i) => i.type === "payment");
             for (const pay of paymentItems) {
+                const methodToUse = paymentMethod === "mp" ? "transfer" : (paymentMethod === "debt" ? "cash" : paymentMethod);
                 operations.push({
                     type: "payment",
                     manualAmount: pay.subtotal,
                     amounts: [
                         {
-                            method: paymentMethod === "mp" ? "transfer" : paymentMethod,
+                            method: methodToUse,
                             amount: pay.subtotal,
                             ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
@@ -1360,7 +1369,9 @@ export function SimplePos({ register, onOpenRegister }) {
                                         { id: "cash", label: "Efectivo" },
                                         { id: "mp", label: "Mercado Pago / Transf." },
                                         { id: "card", label: "Tarjeta Débito / Crédito" },
-                                        { id: "debt", label: "A Cuenta (Fiado)" },
+                                        ...(!ticketItems.some((i) => i.type === "payment")
+                                            ? [{ id: "debt", label: "A Cuenta (Fiado)" }]
+                                            : []),
                                     ].map((m) => (
                                         <button
                                             key={m.id}
