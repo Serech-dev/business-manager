@@ -179,6 +179,25 @@ function TransactionAmounts({
         ].filter((b, idx, arr) => arr.findIndex((x) => x.value === b.value) === idx);
     }, [cashDue]);
 
+    // Credit limit calculation
+    const { clientDebt, effectiveLimit, debtAmountInOp, projectedDebt, isLimitBreached } = useMemo(() => {
+        const debtInOp = amounts
+            .filter((a) => a.method === "debt")
+            .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        const debt = Number(client?.debt || 0);
+        const limit = client ? getClientDebtLimit(client) : null;
+        const projected = debt + debtInOp;
+        const breached = limit !== null && limit > 0 && projected > limit && debtInOp > 0;
+
+        return {
+            clientDebt: debt,
+            effectiveLimit: limit,
+            debtAmountInOp: debtInOp,
+            projectedDebt: projected,
+            isLimitBreached: breached,
+        };
+    }, [amounts, client, getClientDebtLimit]);
+
     const methods = [
         { id: "cash", label: "Efectivo" },
         { id: "transfer", label: "Transferencia" },
