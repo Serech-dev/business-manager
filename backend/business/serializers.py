@@ -1673,6 +1673,8 @@ class ProviderSerializer(
     current_register_total = serializers.SerializerMethodField()
     current_register_transactions = serializers.SerializerMethodField()
     outstanding_debt = serializers.SerializerMethodField()
+    debt = serializers.SerializerMethodField()
+    balance = serializers.SerializerMethodField()
 
     class Meta:
         model = Provider
@@ -1686,6 +1688,8 @@ class ProviderSerializer(
             "current_register_total",
             "current_register_transactions",
             "outstanding_debt",
+            "debt",
+            "balance",
         ]
 
         read_only_fields = [
@@ -1694,6 +1698,8 @@ class ProviderSerializer(
             "current_register_total",
             "current_register_transactions",
             "outstanding_debt",
+            "debt",
+            "balance",
         ]
 
     def _get_current_register(self):
@@ -1739,14 +1745,14 @@ class ProviderSerializer(
             .count()
         )
 
+    def get_debt(self, obj):
+        return self.get_outstanding_debt(obj)
+
+    def get_balance(self, obj):
+        return self.get_outstanding_debt(obj)
+
     def get_outstanding_debt(self, obj):
-        operations = (
-            obj.transaction_operations
-            .prefetch_related(
-                "amounts"
-            )
-            .all()
-        )
+        operations = obj.transaction_operations.all()
 
         debt_created = sum(
             amount.amount

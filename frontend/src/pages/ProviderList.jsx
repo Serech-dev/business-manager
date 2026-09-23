@@ -82,6 +82,11 @@ function ProviderList() {
             provider.phone?.includes(search)
     );
 
+    const totalOutstandingDebt = providers.reduce(
+        (sum, p) => sum + Number(p.outstanding_debt ?? p.debt ?? p.balance ?? 0),
+        0
+    );
+
     if (isLoading) {
         return (
             <div className="flex min-h-screen items-center justify-center text-xs text-[var(--text-secondary)]">
@@ -136,7 +141,7 @@ function ProviderList() {
                 </header>
 
                 {/* SEARCH */}
-                <div className="mt-6 flex items-center justify-between gap-4">
+                <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="relative flex-1 max-w-md" data-tour="providers-search">
                         <input
                             type="text"
@@ -150,9 +155,17 @@ function ProviderList() {
                         </svg>
                     </div>
 
-                    <span className="text-xs text-[var(--text-secondary)]">
-                        {filteredProviders.length} {filteredProviders.length === 1 ? "proveedor" : "proveedores"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        {totalOutstandingDebt > 0 && (
+                            <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-2.5 py-1 text-xs font-bold text-[var(--danger)]">
+                                <span>Total adeudado:</span>
+                                <span className="font-mono">{formatCurrency(totalOutstandingDebt)}</span>
+                            </span>
+                        )}
+                        <span className="text-xs text-[var(--text-secondary)]">
+                            {filteredProviders.length} {filteredProviders.length === 1 ? "proveedor" : "proveedores"}
+                        </span>
+                    </div>
                 </div>
 
                 {/* TABLE / LIST */}
@@ -173,19 +186,30 @@ function ProviderList() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredProviders.map((prov) => (
-                                    <tr
-                                        key={prov.id}
-                                        onClick={() => navigate(`/providers/${prov.id}`)}
-                                        className="cursor-pointer hover:bg-[var(--surface-accent)] transition"
-                                    >
-                                        <td className="px-6 py-4 font-bold text-[var(--text-primary)]">{prov.name}</td>
-                                        <td className="px-6 py-4 text-[var(--text-secondary)]">{prov.phone || "-"}</td>
-                                        <td className="px-6 py-4 text-right font-mono font-bold text-[var(--danger)]">
-                                            {formatCurrency(prov.balance || 0)}
-                                        </td>
-                                    </tr>
-                                ))
+                                filteredProviders.map((prov) => {
+                                    const provDebt = Number(prov.outstanding_debt ?? prov.debt ?? prov.balance ?? 0);
+                                    return (
+                                        <tr
+                                            key={prov.id}
+                                            onClick={() => navigate(`/providers/${prov.id}`)}
+                                            className="cursor-pointer hover:bg-[var(--surface-accent)] transition"
+                                        >
+                                            <td className="px-6 py-4 font-bold text-[var(--text-primary)]">{prov.name}</td>
+                                            <td className="px-6 py-4 text-[var(--text-secondary)]">{prov.phone || "-"}</td>
+                                            <td className="px-6 py-4 text-right font-mono font-bold">
+                                                {provDebt > 0 ? (
+                                                    <span className="inline-flex items-center rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-2.5 py-1 text-xs font-bold text-[var(--danger)]">
+                                                        Debo: {formatCurrency(provDebt)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
+                                                        Al día
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
