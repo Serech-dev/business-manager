@@ -1,4 +1,4 @@
-import { Toaster } from "react-hot-toast";
+import { Toaster, ToastBar, toast } from "react-hot-toast";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -71,10 +71,73 @@ function App() {
                             <OnboardingProvider>
                             <Toaster
                                 position="top-center"
-                                toastOptions={{
-                                    duration: 2500,
+                                gutter={8}
+                                containerStyle={{
+                                    top: 16,
                                 }}
-                            />
+                                toastOptions={{
+                                    duration: 3000,
+                                    style: {
+                                        background: "var(--surface)",
+                                        color: "var(--text-primary)",
+                                        border: "1px solid var(--border)",
+                                        borderRadius: "6px",
+                                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.3)",
+                                        fontSize: "0.8125rem",
+                                        fontWeight: "600",
+                                        padding: "9px 14px",
+                                        maxWidth: "420px",
+                                    },
+                                    success: {
+                                        iconTheme: {
+                                            primary: "var(--success)",
+                                            secondary: "var(--surface)",
+                                        },
+                                        style: {
+                                            border: "1px solid rgba(16, 185, 129, 0.35)",
+                                        },
+                                    },
+                                    error: {
+                                        duration: 4000,
+                                        iconTheme: {
+                                            primary: "var(--danger)",
+                                            secondary: "var(--surface)",
+                                        },
+                                        style: {
+                                            border: "1px solid rgba(244, 63, 94, 0.35)",
+                                        },
+                                    },
+                                    loading: {
+                                        iconTheme: {
+                                            primary: "var(--primary)",
+                                            secondary: "var(--surface)",
+                                        },
+                                    },
+                                }}
+                            >
+                                {(t) => (
+                                    <ToastBar toast={t} style={{ ...t.style }}>
+                                        {({ icon, message }) => (
+                                            <>
+                                                {icon}
+                                                <div className="flex-1 text-xs leading-snug">{message}</div>
+                                                {t.type !== "loading" && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toast.dismiss(t.id)}
+                                                        className="ml-1.5 -mr-1 rounded p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition cursor-pointer"
+                                                        aria-label="Cerrar notificación"
+                                                    >
+                                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </ToastBar>
+                                )}
+                            </Toaster>
 
                             <PinModal />
 
