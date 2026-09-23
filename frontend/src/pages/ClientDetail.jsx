@@ -14,7 +14,7 @@ import {
 
 import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
-import MoneyInput from "../components/MoneyInput";
+import MoneyInput, { formatThousands } from "../components/MoneyInput";
 import ClientPaymentModal from "../components/clients/ClientPaymentModal";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useStoreSettings } from "../context/StoreSettingsContext";
@@ -719,7 +719,7 @@ function ClientDetail({ isNewClient = false }) {
                                     onChange={(event) =>
                                         setDebtLimit(event.target.value)
                                     }
-                                    placeholder={settings?.global_debt_limit ? String(Math.round(Number(settings.global_debt_limit))) : "Sin límite"}
+                                    placeholder={settings?.global_debt_limit ? formatThousands(settings.global_debt_limit) : "Sin límite"}
                                     className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] py-2.5 pl-8 pr-3 text-sm tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 />
                             </div>

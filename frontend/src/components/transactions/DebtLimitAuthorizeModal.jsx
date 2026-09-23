@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 export function DebtLimitAuthorizeModal({
@@ -11,6 +12,14 @@ export function DebtLimitAuthorizeModal({
     effectiveLimit = 0,
     isSubmitting = false,
 }) {
+    const [showBreakdown, setShowBreakdown] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setShowBreakdown(false);
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const excessAmount = Math.max(0, projectedDebt - effectiveLimit);
@@ -47,41 +56,73 @@ export function DebtLimitAuthorizeModal({
                 {/* CONTENT */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
                     {/* Informative Alert */}
-                    <div className="rounded-md border border-amber-500/25 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300 leading-relaxed">
-                        Esta venta superará el límite de crédito fijado para <strong>{clientName}</strong>. ¿Deseás autorizar la operación de todas formas?
+                    <div className="rounded-md border border-amber-500/25 bg-amber-500/10 p-3.5 text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
+                        <p className="font-semibold text-amber-900 dark:text-amber-200">
+                            Esta venta superará el límite de fiado fijado para <strong>{clientName}</strong>.
+                        </p>
+                        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                            ¿Deseás autorizar la operación de todas formas?
+                        </p>
                     </div>
 
-                    {/* Breakdown Card */}
-                    <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/40 p-3.5 space-y-2">
-                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                            <span>Deuda actual acumulada:</span>
-                            <span className="font-mono font-semibold text-[var(--text-primary)]">{formatCurrency(currentDebt)}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                            <span>Monto de esta venta a cuenta:</span>
-                            <span className="font-mono font-semibold text-amber-500">+{formatCurrency(saleDebt)}</span>
-                        </div>
-
-                        <div className="h-px bg-[var(--border)] my-1" />
-
-                        <div className="flex items-center justify-between font-bold text-[var(--text-primary)]">
-                            <span>Deuda proyectada:</span>
-                            <span className="font-mono text-sm">{formatCurrency(projectedDebt)}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                            <span>Límite de fiado autorizado:</span>
-                            <span className="font-mono font-bold text-[var(--text-primary)]">{formatCurrency(effectiveLimit)}</span>
-                        </div>
-
-                        {excessAmount > 0 && (
-                            <div className="flex items-center justify-between font-bold text-rose-500 dark:text-rose-400 pt-1 border-t border-[var(--border)]">
-                                <span>Excedente por encima del límite:</span>
-                                <span className="font-mono">+{formatCurrency(excessAmount)}</span>
-                            </div>
+                    {/* Breakdown Toggle Button */}
+                    <div className="flex items-center justify-between pt-0.5">
+                        <button
+                            type="button"
+                            onClick={() => setShowBreakdown((prev) => !prev)}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)] hover:underline cursor-pointer transition"
+                        >
+                            <span>{showBreakdown ? "Ocultar desglose" : "Ver desglose"}</span>
+                            <svg
+                                className={`h-3.5 w-3.5 transition-transform duration-200 ${showBreakdown ? "rotate-180" : ""}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                        {excessAmount > 0 && !showBreakdown && (
+                            <span className="font-mono text-[11px] font-bold text-rose-500 dark:text-rose-400">
+                                Exceso: +{formatCurrency(excessAmount)}
+                            </span>
                         )}
                     </div>
+
+                    {/* Breakdown Card (Collapsible) */}
+                    {showBreakdown && (
+                        <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/40 p-3.5 space-y-2 animate-fadeIn">
+                            <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                                <span>Deuda actual acumulada:</span>
+                                <span className="font-mono font-semibold text-[var(--text-primary)]">{formatCurrency(currentDebt)}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                                <span>Monto de esta venta a cuenta:</span>
+                                <span className="font-mono font-semibold text-amber-500">+{formatCurrency(saleDebt)}</span>
+                            </div>
+
+                            <div className="h-px bg-[var(--border)] my-1" />
+
+                            <div className="flex items-center justify-between font-bold text-[var(--text-primary)]">
+                                <span>Deuda proyectada:</span>
+                                <span className="font-mono text-sm">{formatCurrency(projectedDebt)}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                                <span>Límite de fiado autorizado:</span>
+                                <span className="font-mono font-bold text-[var(--text-primary)]">{formatCurrency(effectiveLimit)}</span>
+                            </div>
+
+                            {excessAmount > 0 && (
+                                <div className="flex items-center justify-between font-bold text-rose-500 dark:text-rose-400 pt-1 border-t border-[var(--border)]">
+                                    <span>Excedente por encima del límite:</span>
+                                    <span className="font-mono">+{formatCurrency(excessAmount)}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* ACTIONS */}

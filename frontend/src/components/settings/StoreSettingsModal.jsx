@@ -8,6 +8,7 @@ import {
     updateBankAccount,
     deleteBankAccount,
 } from "../../services/business";
+import MoneyInput from "../MoneyInput";
 
 function StoreSettingsModal({ isOpen, onClose }) {
     const { settings, updateSettings } = useStoreSettings();
@@ -654,14 +655,11 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                                     Monto máximo total que cualquier cliente puede adeudar. Podés configurar límites personalizados por cliente desde su perfil.
                                                 </p>
                                             </div>
-                                            <div className="relative w-32 shrink-0">
+                                            <div className="relative w-36 shrink-0">
                                                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
                                                     $
                                                 </span>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="100"
+                                                <MoneyInput
                                                     placeholder="Sin límite"
                                                     value={globalDebtLimit}
                                                     onChange={(e) => setGlobalDebtLimit(e.target.value)}
