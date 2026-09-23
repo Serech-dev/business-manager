@@ -19,6 +19,7 @@ import TransactionAmounts from "../components/transactions/TransactionAmounts";
 import SaleProductSelector from "../components/transactions/SaleProductSelector";
 import ReceiptModal from "../components/transactions/ReceiptModal";
 import ProductModal from "../components/products/ProductModal";
+import DebtLimitAuthorizeModal from "../components/transactions/DebtLimitAuthorizeModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useStoreSettings } from "../context/StoreSettingsContext";
 import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
@@ -87,6 +88,7 @@ function NewTransaction() {
     const [receivedCash, setReceivedCash] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
     const [ignoreDebtSurcharge, setIgnoreDebtSurcharge] = useState(false);
+    const [pendingDebtLimitData, setPendingDebtLimitData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Post-sale completion & ticket modal
@@ -602,11 +604,13 @@ function NewTransaction() {
                 return;
             }
 
-            const confirmMsg = `El cliente superará su límite de fiado (${formatCurrency(projectedDebt)} de ${formatCurrency(effectiveLimit)}).\n¿Deseás autorizar la venta fiada de todas formas?`;
-            if (!window.confirm(confirmMsg)) {
-                return;
-            }
-            await executeSubmit(true);
+            setPendingDebtLimitData({
+                clientName: client?.name || "Cliente",
+                currentDebt: clientDebt,
+                saleDebt: totalSaleDebt,
+                projectedDebt,
+                effectiveLimit,
+            });
             return;
         }
 
@@ -1091,6 +1095,22 @@ function NewTransaction() {
                 categories={categories}
                 providers={providers}
                 onSuccess={handleProductCreatedSuccess}
+            />
+
+            {/* DEBT LIMIT OVERRIDE AUTHORIZATION MODAL */}
+            <DebtLimitAuthorizeModal
+                isOpen={Boolean(pendingDebtLimitData)}
+                onClose={() => setPendingDebtLimitData(null)}
+                onAuthorize={async () => {
+                    setPendingDebtLimitData(null);
+                    await executeSubmit(true);
+                }}
+                clientName={pendingDebtLimitData?.clientName}
+                currentDebt={pendingDebtLimitData?.currentDebt}
+                saleDebt={pendingDebtLimitData?.saleDebt}
+                projectedDebt={pendingDebtLimitData?.projectedDebt}
+                effectiveLimit={pendingDebtLimitData?.effectiveLimit}
+                isSubmitting={isSubmitting}
             />
         </div>
     );
