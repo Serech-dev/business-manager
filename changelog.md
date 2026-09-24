@@ -1,3 +1,21 @@
+v1.7.3 (Client Debt Filter & x/x Limit Display, Itemized Ticket Details, Register Close Overhaul & High-Contrast Modals)
+
+- Client List Debt Filter & Unified Limit View (x/x):
+  - Added filter pills ("Todos" / "Con deuda") with live count badges and a summary banner of total pending fiado balance.
+  - Formatted debtor balances as `x/x` (`Debe: $actual / $máximo` or `Debe: $actual / Sin límite`), unifying debt and credit limit into a single high-contrast badge on all screen sizes.
+  - Over-limit balances are prominently flagged with rose/red alert styling and descriptive tooltips.
+- Itemized Sale Products Breakdown ("Ver detalle"):
+  - Added expandable ticket breakdown (`TransactionItemsDetail.jsx`) across Dashboard (`TransactionCard.jsx`), Client History (`ClientDetail.jsx`), and Register Close Report (`RegisterReport.jsx`).
+  - Stays collapsed by default (`Ver detalle (X artículos) ▾`) to keep dashboards and tables compact, expanding to reveal product names, weighable amounts (`kg`/`100g`), quantity × unit price, line subtotals, and manual unlisted amounts.
+- Register Close Report Overhaul:
+  - Elevated "Productos Vendidos" out of hidden tabs into a prominent top-level section right below the executive summary strip, displaying total units sold, critical stock alerts, and catalog items with remaining inventory.
+  - 4-metric Net Movement strip including "Artículos vendidos" and renamed "Movimiento neto del turno" to "Movimiento neto de caja".
+  - Replaced technical jargon with mundane Argentine merchant terminology for tabs: "Resumen de Caja", "Ventas y Movimientos", "Fiados y Proveedores".
+  - Enforced structured sharp design system (`rounded-md`, 1px borders, zero emojis).
+- High-Contrast Debt Limit Warning Modal:
+  - Fixed unreadable yellow text in `DebtLimitAuthorizeModal.jsx` on light mode: replaced low-contrast `text-amber-500` with `text-amber-700 dark:text-amber-400` and deep slate text in alert box.
+  - Defaulted breakdown to open so cashiers immediately see current debt, new sale debt, credit limit, and exact excess.
+
 v1.7.2 (Smart $50 Cash Rounding, In-Cart Weight Price Editor, Clarified Fiado & Exchange Flows)
 
 - Smart $50 Incremental Cash Rounding (Redondeo comercial a múltiplos de $50):

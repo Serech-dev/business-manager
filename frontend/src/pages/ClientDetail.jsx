@@ -16,6 +16,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { formatCurrency } from "../utils/formatCurrency";
 import MoneyInput, { formatThousands } from "../components/MoneyInput";
 import ClientPaymentModal from "../components/clients/ClientPaymentModal";
+import TransactionItemsDetail from "../components/transactions/TransactionItemsDetail";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useStoreSettings } from "../context/StoreSettingsContext";
 
@@ -981,6 +982,12 @@ function ClientDetail({ isNewClient = false }) {
                                                     )}
                                                 </p>
 
+                                                {/* PRODUCTS DETAIL */}
+                                                <TransactionItemsDetail
+                                                    items={op.items}
+                                                    manualAmount={op.manualAmount}
+                                                    className="mt-1.5"
+                                                />
                                             </div>
 
 

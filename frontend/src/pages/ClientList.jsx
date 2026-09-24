@@ -15,6 +15,7 @@ function ClientList() {
 
     const [clients, setClients] = useState([]);
     const [search, setSearch] = useState("");
+    const [debtFilter, setDebtFilter] = useState("all"); // 'all' | 'with_debt'
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -37,14 +38,22 @@ function ClientList() {
         loadClients();
     }, []);
 
+    const totalCount = clients.length;
+    const debtClients = clients.filter((c) => Number(c.debt || 0) > 0);
+    const debtCount = debtClients.length;
+    const totalDebtAmount = debtClients.reduce((sum, c) => sum + (Number(c.debt) || 0), 0);
 
-    const filteredClients = clients.filter(
-        (client) =>
-            client.name
-                .toLowerCase()
-                .includes(search.toLowerCase()) ||
+    const filteredClients = clients.filter((client) => {
+        if (debtFilter === "with_debt" && Number(client.debt || 0) <= 0) {
+            return false;
+        }
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return (
+            client.name.toLowerCase().includes(q) ||
             client.phone?.includes(search)
-    );
+        );
+    });
 
 
     if (isLoading) {
@@ -132,66 +141,108 @@ function ClientList() {
             </header>
 
 
-            {/* SEARCH */}
+            {/* SEARCH & FILTERS BAR */}
+            <div className="mt-8 space-y-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    {/* SEARCH */}
+                    <div className="relative max-w-md flex-1">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(event) =>
+                                setSearch(event.target.value)
+                            }
+                            placeholder="Buscar por nombre o teléfono..."
+                            className="
+                                w-full
+                                rounded-md
+                                border
+                                border-[var(--border)]
+                                bg-[var(--surface)]
+                                px-4
+                                py-2.5
+                                text-sm
+                                text-[var(--text-primary)]
+                                outline-none
+                                transition
+                                placeholder:text-[var(--text-secondary)]
+                                focus:border-[var(--primary)]
+                                focus:ring-2
+                                focus:ring-[var(--primary)]/20
+                            "
+                        />
+                    </div>
 
-            <div className="
-                mt-8
-                flex
-                items-center
-                justify-between
-                gap-4
-            ">
+                    {/* FILTER PILLS */}
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                        <button
+                            type="button"
+                            onClick={() => setDebtFilter("all")}
+                            className={`
+                                inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition border
+                                ${
+                                    debtFilter === "all"
+                                        ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-xs"
+                                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--primary)]/40"
+                                }
+                            `}
+                        >
+                            <span>Todos</span>
+                            <span
+                                className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
+                                    debtFilter === "all"
+                                        ? "bg-white/20 text-white"
+                                        : "bg-[var(--surface-accent)] text-[var(--text-secondary)]"
+                                }`}
+                            >
+                                {totalCount}
+                            </span>
+                        </button>
 
-                <div className="
-                    relative
-                    max-w-md
-                    flex-1
-                ">
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(event) =>
-                            setSearch(event.target.value)
-                        }
-                        placeholder="Buscar cliente..."
-                        className="
-                            w-full
-                            rounded-md
-                            border
-                            border-[var(--border)]
-                            bg-[var(--surface)]
-                            px-4
-                            py-3
-                            text-sm
-                            text-[var(--text-primary)]
-                            outline-none
-                            transition
-                            placeholder:text-[var(--text-secondary)]
-                            focus:border-[var(--primary)]
-                            focus:ring-2
-                            focus:ring-[var(--primary)]/20
-                        "
-                    />
+                        <button
+                            type="button"
+                            onClick={() => setDebtFilter("with_debt")}
+                            className={`
+                                inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition border
+                                ${
+                                    debtFilter === "with_debt"
+                                        ? "border-amber-500 bg-amber-500 text-white shadow-xs"
+                                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-amber-500/40"
+                                }
+                            `}
+                        >
+                            <span>Con deuda</span>
+                            <span
+                                className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
+                                    debtFilter === "with_debt"
+                                        ? "bg-white/25 text-white"
+                                        : debtCount > 0
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                        : "bg-[var(--surface-accent)] text-[var(--text-secondary)]"
+                                }`}
+                            >
+                                {debtCount}
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
-                <span className="
-                    shrink-0
-                    text-sm
-                    text-[var(--text-secondary)]
-                ">
-                    {filteredClients.length}{" "}
-                    {filteredClients.length === 1
-                        ? "cliente"
-                        : "clientes"}
-                </span>
-
+                {/* DEBT TOTAL BANNER (WHEN ACTIVE) */}
+                {debtFilter === "with_debt" && debtCount > 0 && (
+                    <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs">
+                        <span className="font-semibold text-amber-700 dark:text-amber-300">
+                            Total fiado pendiente de cobro ({debtCount} {debtCount === 1 ? "cliente" : "clientes"}):
+                        </span>
+                        <span className="font-bold text-sm text-amber-600 dark:text-amber-400 tabular-nums">
+                            {formatCurrency(totalDebtAmount)}
+                        </span>
+                    </div>
+                )}
             </div>
 
 
-            {/* CLIENTS */}
-
+            {/* CLIENTS LIST */}
             {filteredClients.length === 0 ? (
-
                 <section className="
                     mt-5
                     border
@@ -201,12 +252,15 @@ function ClientList() {
                     p-12
                     text-center
                 ">
-
                     <p className="
                         font-semibold
                         text-[var(--text-primary)]
                     ">
-                        {search
+                        {debtFilter === "with_debt"
+                            ? search
+                                ? "No se encontraron clientes con deuda para esa búsqueda"
+                                : "¡Al día! No hay clientes con deuda pendiente"
+                            : search
                             ? "No se encontraron clientes"
                             : "No hay clientes registrados"}
                     </p>
@@ -216,11 +270,14 @@ function ClientList() {
                         text-sm
                         text-[var(--text-secondary)]
                     ">
-                        {search
+                        {debtFilter === "with_debt"
+                            ? search
+                                ? "Probá buscando con otro término."
+                                : "Ningún cliente tiene saldo deudor acumulado en su libreta."
+                            : search
                             ? "Probá con otro nombre o teléfono."
-                            : "Los clientes aparecerán aquí cuando sean utilizados en una operación."}
+                            : "Los clientes aparecerán aquí cuando sean registrados o utilizados en una operación."}
                     </p>
-
                 </section>
 
             ) : (
@@ -292,26 +349,29 @@ function ClientList() {
 
                                             return (
                                                 <>
-                                                    {limit !== null && limit > 0 && (
+                                                    {limit !== null && limit > 0 && clientDebt <= 0 && (
                                                         <span
-                                                            className={`hidden sm:inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
-                                                                isOver
-                                                                    ? "border-rose-500/40 bg-rose-500/10 text-rose-500"
-                                                                    : "border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)]"
-                                                            }`}
-                                                            title={isOver ? "Límite de fiado superado" : `Límite: ${formatCurrency(limit)}`}
+                                                            className="hidden sm:inline-flex rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]"
+                                                            title={`Límite: ${formatCurrency(limit)}`}
                                                         >
                                                             Límite: {formatCurrency(limit)}
                                                         </span>
                                                     )}
 
                                                     {clientDebt > 0 && (
-                                                        <span className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--danger)]">
-                                                            Debe: {formatCurrency(client.debt)}
+                                                        <span
+                                                            className={`rounded-md border px-2.5 py-1 text-xs font-semibold tabular-nums ${
+                                                                isOver
+                                                                    ? "border-rose-500/40 bg-rose-500/10 text-rose-500"
+                                                                    : "border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]"
+                                                            }`}
+                                                            title={isOver ? "Límite de fiado superado" : limit ? `Límite: ${formatCurrency(limit)}` : "Sin límite fijado"}
+                                                        >
+                                                            Debe: {formatCurrency(clientDebt)} / {limit !== null && limit > 0 ? formatCurrency(limit) : "Sin límite"}
                                                         </span>
                                                     )}
                                                     {clientDebt < 0 && (
-                                                        <span className="rounded-md border border-[var(--success)]/30 bg-[var(--success)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
+                                                        <span className="rounded-md border border-[var(--success)]/30 bg-[var(--success)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--success)] tabular-nums">
                                                             A favor: {formatCurrency(Math.abs(client.debt))}
                                                         </span>
                                                     )}

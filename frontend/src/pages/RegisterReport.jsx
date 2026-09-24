@@ -17,6 +17,7 @@ import {
 } from "../services/business";
 
 import ConfirmDialog from "../components/ConfirmDialog";
+import TransactionItemsDetail from "../components/transactions/TransactionItemsDetail";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatStockQty, formatUnitType } from "../utils/formatStock";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
@@ -48,8 +49,8 @@ function RegisterReport() {
     const [isLoading, setIsLoading] = useState(true);
     const [isReopening, setIsReopening] = useState(false);
 
-    // Active detail tab: 'arqueo' | 'cuentas' | 'operaciones'
-    const [activeTab, setActiveTab] = useState("arqueo");
+    // Active detail tab: 'caja' | 'operaciones' | 'cuentas' | 'stock'
+    const [activeTab, setActiveTab] = useState("caja");
 
     // Operations search & filter
     const [txSearch, setTxSearch] = useState("");
@@ -256,13 +257,13 @@ function RegisterReport() {
                 </div>
             </header>
 
-            {/* EXECUTIVE ARQUEO OVERVIEW (2 MAIN CARDS: PHYSICAL CASH & BANK) */}
+            {/* EXECUTIVE OVERVIEW (2 MAIN CARDS: PHYSICAL CASH & BANK) */}
             <section className="grid gap-4 sm:grid-cols-2">
                 {/* EFECTIVO EN CAJA (FÍSICO) */}
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-3.5">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-3.5">
                     <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-500 font-bold">
                                 $
                             </div>
                             <div>
@@ -303,10 +304,10 @@ function RegisterReport() {
                 </div>
 
                 {/* BANCO / MERCADO PAGO (DIGITAL) */}
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-3.5">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs space-y-3.5">
                     <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-500">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sky-500/10 text-sky-500">
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-.778.099-1.533.284-2.253" />
                                 </svg>
@@ -349,9 +350,9 @@ function RegisterReport() {
                 </div>
             </section>
 
-            {/* NET MOVEMENT STRIP (3 STATS) */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5">
+            {/* NET MOVEMENT STRIP (4 STATS) */}
+            <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs">
                     <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
                         Dinero ingresado
                     </span>
@@ -360,7 +361,7 @@ function RegisterReport() {
                     </p>
                 </div>
 
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs">
                     <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
                         Dinero salido
                     </span>
@@ -369,19 +370,28 @@ function RegisterReport() {
                     </p>
                 </div>
 
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs">
                     <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
-                        Movimiento neto del turno
+                        Movimiento neto de caja
                     </span>
                     <p className={`mt-1 text-lg font-bold tabular-nums ${netMovement >= 0 ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
                         {netMovement >= 0 ? "+" : ""}{formatCurrency(netMovement)}
+                    </p>
+                </div>
+
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-2xs">
+                    <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider block">
+                        Artículos vendidos
+                    </span>
+                    <p className="mt-1 text-lg font-bold text-[var(--text-primary)] tabular-nums">
+                        {register.shift_stock_summary?.total_items_sold || 0} <span className="text-xs font-normal text-[var(--text-secondary)]">unidades</span>
                     </p>
                 </div>
             </section>
 
             {/* PENDING TRANSFERS WARNING BANNER */}
             {pendingTransfers.length > 0 && (
-                <section className="overflow-hidden rounded-xl border border-amber-500/40 bg-[var(--surface)] shadow-xs">
+                <section className="overflow-hidden rounded-md border border-amber-500/40 bg-[var(--surface)] shadow-xs">
                     <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500 text-[10px] font-bold text-black">
@@ -429,7 +439,7 @@ function RegisterReport() {
                                             type="button"
                                             onClick={() => handleResolveTransfer(transfer, "confirm")}
                                             disabled={isResolving}
-                                            className="rounded-lg bg-[var(--success)]/10 px-2.5 py-1.5 text-xs font-bold text-[var(--success)] hover:bg-[var(--success)]/20 transition disabled:opacity-50"
+                                            className="rounded-md bg-[var(--success)]/10 px-2.5 py-1.5 text-xs font-bold text-[var(--success)] hover:bg-[var(--success)]/20 transition disabled:opacity-50"
                                         >
                                             Confirmar
                                         </button>
@@ -446,7 +456,7 @@ function RegisterReport() {
                                                 }
                                             }}
                                             disabled={isResolving}
-                                            className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition disabled:opacity-50"
+                                            className="rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition disabled:opacity-50"
                                         >
                                             Pasar a fiado
                                         </button>
@@ -455,7 +465,7 @@ function RegisterReport() {
                                             type="button"
                                             onClick={() => setTransferToVoid(transfer)}
                                             disabled={isResolving}
-                                            className="rounded-lg bg-[var(--danger)]/10 px-2.5 py-1.5 text-xs font-bold text-[var(--danger)] hover:bg-[var(--danger)]/20 transition disabled:opacity-50"
+                                            className="rounded-md bg-[var(--danger)]/10 px-2.5 py-1.5 text-xs font-bold text-[var(--danger)] hover:bg-[var(--danger)]/20 transition disabled:opacity-50"
                                         >
                                             Anular
                                         </button>
@@ -467,20 +477,110 @@ function RegisterReport() {
                 </section>
             )}
 
+            {/* MAIN DATA: PRODUCTOS VENDIDOS */}
+            <section className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                            Productos Vendidos
+                        </h3>
+                        <span className="rounded-md bg-[var(--primary)]/10 px-2 py-0.5 text-[11px] font-bold text-[var(--primary)]">
+                            {register.shift_stock_summary?.products_sold?.length || 0} {register.shift_stock_summary?.products_sold?.length === 1 ? "producto" : "productos"}
+                        </span>
+                    </div>
+                    <span className="text-xs text-[var(--text-secondary)]">
+                        Total unidades vendidas: <strong className="text-[var(--text-primary)]">{register.shift_stock_summary?.total_items_sold || 0}</strong>
+                    </span>
+                </div>
+
+                {/* Stock alerts if any */}
+                {register.shift_stock_summary?.critical_stock_alerts?.length > 0 && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                            </svg>
+                            <span>Atención: Productos con stock crítico durante esta caja</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {register.shift_stock_summary.critical_stock_alerts.map((alt) => (
+                                <div
+                                    key={alt.id}
+                                    className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs ${
+                                        alt.status === "out_of_stock"
+                                            ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                                            : "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                    }`}
+                                >
+                                    <span className="font-semibold">{alt.name}</span>
+                                    <span className="text-[10px] font-bold">
+                                        ({alt.status === "out_of_stock" ? "Agotado" : `Quedan ${alt.stock}`})
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Sold products table */}
+                <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-2xs">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                <tr>
+                                    <th className="px-4 py-2.5">Producto</th>
+                                    <th className="px-4 py-2.5">Cantidad vendida</th>
+                                    <th className="px-4 py-2.5 text-right">Total recaudado</th>
+                                    <th className="px-4 py-2.5 text-right">Stock restante</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border)]">
+                                {(!register.shift_stock_summary?.products_sold || register.shift_stock_summary.products_sold.length === 0) ? (
+                                    <tr>
+                                        <td colSpan={4} className="py-6 text-center text-xs text-[var(--text-secondary)]">
+                                            No se registraron productos catalogados en las ventas de esta caja.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    register.shift_stock_summary.products_sold.map((it, idx) => (
+                                        <tr key={it.product_id || idx} className="hover:bg-[var(--surface-accent)]/30 transition">
+                                            <td className="px-4 py-2.5 font-semibold text-[var(--text-primary)]">
+                                                {it.product_name}
+                                            </td>
+                                            <td className="px-4 py-2.5 font-bold tabular-nums">
+                                                {formatStockQty(it.quantity, it.unit_type)} <span className="text-[11px] font-normal text-[var(--text-secondary)]">{formatUnitType(it.unit_type, false, it.quantity)}</span>
+                                            </td>
+                                            <td className="px-4 py-2.5 text-right font-bold tabular-nums text-[var(--success)]">
+                                                {formatCurrency(it.total_amount)}
+                                            </td>
+                                            <td className="px-4 py-2.5 text-right tabular-nums text-xs text-[var(--text-secondary)]">
+                                                {it.current_stock !== null ? (
+                                                    <span className="font-semibold text-[var(--text-primary)]">
+                                                        {formatStockQty(it.current_stock, it.unit_type)} {formatUnitType(it.unit_type, false, it.current_stock)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="italic text-[11px]">Sin seguimiento</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             {/* SEGMENTED DRILLDOWN TABS */}
             <div className="space-y-4">
                 <div className="flex border-b border-[var(--border)] gap-2 print:hidden">
                     {[
-                        { id: "arqueo", label: "Arqueo & Medios de Pago" },
-                        { id: "cuentas", label: "Cuentas & Proveedores" },
+                        { id: "caja", label: "Resumen de Caja" },
                         {
                             id: "operaciones",
-                            label: `Operaciones (${register.transaction_count || 0})`,
+                            label: `Ventas y Movimientos (${register.transaction_count || 0})`,
                         },
-                        {
-                            id: "stock",
-                            label: "Mercadería & Stock del Turno",
-                        },
+                        { id: "cuentas", label: "Fiados y Proveedores" },
                     ].map((tab) => {
                         const isActive = activeTab === tab.id;
                         return (
@@ -500,8 +600,8 @@ function RegisterReport() {
                     })}
                 </div>
 
-                {/* TAB 1: ARQUEO & MEDIOS DE PAGO */}
-                {activeTab === "arqueo" && (
+                {/* TAB 1: RESUMEN DE CAJA */}
+                {activeTab === "caja" && (
                     <div className="space-y-6">
                         {/* Totals by payment method */}
                         <div className="space-y-3">
@@ -749,146 +849,56 @@ function RegisterReport() {
                                     const ops = tx.operations || [];
                                     const txTotal = tx.total !== undefined ? tx.total : ops.reduce((s, op) => s + (op.amounts || []).reduce((sum, a) => sum + (Number(a.amount) || 0), 0), 0);
                                     const isOutgoing = ops.some((op) => ["loss", "provider", "provider_payment", "expense"].includes(op.type));
+                                    const allTxItems = ops.flatMap((op) => op.items || []);
+                                    const manualAmount = ops.reduce((sum, op) => sum + (Number(op.manual_amount) || 0), 0);
 
                                     return (
-                                        <div key={tx.id} className="flex items-center justify-between px-4 py-3 text-xs transition hover:bg-[var(--surface-accent)]/40">
-                                            <div className="space-y-0.5 min-w-0 pr-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-[var(--text-primary)] truncate">
-                                                        {tx.description || (ops[0] ? getTransactionLabel(ops[0].type) : `Operación #${tx.id}`)}
-                                                    </span>
-                                                    {tx.created_at && (
-                                                        <span className="text-[11px] text-[var(--text-secondary)]">
-                                                            · {formatDate(tx.created_at)}
+                                        <div key={tx.id} className="p-3.5 transition hover:bg-[var(--surface-accent)]/30 space-y-2">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <div className="space-y-0.5 min-w-0 pr-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-[var(--text-primary)] truncate">
+                                                            {tx.description || (ops[0] ? getTransactionLabel(ops[0].type) : `Operación #${tx.id}`)}
                                                         </span>
-                                                    )}
+                                                        {tx.created_at && (
+                                                            <span className="text-[11px] text-[var(--text-secondary)]">
+                                                                · {formatDate(tx.created_at)}
+                                                            </span>
+                                                        )}
+                                                        {tx.client && (
+                                                            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
+                                                                · Cliente: {tx.client.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+                                                        {ops.map((op, i) => (
+                                                            <span key={i} className="rounded bg-[var(--surface-accent)] px-1.5 py-0.5">
+                                                                {getTransactionLabel(op.type)}: {(op.amounts || []).map((a) => {
+                                                                    const bankBadge = (a.bank_account_name && ["transfer", "card"].includes(a.method))
+                                                                        ? ` (${a.bank_account_name})`
+                                                                        : "";
+                                                                    return `${getMethodLabel(a.method)}${bankBadge} $${Number(a.amount).toLocaleString("es-AR")}`;
+                                                                }).join(", ")}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
-                                                    {ops.map((op, i) => (
-                                                        <span key={i} className="rounded bg-[var(--surface-accent)] px-1.5 py-0.2">
-                                                            {getTransactionLabel(op.type)}: {(op.amounts || []).map((a) => {
-                                                                const bankBadge = (a.bank_account_name && ["transfer", "card"].includes(a.method))
-                                                                    ? ` (${a.bank_account_name})`
-                                                                    : "";
-                                                                return `${getMethodLabel(a.method)}${bankBadge} $${Number(a.amount).toLocaleString("es-AR")}`;
-                                                            }).join(", ")}
-                                                        </span>
-                                                    ))}
-                                                </div>
+
+                                                <span className={`text-sm font-bold tabular-nums shrink-0 ${isOutgoing ? "text-[var(--danger)]" : "text-[var(--success)]"}`}>
+                                                    {isOutgoing ? "-" : "+"}{formatCurrency(txTotal)}
+                                                </span>
                                             </div>
 
-                                            <span className={`text-sm font-bold tabular-nums shrink-0 ${isOutgoing ? "text-[var(--danger)]" : "text-[var(--success)]"}`}>
-                                                {isOutgoing ? "-" : "+"}{formatCurrency(txTotal)}
-                                            </span>
+                                            {/* Expandable itemized products sold detail */}
+                                            <TransactionItemsDetail
+                                                items={allTxItems}
+                                                manualAmount={manualAmount > 0 ? manualAmount : null}
+                                            />
                                         </div>
                                     );
                                 })
                             )}
-                        </div>
-                    </div>
-                )}
-
-                {/* TAB 4: MERCADERÍA & STOCK DEL TURNO */}
-                {activeTab === "stock" && (
-                    <div className="space-y-6">
-                        {/* Critical Alerts during this shift */}
-                        {register.shift_stock_summary?.critical_stock_alerts?.length > 0 && (
-                            <div className="space-y-3">
-                                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                                    </svg>
-                                    Alertas de Stock Crítico
-                                </h3>
-                                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                                    {register.shift_stock_summary.critical_stock_alerts.map((alt) => (
-                                        <div
-                                            key={alt.id}
-                                            className={`flex items-center justify-between rounded-xl border p-3.5 ${
-                                                alt.status === "out_of_stock"
-                                                    ? "border-[var(--danger-border)] bg-[var(--danger-bg)]/30"
-                                                    : "border-amber-500/20 bg-amber-500/5"
-                                            }`}
-                                        >
-                                            <div>
-                                                <div className="text-sm font-bold text-[var(--text-primary)]">
-                                                    {alt.name}
-                                                </div>
-                                                <div className="text-xs text-[var(--text-secondary)]">
-                                                    Mínimo sugerido: {alt.min_stock} u.
-                                                </div>
-                                            </div>
-                                            <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${
-                                                alt.status === "out_of_stock"
-                                                    ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)]"
-                                                    : "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                            }`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${
-                                                    alt.status === "out_of_stock" ? "bg-[var(--danger)]" : "bg-amber-500"
-                                                }`} />
-                                                {alt.status === "out_of_stock" ? "Agotado (0)" : `Stock: ${alt.stock}`}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Shift Sold Products Table */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                                    Productos Vendidos en Este Turno
-                                </h3>
-                                <span className="text-xs font-semibold text-[var(--text-secondary)]">
-                                    Total de unidades vendidas: <b className="text-[var(--text-primary)]">{register.shift_stock_summary?.total_items_sold || 0}</b>
-                                </span>
-                            </div>
-
-                            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-                                <table className="w-full text-left text-sm text-[var(--text-primary)]">
-                                    <thead className="border-b border-[var(--border)] bg-[var(--surface-accent)]/50 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                                        <tr>
-                                            <th className="px-4 py-3">Producto</th>
-                                            <th className="px-4 py-3">Unidades Vendidas</th>
-                                            <th className="px-4 py-3">Total Recaudado</th>
-                                            <th className="px-4 py-3 text-right">Stock Restante</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[var(--border)]">
-                                        {(!register.shift_stock_summary?.products_sold || register.shift_stock_summary.products_sold.length === 0) ? (
-                                            <tr>
-                                                <td colSpan={4} className="py-8 text-center text-xs text-[var(--text-secondary)]">
-                                                    No se registraron productos catalogados en las ventas de esta caja.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            register.shift_stock_summary.products_sold.map((it, idx) => (
-                                                <tr key={idx} className="transition hover:bg-[var(--surface-accent)]/30">
-                                                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
-                                                        {it.product_name}
-                                                    </td>
-                                                    <td className="px-4 py-3 font-bold text-sm">
-                                                        {formatStockQty(it.quantity, it.unit_type)} <span className="text-xs font-normal text-[var(--text-secondary)]">{formatUnitType(it.unit_type, false, it.quantity)}</span>
-                                                    </td>
-                                                    <td className="px-4 py-3 font-bold text-[var(--success)]">
-                                                        {formatCurrency(it.total_amount)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right text-xs text-[var(--text-secondary)]">
-                                                        {it.current_stock !== null ? (
-                                                            <span className="font-bold text-[var(--text-primary)]">
-                                                                {formatStockQty(it.current_stock, it.unit_type)} {formatUnitType(it.unit_type, false, it.current_stock)}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="italic">Sin seguimiento</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                 )}

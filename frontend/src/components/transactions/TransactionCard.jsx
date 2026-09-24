@@ -10,6 +10,7 @@ import {
 import { formatCurrency } from "../../utils/formatCurrency";
 import EditTransactionModal from "./EditTransactionModal";
 import ReceiptModal from "./ReceiptModal";
+import TransactionItemsDetail from "./TransactionItemsDetail";
 import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
 
 function formatDate(value) {
@@ -408,6 +409,13 @@ function TransactionCard({
                                     );
                                 })}
                             </div>
+
+                            {/* PRODUCTS & ITEMS DETAIL */}
+                            <TransactionItemsDetail
+                                items={op.items}
+                                manualAmount={op.manualAmount}
+                                className="pt-1"
+                            />
                         </div>
                     );
                 })}
