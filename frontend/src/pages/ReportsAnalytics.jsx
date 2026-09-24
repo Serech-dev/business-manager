@@ -552,7 +552,7 @@ function ReportsAnalytics() {
                                 { key: "cash", label: "Efectivo", color: "bg-[var(--success)]" },
                                 { key: "transfer", label: "Transferencia", color: "bg-sky-500" },
                                 { key: "card", label: "Tarjeta", color: "bg-purple-500" },
-                                { key: "debt", label: "A cuenta otorgado", color: "bg-[var(--warning)]" },
+                                { key: "debt", label: "Fiado otorgado", color: "bg-[var(--warning)]" },
                             ].map((m) => {
                                 const val = methods[m.key] || 0;
                                 const pct = totalMethodsVolume > 0 ? Math.round((val / totalMethodsVolume) * 100) : 0;

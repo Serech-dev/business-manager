@@ -1,3 +1,23 @@
+v1.7.2 (Smart $50 Cash Rounding, In-Cart Weight Price Editor, Clarified Fiado & Exchange Flows)
+
+- Smart $50 Incremental Cash Rounding (Redondeo comercial a múltiplos de $50):
+  - In Argentine cash retail, coins and change under $50 are obsolete. All transaction-related amounts now strictly round UP to the nearest multiple of 50 (`Math.ceil(val / 50) * 50`).
+  - Applied to weighable product fractional subtotals (e.g., 235g of cheese or bread), utility service fees (Carga SUBE and Recarga Celular), money exchange commissions, card/fiado surcharges, manual amounts, and split remainder calculations.
+  - Full consistency across desktop POS (`NewTransaction.jsx`), mobile POS (`SimplePos.jsx`), frontend currency helper (`roundUpTo50`), and backend models (`round_up_to_50`).
+- In-Cart Price Editing & Weighable Price Modifier:
+  - In-cart price edits now default to "Guardar en catálogo / producto" checked (`true`) by default across both desktop and mobile terminals, saving cashiers clicks when adjusting regular retail prices during sales.
+  - Added interactive Price Adjuster directly inside the Weight dialog for weighable products (e.g., bread, cold cuts, cheese), updating subtotals and grams in real-time and syncing changes to the catalog upon confirmation.
+  - Enabled "Editar precio" directly on weighable line items in the cart table for fast adjustments per kg or per 100g.
+- Clarified Terminology & Payment Method Differentiation:
+  - Renamed the "A cuenta" payment method back to "Fiado" across POS terminals, dropdowns, and badges to cleanly differentiate from debt collection transactions ("Cobro de Libreta / Pago a cuenta").
+  - Clarified Money Exchange flows: explicitly labels exchange direction ("Efectivo por Transf.", "Transf. por Efectivo", and "Fiado"), dynamically reflecting operation context and balance summaries.
+  - Retained "Fiado" as a valid payment option in money exchanges for trusted customer credit transfers.
+- Split-Payment Surcharge & Remainder Enhancements:
+  - Multi-method split payments now properly compute and apply the 10% fiado surcharge on the remaining balance.
+  - Surcharges apply reliably to utility recharges (SUBE, Celular) and exchange operations when paid with Fiado or Card.
+- Partial Debt Payments (Pagos Parciales de Libreta):
+  - Added support in `ClientPaymentModal.jsx` for custom partial debt amortizations with quick percentage/amount suggestions.
+
 v1.7.1 (Provider Debt Fix, Credit Limits, On-the-Fly Fiado Surcharge Toggle & Modal Performance Optimization)
 
 - Provider Debt Purchases (Cuenta Corriente Proveedor):

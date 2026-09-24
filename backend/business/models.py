@@ -1,7 +1,17 @@
+import math
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
+
+
+def round_up_to_50(val):
+    if not val:
+        return Decimal("0")
+    num = float(val)
+    if num <= 0:
+        return Decimal("0")
+    return Decimal(str(int(math.ceil(num / 50.0) * 50)))
 
 
 class Client(models.Model):
@@ -911,24 +921,27 @@ class StoreSettings(models.Model):
             return Decimal("0")
         amount = Decimal(str(amount))
         if self.exchange_fee_type == self.FeeType.PERCENTAGE:
-            return (amount * (self.exchange_fee_value / Decimal("100"))).quantize(Decimal("1"))
-        return self.exchange_fee_value
+            raw_fee = amount * (self.exchange_fee_value / Decimal("100"))
+            return round_up_to_50(raw_fee)
+        return round_up_to_50(self.exchange_fee_value)
 
     def calculate_debt_surcharge(self, amount):
         if not self.debt_surcharge_enabled or not amount:
             return Decimal("0")
         amount = Decimal(str(amount))
         if self.debt_surcharge_type == self.FeeType.PERCENTAGE:
-            return (amount * (self.debt_surcharge_value / Decimal("100"))).quantize(Decimal("1"))
-        return self.debt_surcharge_value
+            raw_fee = amount * (self.debt_surcharge_value / Decimal("100"))
+            return round_up_to_50(raw_fee)
+        return round_up_to_50(self.debt_surcharge_value)
 
     def calculate_card_surcharge(self, amount):
         if not self.card_surcharge_enabled or not amount:
             return Decimal("0")
         amount = Decimal(str(amount))
         if self.card_surcharge_type == self.FeeType.PERCENTAGE:
-            return (amount * (self.card_surcharge_value / Decimal("100"))).quantize(Decimal("1"))
-        return self.card_surcharge_value
+            raw_fee = amount * (self.card_surcharge_value / Decimal("100"))
+            return round_up_to_50(raw_fee)
+        return round_up_to_50(self.card_surcharge_value)
 
     @classmethod
     def get_or_create_for_user(cls, user):

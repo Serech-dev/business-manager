@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency, roundUpTo50 } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 import { filterAndRankProducts } from "../../utils/productSearch";
 import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
@@ -11,6 +11,7 @@ import { updateProduct } from "../../services/business";
 
 /**
  * Calculates item pricing, subtotal, and promo savings dynamically.
+ * Always rounds item subtotals up to the nearest multiple of 50.
  */
 export function calculateItemPricing(product, quantity, customUnitPrice = null, grams = null) {
     const regularUnitPrice = customUnitPrice !== null ? customUnitPrice : Number(product.sale_price) || 0;
@@ -18,7 +19,7 @@ export function calculateItemPricing(product, quantity, customUnitPrice = null, 
 
     if (isWeight) {
         const factor = product.unit_type === "kg" ? 1000 : 100;
-        const subtotal = Math.round(((grams || 0) / factor) * regularUnitPrice);
+        const subtotal = roundUpTo50(((grams || 0) / factor) * regularUnitPrice);
         return {
             unitPrice: regularUnitPrice,
             subtotal,
@@ -40,8 +41,8 @@ export function calculateItemPricing(product, quantity, customUnitPrice = null, 
     if (hasPromoConfig && quantity >= promoQty) {
         const bundles = Math.floor(quantity / promoQty);
         const loose = quantity % promoQty;
-        const subtotal = Math.round((bundles * promoPrc) + (loose * regularUnitPrice));
-        const regularTotal = Math.round(quantity * regularUnitPrice);
+        const subtotal = roundUpTo50((bundles * promoPrc) + (loose * regularUnitPrice));
+        const regularTotal = roundUpTo50(quantity * regularUnitPrice);
         const promoSavings = Math.max(0, regularTotal - subtotal);
 
         return {
@@ -55,7 +56,7 @@ export function calculateItemPricing(product, quantity, customUnitPrice = null, 
 
     return {
         unitPrice: regularUnitPrice,
-        subtotal: Math.round(quantity * regularUnitPrice),
+        subtotal: roundUpTo50(quantity * regularUnitPrice),
         hasPromoApplied: false,
         promoSavings: 0,
         promoText: null,
@@ -92,11 +93,14 @@ function SaleProductSelector({
     const [weightGrams, setWeightGrams] = useState("");
     const [targetMoney, setTargetMoney] = useState("");
     const [editingItemIndex, setEditingItemIndex] = useState(null);
+    const [weightModalPrice, setWeightModalPrice] = useState("");
+    const [weightModalUpdateCatalog, setWeightModalUpdateCatalog] = useState(true);
+    const [isSavingWeightCatalogPrice, setIsSavingWeightCatalogPrice] = useState(false);
 
     // In-Cart Unit Price Editing State
     const [editingPriceIndex, setEditingPriceIndex] = useState(null);
     const [editingPriceValue, setEditingPriceValue] = useState("");
-    const [updateCatalogPrice, setUpdateCatalogPrice] = useState(false);
+    const [updateCatalogPrice, setUpdateCatalogPrice] = useState(true);
     const [isUpdatingCatalogPrice, setIsUpdatingCatalogPrice] = useState(false);
     const cartPriceInputRef = useRef(null);
 
@@ -202,6 +206,8 @@ function SaleProductSelector({
                 setWeightInputMode("weight");
                 setWeightGrams(product.unit_type === "kg" ? "500" : "150");
                 setTargetMoney("");
+                setWeightModalPrice(String(product.sale_price || ""));
+                setWeightModalUpdateCatalog(true);
             }
         },
         [items, onItemsChange]
@@ -311,39 +317,48 @@ function SaleProductSelector({
         setWeightInputMode("weight");
         setWeightGrams(String(item.grams || ""));
         setTargetMoney("");
+        setWeightModalPrice(String(item.unitPrice || item.product?.sale_price || ""));
+        setWeightModalUpdateCatalog(true);
     }
 
     // Save weight dialog item to cart
-    function handleConfirmWeightItem() {
+    async function handleConfirmWeightItem() {
         if (!activeProductForWeight) return;
 
+        const salePrice = Number(weightModalPrice) || Number(activeProductForWeight.sale_price) || 0;
         let finalGrams = 0;
         let finalSubtotal = 0;
-        const salePrice = Number(activeProductForWeight.sale_price) || 0;
 
         if (weightInputMode === "weight") {
             finalGrams = Number(weightGrams) || 0;
             if (finalGrams <= 0) return;
 
             if (activeProductForWeight.unit_type === "kg") {
-                finalSubtotal = Math.round((finalGrams / 1000) * salePrice);
+                finalSubtotal = roundUpTo50((finalGrams / 1000) * salePrice);
             } else {
-                finalSubtotal = Math.round((finalGrams / 100) * salePrice);
+                finalSubtotal = roundUpTo50((finalGrams / 100) * salePrice);
             }
         } else {
             const money = Number(targetMoney) || 0;
             if (money <= 0) return;
-            finalSubtotal = money;
+            finalSubtotal = roundUpTo50(money);
 
-            if (activeProductForWeight.unit_type === "kg") {
-                finalGrams = Math.round((money / salePrice) * 1000);
-            } else {
-                finalGrams = Math.round((money / salePrice) * 100);
+            if (salePrice > 0) {
+                if (activeProductForWeight.unit_type === "kg") {
+                    finalGrams = Math.round((money / salePrice) * 1000);
+                } else {
+                    finalGrams = Math.round((money / salePrice) * 100);
+                }
             }
         }
 
+        const updatedProduct = {
+            ...activeProductForWeight,
+            sale_price: salePrice,
+        };
+
         const newItem = {
-            product: activeProductForWeight,
+            product: updatedProduct,
             unitType: activeProductForWeight.unit_type,
             quantity: 1,
             grams: finalGrams,
@@ -357,6 +372,28 @@ function SaleProductSelector({
             onItemsChange(updated);
         } else {
             onItemsChange([...items, newItem]);
+        }
+
+        // Optionally update product price permanently in catalog
+        if (
+            weightModalUpdateCatalog &&
+            activeProductForWeight.id &&
+            salePrice > 0 &&
+            salePrice !== Number(activeProductForWeight.sale_price)
+        ) {
+            setIsSavingWeightCatalogPrice(true);
+            try {
+                const res = await updateProduct(activeProductForWeight.id, {
+                    ...activeProductForWeight,
+                    sale_price: salePrice,
+                });
+                onProductUpdated?.(res);
+                toast.success(`Precio de ${activeProductForWeight.name} actualizado en catálogo: ${formatCurrency(salePrice)}`);
+            } catch (err) {
+                console.error("Error updating weight product price:", err);
+            } finally {
+                setIsSavingWeightCatalogPrice(false);
+            }
         }
 
         setActiveProductForWeight(null);
@@ -400,7 +437,7 @@ function SaleProductSelector({
     function handleStartEditPrice(idx, currentPrice) {
         setEditingPriceIndex(idx);
         setEditingPriceValue(String(currentPrice));
-        setUpdateCatalogPrice(false);
+        setUpdateCatalogPrice(true);
         setTimeout(() => {
             cartPriceInputRef.current?.focus();
             cartPriceInputRef.current?.select();
@@ -421,6 +458,11 @@ function SaleProductSelector({
         updated[idx] = {
             ...item,
             ...pricing,
+            unitPrice: parsedPrice,
+            product: {
+                ...item.product,
+                sale_price: parsedPrice,
+            },
         };
         onItemsChange(updated);
         setEditingPriceIndex(null);
@@ -455,22 +497,22 @@ function SaleProductSelector({
     // Weight live calculations
     const liveCalculatedSubtotal = useMemo(() => {
         if (!activeProductForWeight) return 0;
-        const salePrice = Number(activeProductForWeight.sale_price) || 0;
+        const salePrice = Number(weightModalPrice) || Number(activeProductForWeight.sale_price) || 0;
         if (weightInputMode === "weight") {
             const g = Number(weightGrams) || 0;
             if (activeProductForWeight.unit_type === "kg") {
-                return Math.round((g / 1000) * salePrice);
+                return roundUpTo50((g / 1000) * salePrice);
             } else {
-                return Math.round((g / 100) * salePrice);
+                return roundUpTo50((g / 100) * salePrice);
             }
         } else {
-            return Number(targetMoney) || 0;
+            return roundUpTo50(Number(targetMoney) || 0);
         }
-    }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney]);
+    }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney, weightModalPrice]);
 
     const liveCalculatedGrams = useMemo(() => {
         if (!activeProductForWeight) return 0;
-        const salePrice = Number(activeProductForWeight.sale_price) || 0;
+        const salePrice = Number(weightModalPrice) || Number(activeProductForWeight.sale_price) || 0;
         if (weightInputMode === "weight") {
             return Number(weightGrams) || 0;
         } else {
@@ -482,7 +524,7 @@ function SaleProductSelector({
                 return Math.round((money / salePrice) * 100);
             }
         }
-    }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney]);
+    }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney, weightModalPrice]);
 
     const totalCartSum = useMemo(() => {
         return items.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
@@ -755,13 +797,6 @@ function SaleProductSelector({
                                 <h3 className="text-base font-bold text-[var(--text-primary)]">
                                     {activeProductForWeight.name}
                                 </h3>
-                                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                                    Precio:{" "}
-                                    <span className="font-bold text-[var(--success)]">
-                                        {formatCurrency(activeProductForWeight.sale_price)}
-                                    </span>
-                                    {activeProductForWeight.unit_type === "kg" ? " por kilo" : " por 100g"}
-                                </p>
                             </div>
 
                             <button
@@ -774,6 +809,49 @@ function SaleProductSelector({
                                     <line x1="6" y1="6" x2="18" y2="18" />
                                 </svg>
                             </button>
+                        </div>
+
+                        {/* PRICE ADJUSTER BAR */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/40 p-2.5">
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                                    Precio {activeProductForWeight.unit_type === "kg" ? "por kilo" : "por 100g"}:
+                                </label>
+                                <div className="flex items-center gap-1">
+                                    <span className="font-bold text-xs text-[var(--text-secondary)]">$</span>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={weightModalPrice}
+                                        onChange={(e) => setWeightModalPrice(e.target.value)}
+                                        className="w-24 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+
+                            <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] cursor-pointer select-none">
+                                <div
+                                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                                        weightModalUpdateCatalog
+                                            ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                            : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)]"
+                                    }`}
+                                >
+                                    {weightModalUpdateCatalog && (
+                                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={weightModalUpdateCatalog}
+                                    onChange={(e) => setWeightModalUpdateCatalog(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <span>Guardar en catálogo</span>
+                            </label>
                         </div>
 
                         {/* MODE SELECTOR */}
@@ -955,11 +1033,15 @@ function SaleProductSelector({
                             <button
                                 type="button"
                                 onClick={handleConfirmWeightItem}
-                                disabled={liveCalculatedSubtotal <= 0}
+                                disabled={liveCalculatedSubtotal <= 0 || isSavingWeightCatalogPrice}
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                             >
                                 <span>+</span>
-                                {editingItemIndex !== null ? "Guardar" : "Agregar"}
+                                {isSavingWeightCatalogPrice
+                                    ? "Guardando..."
+                                    : editingItemIndex !== null
+                                    ? "Guardar"
+                                    : "Agregar"}
                             </button>
                         </div>
                     </div>
@@ -1032,93 +1114,94 @@ function SaleProductSelector({
                                         </div>
 
                                         <div className="text-xs text-[var(--text-secondary)] mt-0.5 flex flex-wrap items-center gap-2">
-                                            {isWeight ? (
-                                                <span>
-                                                    {item.grams >= 1000
-                                                        ? `${(item.grams / 1000).toFixed(3).replace(/\.?0+$/, "")} kg`
-                                                        : `${item.grams} g`}{" "}
-                                                    × {formatCurrency(item.unitPrice)}
-                                                    {item.unitType === "kg" ? "/kg" : "/100g"}
-                                                </span>
+                                            {!isEditingThisPrice ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-xs text-[var(--text-secondary)]">
+                                                        {isWeight ? (
+                                                            <>
+                                                                {item.grams >= 1000
+                                                                    ? `${(item.grams / 1000).toFixed(3).replace(/\.?0+$/, "")} kg`
+                                                                    : `${item.grams} g`}{" "}
+                                                                × {formatCurrency(item.unitPrice)}
+                                                                {item.unitType === "kg" ? "/kg" : "/100g"}
+                                                            </>
+                                                        ) : (
+                                                            <>{formatCurrency(item.unitPrice)} c/u</>
+                                                        )}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleStartEditPrice(idx, item.unitPrice)}
+                                                        className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-accent)] transition shadow-2xs"
+                                                        title="Editar precio de este producto en la venta"
+                                                    >
+                                                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                                                        </svg>
+                                                        <span>Editar precio</span>
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    {!isEditingThisPrice ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-semibold text-xs text-[var(--text-secondary)]">
-                                                                {formatCurrency(item.unitPrice)} c/u
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleStartEditPrice(idx, item.unitPrice)}
-                                                                className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-accent)] transition shadow-2xs"
-                                                                title="Editar precio de este producto en la venta"
-                                                            >
-                                                                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                                                <div className="flex flex-wrap items-center gap-2 bg-[var(--surface)] p-1.5 rounded-lg border border-[var(--primary)] shadow-xs">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-bold text-xs text-[var(--text-secondary)]">$</span>
+                                                        <input
+                                                            ref={cartPriceInputRef}
+                                                            type="number"
+                                                            step="any"
+                                                            value={editingPriceValue}
+                                                            onChange={(e) => setEditingPriceValue(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") {
+                                                                    e.preventDefault();
+                                                                    handleSaveCartItemPrice(idx);
+                                                                } else if (e.key === "Escape") {
+                                                                    setEditingPriceIndex(null);
+                                                                }
+                                                            }}
+                                                            className="w-20 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                        />
+                                                        <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                                                            {isWeight ? (item.unitType === "kg" ? "/kg" : "/100g") : "c/u"}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSaveCartItemPrice(idx)}
+                                                        disabled={isUpdatingCatalogPrice}
+                                                        className="rounded bg-[var(--primary)] px-2 py-0.5 text-[11px] font-bold text-white hover:bg-[var(--primary-hover)] transition"
+                                                    >
+                                                        ✓ Aplicar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingPriceIndex(null)}
+                                                        className="rounded bg-[var(--surface-accent)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
+                                                    >
+                                                        ✕ Cancelar
+                                                    </button>
+                                                    <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] ml-1 cursor-pointer select-none">
+                                                        <div
+                                                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                                                                updateCatalogPrice
+                                                                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                                                    : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)]"
+                                                            }`}
+                                                        >
+                                                            {updateCatalogPrice && (
+                                                                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                                    <polyline points="20 6 9 17 4 12" />
                                                                 </svg>
-                                                                <span>Editar precio</span>
-                                                            </button>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap items-center gap-2 bg-[var(--surface)] p-1.5 rounded-lg border border-[var(--primary)] shadow-xs">
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="font-bold text-xs text-[var(--text-secondary)]">$</span>
-                                                                <input
-                                                                    ref={cartPriceInputRef}
-                                                                    type="number"
-                                                                    step="any"
-                                                                    value={editingPriceValue}
-                                                                    onChange={(e) => setEditingPriceValue(e.target.value)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") {
-                                                                            e.preventDefault();
-                                                                            handleSaveCartItemPrice(idx);
-                                                                        } else if (e.key === "Escape") {
-                                                                            setEditingPriceIndex(null);
-                                                                        }
-                                                                    }}
-                                                                    className="w-20 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleSaveCartItemPrice(idx)}
-                                                                disabled={isUpdatingCatalogPrice}
-                                                                className="rounded bg-[var(--primary)] px-2 py-0.5 text-[11px] font-bold text-white hover:bg-[var(--primary-hover)] transition"
-                                                            >
-                                                                ✓ Aplicar
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setEditingPriceIndex(null)}
-                                                                className="rounded bg-[var(--surface-accent)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-                                                            >
-                                                                ✕ Cancelar
-                                                            </button>
-                                                            <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] ml-1 cursor-pointer select-none">
-                                                                <div
-                                                                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                                                                        updateCatalogPrice
-                                                                            ? "border-[var(--primary)] bg-[var(--primary)] text-white"
-                                                                            : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)]"
-                                                                    }`}
-                                                                >
-                                                                    {updateCatalogPrice && (
-                                                                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                                            <polyline points="20 6 9 17 4 12" />
-                                                                        </svg>
-                                                                    )}
-                                                                </div>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={updateCatalogPrice}
-                                                                    onChange={(e) => setUpdateCatalogPrice(e.target.checked)}
-                                                                    className="sr-only"
-                                                                />
-                                                                <span>Guardar en catálogo</span>
-                                                            </label>
-                                                        </div>
-                                                    )}
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={updateCatalogPrice}
+                                                            onChange={(e) => setUpdateCatalogPrice(e.target.checked)}
+                                                            className="sr-only"
+                                                        />
+                                                        <span>Guardar en catálogo</span>
+                                                    </label>
                                                 </div>
                                             )}
                                         </div>
@@ -1192,7 +1275,7 @@ function SaleProductSelector({
                                 </span>
                             )}
                             <span className="text-base sm:text-lg font-black text-[var(--text-primary)] tabular-nums">
-                                {formatCurrency(totalCartSum + (Number(manualAmount) || 0))}
+                                {formatCurrency(roundUpTo50(totalCartSum + (Number(manualAmount) || 0)))}
                             </span>
                         </div>
                     </div>

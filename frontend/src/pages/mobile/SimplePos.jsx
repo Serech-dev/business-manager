@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import toast from "react-hot-toast";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency, roundUpTo50 } from "../../utils/formatCurrency";
 import {
     getProducts,
     getCategories,
@@ -8,6 +8,7 @@ import {
     createTransaction,
     createClient,
     getBankAccounts,
+    updateProduct,
 } from "../../services/business";
 import { filterAndRankProducts } from "../../utils/productSearch";
 import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
@@ -70,6 +71,7 @@ export function SimplePos({ register, onOpenRegister }) {
     const [subeAmount, setSubeAmount] = useState("");
     const [phoneAmount, setPhoneAmount] = useState("");
     const [exchangeAmount, setExchangeAmount] = useState("");
+    const [exchangeDirection, setExchangeDirection] = useState("transfer"); // 'transfer' | 'cash'
     const [debtPaymentAmount, setDebtPaymentAmount] = useState("");
     const [debtPaymentClient, setDebtPaymentClient] = useState(null);
 
@@ -80,6 +82,8 @@ export function SimplePos({ register, onOpenRegister }) {
     // In-Ticket Custom Price Edit State
     const [editingPriceItemIndex, setEditingPriceItemIndex] = useState(null);
     const [customPriceValue, setCustomPriceValue] = useState("");
+    const [editPriceSaveToCatalog, setEditPriceSaveToCatalog] = useState(true);
+    const [isUpdatingCatalogPrice, setIsUpdatingCatalogPrice] = useState(false);
 
     // Barcode & Modals
     const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -139,7 +143,7 @@ export function SimplePos({ register, onOpenRegister }) {
 
     // Financial Calculation of the Entire Ticket
     const grandTotal = useMemo(() => {
-        return ticketItems.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
+        return roundUpTo50(ticketItems.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0));
     }, [ticketItems]);
 
     const effectiveCheckoutTotal = useMemo(() => {
@@ -245,7 +249,7 @@ export function SimplePos({ register, onOpenRegister }) {
     // 2. Add Manual / Unlisted Item
     const handleAddManualItem = (e) => {
         if (e) e.preventDefault();
-        const amt = Number(manualAmount);
+        const amt = roundUpTo50(Number(manualAmount));
         if (!amt || amt <= 0) {
             toast.error("Ingresá un monto mayor a $0.");
             return;
@@ -342,12 +346,19 @@ export function SimplePos({ register, onOpenRegister }) {
         }
 
         const feeInfo = calculateExchangeFee(amt);
+        const isCashIn = exchangeDirection === "cash";
+        const isDebt = exchangeDirection === "debt";
         setTicketItems((prev) => [
             ...prev,
             {
                 id: `exchange-${Date.now()}`,
                 type: "exchange",
-                name: "Cambio de Dinero (Efectivo)",
+                exchangeDirection,
+                name: isCashIn
+                    ? "Cambio (Efectivo por Transf.)"
+                    : isDebt
+                        ? "Cambio (Fiado)"
+                        : "Cambio (Transf. por Efectivo)",
                 exchangeAmount: amt,
                 fee: feeInfo.fee,
                 clientAmount: feeInfo.clientAmount,
@@ -468,13 +479,15 @@ export function SimplePos({ register, onOpenRegister }) {
     };
 
     // 9. Update Custom Unit Price on Item
-    const handleSaveItemCustomPrice = (newPrice) => {
+    const handleSaveItemCustomPrice = async (newPrice) => {
         if (editingPriceItemIndex === null) return;
         const price = Number(newPrice);
         if (!price || price < 0) {
             toast.error("Ingresá un precio válido.");
             return;
         }
+
+        const targetItem = ticketItems[editingPriceItemIndex];
 
         setTicketItems((prev) => {
             const updated = [...prev];
@@ -490,9 +503,32 @@ export function SimplePos({ register, onOpenRegister }) {
                 hasPromoApplied: false,
                 promoSavings: 0,
                 promoText: null,
+                product: {
+                    ...item.product,
+                    sale_price: price,
+                },
             };
             return updated;
         });
+
+        // Optionally update product price permanently in catalog
+        if (editPriceSaveToCatalog && targetItem?.product?.id) {
+            setIsUpdatingCatalogPrice(true);
+            try {
+                const updatedProd = await updateProduct(targetItem.product.id, {
+                    ...targetItem.product,
+                    sale_price: price,
+                });
+                setProducts((prev) =>
+                    prev.map((p) => (p.id === updatedProd.id ? { ...p, sale_price: price } : p))
+                );
+                toast.success(`Precio guardado en catálogo: ${formatCurrency(price)}`);
+            } catch (err) {
+                console.error("Error updating product price in catalog from SimplePos:", err);
+            } finally {
+                setIsUpdatingCatalogPrice(false);
+            }
+        }
 
         setEditingPriceItemIndex(null);
         setCustomPriceValue("");
@@ -638,7 +674,7 @@ export function SimplePos({ register, onOpenRegister }) {
                 });
 
                 const saleTotal =
-                    resolvedItems.reduce((s, i) => s + i.subtotal, 0) + manualTotal;
+                    roundUpTo50(resolvedItems.reduce((s, i) => s + i.subtotal, 0) + manualTotal);
 
                 let finalSaleAmount = saleTotal;
                 if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
@@ -664,13 +700,19 @@ export function SimplePos({ register, onOpenRegister }) {
             // 2. SUBE Items
             const subeItems = ticketItems.filter((i) => i.type === "sube");
             for (const sube of subeItems) {
+                let subeAmt = sube.subtotal;
+                if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
+                    subeAmt = calculateCardSurcharge(sube.subtotal).totalWithSurcharge;
+                } else if (paymentMethod === "debt" && settings?.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    subeAmt = calculateDebtSurcharge(sube.subtotal).totalWithSurcharge;
+                }
                 operations.push({
                     type: "sube",
                     rechargeAmount: sube.rechargeAmount,
                     amounts: [
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
-                            amount: sube.subtotal,
+                            amount: subeAmt,
                             ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
@@ -681,13 +723,19 @@ export function SimplePos({ register, onOpenRegister }) {
             // 3. Phone Items
             const phoneItems = ticketItems.filter((i) => i.type === "phone");
             for (const phone of phoneItems) {
+                let phoneAmt = phone.subtotal;
+                if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
+                    phoneAmt = calculateCardSurcharge(phone.subtotal).totalWithSurcharge;
+                } else if (paymentMethod === "debt" && settings?.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    phoneAmt = calculateDebtSurcharge(phone.subtotal).totalWithSurcharge;
+                }
                 operations.push({
                     type: "phone",
                     rechargeAmount: phone.rechargeAmount,
                     amounts: [
                         {
                             method: paymentMethod === "mp" ? "transfer" : paymentMethod,
-                            amount: phone.subtotal,
+                            amount: phoneAmt,
                             ...(targetBankId ? { bank_account: targetBankId } : {}),
                         },
                     ],
@@ -698,14 +746,21 @@ export function SimplePos({ register, onOpenRegister }) {
             // 4. Exchange Items
             const exchangeItems = ticketItems.filter((i) => i.type === "exchange");
             for (const ex of exchangeItems) {
+                const exMethod = ex.exchangeDirection || (paymentMethod === "mp" ? "transfer" : paymentMethod);
+                let exAmt = ex.subtotal;
+                if (exMethod === "card" && settings?.card_surcharge_enabled) {
+                    exAmt = calculateCardSurcharge(ex.subtotal).totalWithSurcharge;
+                } else if (exMethod === "debt" && settings?.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    exAmt = calculateDebtSurcharge(ex.subtotal).totalWithSurcharge;
+                }
                 operations.push({
                     type: "exchange",
                     exchange_amount: ex.clientAmount,
                     amounts: [
                         {
-                            method: paymentMethod === "mp" ? "transfer" : paymentMethod,
-                            amount: ex.subtotal,
-                            ...(targetBankId ? { bank_account: targetBankId } : {}),
+                            method: exMethod,
+                            amount: exAmt,
+                            ...(targetBankId && (exMethod === "transfer" || exMethod === "card") ? { bank_account: targetBankId } : {}),
                         },
                     ],
                     items: [],
@@ -1125,6 +1180,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                                         onClick={() => {
                                                             setEditingPriceItemIndex(idx);
                                                             setCustomPriceValue(String(item.unitPrice));
+                                                            setEditPriceSaveToCatalog(true);
                                                             setActiveServiceSheet("editPrice");
                                                         }}
                                                         className="font-mono hover:text-[var(--primary)] hover:underline flex items-center gap-0.5"
@@ -1370,7 +1426,7 @@ export function SimplePos({ register, onOpenRegister }) {
                                         { id: "mp", label: "Mercado Pago / Transf." },
                                         { id: "card", label: "Tarjeta Débito / Crédito" },
                                         ...(!ticketItems.some((i) => i.type === "payment")
-                                            ? [{ id: "debt", label: "A Cuenta (Fiado)" }]
+                                            ? [{ id: "debt", label: "Fiado" }]
                                             : []),
                                     ].map((m) => (
                                         <button
@@ -1487,12 +1543,12 @@ export function SimplePos({ register, onOpenRegister }) {
                                 </div>
                             )}
 
-                            {/* A Cuenta warning */}
+                            {/* Fiado warning */}
                             {paymentMethod === "debt" && (
                                 <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs space-y-2">
                                     <div className="flex items-center justify-between font-bold text-amber-400">
                                         <div className="flex items-center gap-1.5">
-                                            <span>Venta A Cuenta (Fiado)</span>
+                                            <span>Venta Fiado</span>
                                             {settings?.debt_surcharge_enabled && ignoreDebtSurcharge && (
                                                 <span className="rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                                                     Omitido
@@ -1524,9 +1580,13 @@ export function SimplePos({ register, onOpenRegister }) {
                                                 {settings?.debt_surcharge_enabled && !ignoreDebtSurcharge && " (incluye recargo por fiado)"}.
                                             </>
                                         ) : (
-                                            <span className="text-rose-400 font-bold">
-                                                Tenés que asignar un cliente arriba para fiar esta venta.
-                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsClientModalOpen(true)}
+                                                className="text-rose-400 font-bold underline text-left cursor-pointer"
+                                            >
+                                                Tocar acá para asignar cliente (Requerido para fiar)
+                                            </button>
                                         )}
                                     </p>
 
@@ -1809,7 +1869,11 @@ export function SimplePos({ register, onOpenRegister }) {
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                             <div>
                                 <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
-                                    Cambio de Dinero (Virtual a Efectivo)
+                                    {exchangeDirection === "cash"
+                                        ? "Cambio de Dinero (Efectivo a Virtual)"
+                                        : exchangeDirection === "debt"
+                                            ? "Cambio de Dinero (Fiado)"
+                                            : "Cambio de Dinero (Virtual a Efectivo)"}
                                 </h4>
                                 <span className="text-[10px] text-amber-400 font-semibold">
                                     Comisión: {settings.exchange_fee_type === "percentage" ? `${settings.exchange_fee_value}%` : formatCurrency(settings.exchange_fee_value)}
@@ -1824,10 +1888,51 @@ export function SimplePos({ register, onOpenRegister }) {
                             </button>
                         </div>
 
+                        {/* Direction Switcher */}
+                        <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => setExchangeDirection("transfer")}
+                                className={`py-2 px-1.5 rounded-lg border text-center text-[11px] font-bold transition-all ${
+                                    exchangeDirection === "transfer"
+                                        ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-xs"
+                                        : "border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                }`}
+                            >
+                                Transf. por Ef.
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setExchangeDirection("cash")}
+                                className={`py-2 px-1.5 rounded-lg border text-center text-[11px] font-bold transition-all ${
+                                    exchangeDirection === "cash"
+                                        ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-xs"
+                                        : "border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                }`}
+                            >
+                                Ef. por Transf.
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setExchangeDirection("debt")}
+                                className={`py-2 px-1.5 rounded-lg border text-center text-[11px] font-bold transition-all ${
+                                    exchangeDirection === "debt"
+                                        ? "border-amber-500 bg-amber-500 text-white shadow-xs"
+                                        : "border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                }`}
+                            >
+                                Fiado
+                            </button>
+                        </div>
+
                         <form onSubmit={handleAddExchange} className="space-y-3">
                             <div>
                                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                    Monto transferido por el cliente ($):
+                                    {exchangeDirection === "cash"
+                                        ? "Monto en efectivo recibido del cliente ($):"
+                                        : exchangeDirection === "debt"
+                                            ? "Monto a fiar / anotar en cuenta ($):"
+                                            : "Monto transferido por el cliente ($):"}
                                 </label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[var(--text-secondary)]">$</span>
@@ -1850,7 +1955,11 @@ export function SimplePos({ register, onOpenRegister }) {
                                         </span>
                                     </div>
                                     <div className="flex justify-between pt-1 border-t border-[var(--border)] font-bold">
-                                        <span>Efectivo a entregar al cliente:</span>
+                                        <span>
+                                            {exchangeDirection === "cash"
+                                                ? "Transferir al cliente (CBU / CVU / Alias):"
+                                                : "Efectivo a entregar al cliente:"}
+                                        </span>
                                         <span className="text-emerald-400 font-mono">
                                             {formatCurrency(calculateExchangeFee(Number(exchangeAmount)).clientAmount)}
                                         </span>
@@ -1999,6 +2108,27 @@ export function SimplePos({ register, onOpenRegister }) {
                         </div>
 
                         <div className="space-y-3">
+                            {ticketItems[editingWeightItemIndex] && (
+                                <div className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-[var(--surface-accent)] border border-[var(--border)]">
+                                    <span className="text-[var(--text-secondary)]">
+                                        Precio: <strong className="text-[var(--text-primary)]">{formatCurrency(ticketItems[editingWeightItemIndex].unitPrice)}</strong> {ticketItems[editingWeightItemIndex].unitType === "kg" ? "/kg" : "/100g"}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const targetIdx = editingWeightItemIndex;
+                                            setEditingPriceItemIndex(targetIdx);
+                                            setCustomPriceValue(String(ticketItems[targetIdx].unitPrice));
+                                            setEditPriceSaveToCatalog(true);
+                                            setActiveServiceSheet("editPrice");
+                                        }}
+                                        className="text-[var(--primary)] font-bold hover:underline text-xs"
+                                    >
+                                        Cambiar precio
+                                    </button>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                                     Gramos (g):
@@ -2044,9 +2174,16 @@ export function SimplePos({ register, onOpenRegister }) {
                 <div className="fixed inset-0 z-50 bg-black/70 flex flex-col justify-end animate-fadeIn">
                     <div className="bg-[var(--surface)] border-t border-[var(--border)] rounded-t-3xl p-4 space-y-3 shadow-2xl">
                         <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-                            <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
-                                Modificar Precio en Ticket
-                            </h4>
+                            <div>
+                                <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
+                                    Modificar Precio en Ticket
+                                </h4>
+                                {ticketItems[editingPriceItemIndex] && (
+                                    <p className="text-xs text-[var(--text-secondary)] font-semibold truncate max-w-xs mt-0.5">
+                                        {ticketItems[editingPriceItemIndex].product?.name || ticketItems[editingPriceItemIndex].name}
+                                    </p>
+                                )}
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -2062,7 +2199,7 @@ export function SimplePos({ register, onOpenRegister }) {
                         <div className="space-y-3">
                             <div>
                                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                    Nuevo Precio Unitario ($):
+                                    Nuevo Precio {ticketItems[editingPriceItemIndex]?.unitType === "kg" ? "por kilo ($):" : ticketItems[editingPriceItemIndex]?.unitType === "100g" ? "por 100g ($):" : "Unitario ($):"}
                                 </label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-[var(--text-secondary)]">$</span>
@@ -2077,12 +2214,39 @@ export function SimplePos({ register, onOpenRegister }) {
                                 </div>
                             </div>
 
+                            {/* Guardar en catalogo checkbox */}
+                            {ticketItems[editingPriceItemIndex]?.product?.id && (
+                                <label className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer select-none">
+                                    <div
+                                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                                            editPriceSaveToCatalog
+                                                ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                                : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)]"
+                                        }`}
+                                    >
+                                        {editPriceSaveToCatalog && (
+                                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={editPriceSaveToCatalog}
+                                        onChange={(e) => setEditPriceSaveToCatalog(e.target.checked)}
+                                        className="sr-only"
+                                    />
+                                    <span>Guardar en catálogo / producto</span>
+                                </label>
+                            )}
+
                             <button
                                 type="button"
                                 onClick={() => handleSaveItemCustomPrice(customPriceValue)}
-                                className="w-full py-3 bg-[var(--primary)] text-white font-bold text-xs rounded-xl shadow-lg"
+                                disabled={isUpdatingCatalogPrice}
+                                className="w-full py-3 bg-[var(--primary)] text-white font-bold text-xs rounded-xl shadow-lg disabled:opacity-50"
                             >
-                                Aplicar al Ticket
+                                {isUpdatingCatalogPrice ? "Guardando..." : "Aplicar al Ticket"}
                             </button>
                         </div>
                     </div>

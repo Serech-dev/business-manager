@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
-import { createTransaction } from "../../services/business";
+import { createTransaction, getBankAccounts } from "../../services/business";
 import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 
@@ -16,6 +16,23 @@ function ClientPaymentModal({
     const [method, setMethod] = useState("cash");
     const [description, setDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [bankAccounts, setBankAccounts] = useState([]);
+    const [selectedBankId, setSelectedBankId] = useState(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            getBankAccounts(true)
+                .then((data) => {
+                    const list = data || [];
+                    setBankAccounts(list);
+                    const defBank = list.find((b) => b.is_default) || list[0];
+                    if (defBank) {
+                        setSelectedBankId(defBank.id);
+                    }
+                })
+                .catch((err) => console.error("Error loading bank accounts in ClientPaymentModal:", err));
+        }
+    }, [isOpen]);
 
     if (!isOpen || !client) return null;
 
@@ -39,6 +56,7 @@ function ClientPaymentModal({
         setIsSubmitting(true);
 
         try {
+            const isDigital = method === "transfer" || method === "card";
             const payload = {
                 client: client.id,
                 description: description.trim(),
@@ -49,6 +67,7 @@ function ClientPaymentModal({
                             {
                                 method: method,
                                 amount: cleanAmount,
+                                ...(isDigital && selectedBankId ? { bank_account: selectedBankId } : {}),
                             },
                         ],
                     },
@@ -221,6 +240,51 @@ function ClientPaymentModal({
                             })}
                         </div>
                     </div>
+
+                    {/* BANK ACCOUNT (IF DIGITAL) */}
+                    {["transfer", "card"].includes(method) && bankAccounts.length > 0 && (
+                        <div>
+                            <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                                Cuenta destino
+                            </label>
+                            <div className="relative mt-1">
+                                <select
+                                    value={selectedBankId || ""}
+                                    onChange={(e) =>
+                                        setSelectedBankId(e.target.value ? Number(e.target.value) : null)
+                                    }
+                                    className="
+                                        w-full
+                                        appearance-none
+                                        rounded-md
+                                        border
+                                        border-[var(--border)]
+                                        bg-[var(--background)]
+                                        px-3
+                                        py-2
+                                        pr-8
+                                        text-xs
+                                        font-semibold
+                                        text-[var(--text-primary)]
+                                        outline-none
+                                        transition
+                                        focus:border-[var(--primary)]
+                                    "
+                                >
+                                    {bankAccounts.map((acc) => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.name} {acc.is_default ? "(Principal)" : ""}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* NOTE */}
                     <div>

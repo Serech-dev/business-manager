@@ -89,6 +89,17 @@ class StoreSettingsTests(TestCase):
         card_surcharge = settings.calculate_card_surcharge(8000)
         self.assertEqual(card_surcharge, Decimal("400.00"))
 
+        # Rounding up to 50 checks: 10% of 1010 is 101 -> rounded up to nearest 50 is 150
+        settings.card_surcharge_type = StoreSettings.FeeType.PERCENTAGE
+        settings.card_surcharge_value = Decimal("10.00")
+        settings.save()
+        self.assertEqual(settings.calculate_card_surcharge(1010), Decimal("150"))
+        self.assertEqual(settings.calculate_exchange_fee(1010), Decimal("150"))
+        settings.debt_surcharge_type = StoreSettings.FeeType.PERCENTAGE
+        settings.debt_surcharge_value = Decimal("10.00")
+        settings.save()
+        self.assertEqual(settings.calculate_debt_surcharge(1010), Decimal("150"))
+
     def test_get_and_patch_store_settings_api(self):
         # GET
         get_res = self.client.get("/api/business/settings/")

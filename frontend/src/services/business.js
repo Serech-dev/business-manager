@@ -141,7 +141,7 @@ export function getMethodLabel(method) {
         cash: "Efectivo",
         transfer: "Transferencia",
         card: "Tarjeta",
-        debt: "A cuenta",
+        debt: "Fiado",
     };
 
     return labels[method] || method;

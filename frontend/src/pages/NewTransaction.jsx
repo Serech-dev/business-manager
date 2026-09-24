@@ -10,7 +10,7 @@ import {
     getProviders,
     getTransactionLabel,
 } from "../services/business";
-import { formatCurrency } from "../utils/formatCurrency";
+import { formatCurrency, roundUpTo50 } from "../utils/formatCurrency";
 
 import TransactionClient from "../components/transactions/TransactionClient";
 import TransactionExchange from "../components/transactions/TransactionExchange";
@@ -156,7 +156,7 @@ function NewTransaction() {
                 quantity: 1,
                 grams: null,
                 unitPrice: Number(newProduct.sale_price),
-                subtotal: Math.round(Number(newProduct.sale_price)),
+                subtotal: roundUpTo50(Number(newProduct.sale_price)),
             };
             handleUpdateOperationItems(targetOperationIndex, [...(op.items || []), newItem]);
         }
@@ -234,7 +234,13 @@ function NewTransaction() {
                     // Recompute target total for the new type
                     let targetTotal = 0;
                     if (value === "sale") {
-                        targetTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0);
+                        targetTotal = roundUpTo50((op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0));
+                    } else if (value === "sube" && op.rechargeAmount) {
+                        targetTotal = calculateSubeFee(op.rechargeAmount).totalToCharge;
+                    } else if (value === "phone" && op.rechargeAmount) {
+                        targetTotal = calculatePhoneFee(op.rechargeAmount).totalToCharge;
+                    } else if (value === "exchange" && op.exchangeAmount) {
+                        targetTotal = Number(op.exchangeAmount) || 0;
                     }
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
@@ -264,28 +270,54 @@ function NewTransaction() {
                 if (field === "exchangeAmount" && op.type === "exchange") {
                     updated.amounts = [
                         {
-                            method: op.amounts[0]?.method || "cash",
+                            method: op.amounts[0]?.method || "transfer",
                             amount: value,
                         },
                     ];
                 }
 
-                // If recharge amount changed in a SUBE or phone recharge operation, sync total with fee
+                // If recharge amount changed in a SUBE or phone recharge operation, sync total with fee & method surcharges
                 if (field === "rechargeAmount" && (op.type === "sube" || op.type === "phone")) {
                     const feeInfo = op.type === "sube" ? calculateSubeFee(value) : calculatePhoneFee(value);
-                    updated.amounts = [
-                        {
-                            method: op.amounts[0]?.method || "cash",
-                            amount: feeInfo.totalToCharge > 0 ? String(feeInfo.totalToCharge) : "",
-                        },
-                    ];
+                    const baseTotal = feeInfo.totalToCharge;
+                    if (updated.amounts.length === 1) {
+                        const currentMethod = updated.amounts[0]?.method || "cash";
+                        let targetAmount = baseTotal > 0 ? String(baseTotal) : "";
+                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && baseTotal > 0) {
+                            targetAmount = String(calculateDebtSurcharge(baseTotal).totalWithSurcharge);
+                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && baseTotal > 0) {
+                            targetAmount = String(calculateCardSurcharge(baseTotal).totalWithSurcharge);
+                        }
+                        updated.amounts = [
+                            {
+                                ...updated.amounts[0],
+                                amount: targetAmount,
+                            },
+                        ];
+                    } else if (updated.amounts.length === 2 && baseTotal > 0) {
+                        const firstAmt = Number(updated.amounts[0].amount) || 0;
+                        const remainder = Math.max(0, baseTotal - firstAmt);
+                        let secondAmt = remainder;
+                        if (updated.amounts[1].method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                            secondAmt = calculateDebtSurcharge(remainder).totalWithSurcharge;
+                        } else if (updated.amounts[1].method === "card" && settings.card_surcharge_enabled) {
+                            secondAmt = calculateCardSurcharge(remainder).totalWithSurcharge;
+                        }
+                        updated.amounts = [
+                            updated.amounts[0],
+                            {
+                                ...updated.amounts[1],
+                                amount: secondAmt > 0 ? String(secondAmt) : "0",
+                            },
+                        ];
+                    }
                 }
 
                 // If items changed in a sale operation, sync default amount
                 if (field === "items" && op.type === "sale") {
                     const itemsTotal = (value || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0);
                     const manualTotal = Number(op.manualAmount) || 0;
-                    const targetTotal = itemsTotal + manualTotal;
+                    const targetTotal = roundUpTo50(itemsTotal + manualTotal);
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
@@ -307,7 +339,7 @@ function NewTransaction() {
                 if (field === "manualAmount" && op.type === "sale") {
                     const itemsTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0);
                     const manualTotal = Number(value) || 0;
-                    const targetTotal = itemsTotal + manualTotal;
+                    const targetTotal = roundUpTo50(itemsTotal + manualTotal);
                     if (updated.amounts.length === 1) {
                         const currentMethod = updated.amounts[0]?.method || "cash";
                         let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
@@ -367,13 +399,18 @@ function NewTransaction() {
         setIgnoreDebtSurcharge(ignored);
         setOperations((current) =>
             current.map((op) => {
+                let opTargetTotal = 0;
+                if (op.type === "sale") {
+                    opTargetTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0);
+                } else if (op.type === "exchange") {
+                    opTargetTotal = Number(op.exchangeAmount) || 0;
+                } else if (op.type === "sube") {
+                    opTargetTotal = calculateSubeFee(op.rechargeAmount || "").totalToCharge;
+                } else if (op.type === "phone") {
+                    opTargetTotal = calculatePhoneFee(op.rechargeAmount || "").totalToCharge;
+                }
+
                 if (op.amounts.length === 1 && op.amounts[0]?.method === "debt") {
-                    let opTargetTotal = 0;
-                    if (op.type === "sale") {
-                        opTargetTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0);
-                    } else if (op.type === "exchange") {
-                        opTargetTotal = Number(op.exchangeAmount) || 0;
-                    }
                     const nextAmount = (ignored || !settings.debt_surcharge_enabled)
                         ? (opTargetTotal > 0 ? String(opTargetTotal) : "")
                         : (opTargetTotal > 0 ? String(calculateDebtSurcharge(opTargetTotal).totalWithSurcharge) : "");
@@ -386,6 +423,23 @@ function NewTransaction() {
                                 amount: nextAmount,
                             },
                         ],
+                    };
+                } else if (op.amounts.length > 1 && op.amounts.some((a) => a.method === "debt")) {
+                    const nonDebtSum = op.amounts
+                        .filter((a) => a.method !== "debt")
+                        .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                    const debtBase = Math.max(0, opTargetTotal - nonDebtSum);
+                    const nextDebtAmount = (ignored || !settings.debt_surcharge_enabled)
+                        ? debtBase
+                        : calculateDebtSurcharge(debtBase).totalWithSurcharge;
+
+                    return {
+                        ...op,
+                        amounts: op.amounts.map((a) =>
+                            a.method === "debt"
+                                ? { ...a, amount: nextDebtAmount > 0 ? String(nextDebtAmount) : "" }
+                                : a
+                        ),
                     };
                 }
                 return op;
@@ -435,6 +489,9 @@ function NewTransaction() {
                     .map((item) => ({
                         method: item.method,
                         amount: item.amount,
+                        bank_account: ["transfer", "card"].includes(item.method)
+                            ? (item.bank_account ? Number(item.bank_account) : null)
+                            : null,
                     }));
 
                 const isExchange = op.type === "exchange";
@@ -508,7 +565,15 @@ function NewTransaction() {
                         itemSummaries.push(`Recarga Celular${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     } else if (op.type === "exchange") {
                         const amt = Number(op.exchangeAmount) || 0;
-                        itemSummaries.push(`Cambio de Dinero${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
+                        const exMethod = op.amounts[0]?.method;
+                        const directionLabel = exMethod === "cash"
+                            ? "Efectivo por Transf."
+                            : exMethod === "debt"
+                                ? "Fiado"
+                                : exMethod === "card"
+                                    ? "Tarjeta por Efectivo"
+                                    : "Transf. por Efectivo";
+                        itemSummaries.push(`Cambio (${directionLabel})${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     } else if (op.type === "payment") {
                         itemSummaries.push("Pago a cuenta");
                     }
@@ -726,7 +791,7 @@ function NewTransaction() {
 
                         let opTargetTotal = 0;
                         if (op.type === "sale") {
-                            opTargetTotal = (op.items || []).reduce((s, it) => s + it.subtotal, 0) + (Number(op.manualAmount) || 0);
+                            opTargetTotal = roundUpTo50((op.items || []).reduce((s, it) => s + it.subtotal, 0) + (Number(op.manualAmount) || 0));
                         } else if (op.type === "exchange") {
                             opTargetTotal = Number(op.exchangeAmount) || 0;
                         } else if (op.type === "sube") {
@@ -841,6 +906,7 @@ function NewTransaction() {
                                 {isExchange && (
                                     <TransactionExchange
                                         exchangeAmount={op.exchangeAmount}
+                                        currentMethod={op.amounts[0]?.method || "transfer"}
                                         onChangeExchangeAmount={(val) =>
                                             handleUpdateOperation(
                                                 index,
@@ -863,6 +929,7 @@ function NewTransaction() {
                                                 amounts
                                             )
                                         }
+                                        isExchange={isExchange}
                                         disableDebt={op.type === "payment"}
                                         hasClient={Boolean(client)}
                                         client={client}

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { getStoreSettings, updateStoreSettings } from "../services/business";
+import { roundUpTo50 } from "../utils/formatCurrency";
 
 const StoreSettingsContext = createContext(null);
 
@@ -110,9 +111,9 @@ export function StoreSettingsProvider({ children }) {
             let fee = 0;
 
             if (settings.exchange_fee_type === "percentage") {
-                fee = Math.round(num * (feeValue / 100));
+                fee = roundUpTo50(num * (feeValue / 100));
             } else {
-                fee = Math.round(feeValue);
+                fee = roundUpTo50(feeValue);
             }
 
             const clientAmount = Math.max(0, num - fee);
@@ -130,12 +131,13 @@ export function StoreSettingsProvider({ children }) {
             let fee = 0;
 
             if (settings.sube_fee_type === "percentage") {
-                fee = Math.round(num * (feeValue / 100));
+                fee = roundUpTo50(num * (feeValue / 100));
             } else {
-                fee = Math.round(feeValue);
+                fee = roundUpTo50(feeValue);
             }
 
-            return { fee, totalToCharge: num + fee, rechargeAmount: num };
+            const totalToCharge = roundUpTo50(num + fee);
+            return { fee, totalToCharge, rechargeAmount: num };
         },
         [settings.sube_fee_type, settings.sube_fee_value]
     );
@@ -149,12 +151,13 @@ export function StoreSettingsProvider({ children }) {
             let fee = 0;
 
             if (settings.phone_fee_type === "percentage") {
-                fee = Math.round(num * (feeValue / 100));
+                fee = roundUpTo50(num * (feeValue / 100));
             } else {
-                fee = Math.round(feeValue);
+                fee = roundUpTo50(feeValue);
             }
 
-            return { fee, totalToCharge: num + fee, rechargeAmount: num };
+            const totalToCharge = roundUpTo50(num + fee);
+            return { fee, totalToCharge, rechargeAmount: num };
         },
         [settings.phone_fee_type, settings.phone_fee_value]
     );
@@ -170,14 +173,16 @@ export function StoreSettingsProvider({ children }) {
             let surcharge = 0;
 
             if (settings.debt_surcharge_type === "percentage") {
-                surcharge = Math.round(num * (surchargeValue / 100));
+                surcharge = roundUpTo50(num * (surchargeValue / 100));
             } else {
-                surcharge = Math.round(surchargeValue);
+                surcharge = roundUpTo50(surchargeValue);
             }
+
+            const totalWithSurcharge = roundUpTo50(num + surcharge);
 
             return {
                 surcharge,
-                totalWithSurcharge: num + surcharge,
+                totalWithSurcharge,
                 isEnabled: true,
                 type: settings.debt_surcharge_type,
                 value: surchargeValue,
@@ -201,14 +206,16 @@ export function StoreSettingsProvider({ children }) {
             let surcharge = 0;
 
             if (settings.card_surcharge_type === "percentage") {
-                surcharge = Math.round(num * (surchargeValue / 100));
+                surcharge = roundUpTo50(num * (surchargeValue / 100));
             } else {
-                surcharge = Math.round(surchargeValue);
+                surcharge = roundUpTo50(surchargeValue);
             }
+
+            const totalWithSurcharge = roundUpTo50(num + surcharge);
 
             return {
                 surcharge,
-                totalWithSurcharge: num + surcharge,
+                totalWithSurcharge,
                 isEnabled: true,
                 type: settings.card_surcharge_type,
                 value: surchargeValue,

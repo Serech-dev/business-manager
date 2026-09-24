@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency, roundUpTo50 } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
 import { getBankAccounts } from "../../services/business";
@@ -16,6 +16,7 @@ function TransactionAmounts({
     onReceivedCashChange,
     ignoreDebtSurcharge = false,
     onToggleIgnoreDebtSurcharge,
+    isExchange = false,
 }) {
     const { settings, calculateDebtSurcharge, calculateCardSurcharge, getClientDebtLimit } = useStoreSettings();
     const isSingleMethod = amounts.length === 1;
@@ -34,19 +35,35 @@ function TransactionAmounts({
         };
     }, []);
 
-    // Ensure debt method is sanitized to cash when debt is disabled (e.g. debt payment)
+    // Ensure debt method is sanitized to cash when debt is disabled (e.g. debt payment or exchange)
     useEffect(() => {
-        if (disableDebt && amounts && amounts.some((a) => a.method === "debt")) {
+        if ((disableDebt || isExchange) && amounts && amounts.some((a) => a.method === "debt")) {
             const sanitized = amounts.map((a) =>
-                a.method === "debt" ? { ...a, method: "cash" } : a
+                a.method === "debt" ? { ...a, method: isExchange ? "transfer" : "cash" } : a
             );
             onAmountsChange?.(sanitized);
         }
-    }, [disableDebt, amounts, onAmountsChange]);
+    }, [disableDebt, isExchange, amounts, onAmountsChange]);
 
     const defaultBank = useMemo(() => {
         return bankAccounts.find((b) => b.is_default) || bankAccounts[0] || null;
     }, [bankAccounts]);
+
+    // Ensure digital payment amounts receive a valid bank account if none assigned
+    useEffect(() => {
+        if (!defaultBank) return;
+        const needsBank = amounts.some(
+            (a) => ["transfer", "card"].includes(a.method) && !a.bank_account
+        );
+        if (needsBank) {
+            const updated = amounts.map((a) =>
+                ["transfer", "card"].includes(a.method) && !a.bank_account
+                    ? { ...a, bank_account: defaultBank.id }
+                    : a
+            );
+            onAmountsChange?.(updated);
+        }
+    }, [defaultBank, amounts, onAmountsChange]);
 
     function handleSelectSingleMethod(method) {
         if (method === "debt" && !hasClient) {
@@ -83,14 +100,45 @@ function TransactionAmounts({
             onRequireClient?.();
         }
 
-        let updated = amounts.map((item, itemIndex) =>
-            itemIndex === index
-                ? {
-                    ...item,
-                    [field]: value,
+        let updated = amounts.map((item, itemIndex) => {
+            if (itemIndex !== index) return item;
+
+            const newItem = {
+                ...item,
+                [field]: value,
+            };
+
+            // When switching to digital payment, ensure default bank is assigned
+            if (field === "method") {
+                if (value === "transfer" || value === "card") {
+                    if (!newItem.bank_account && defaultBank?.id) {
+                        newItem.bank_account = defaultBank.id;
+                    }
+                } else {
+                    delete newItem.bank_account;
                 }
-                : item
-        );
+
+                if (targetTotal > 0 && amounts.length === 2) {
+                    const otherIndex = index === 0 ? 1 : 0;
+                    const otherAmt = Number(amounts[otherIndex].amount) || 0;
+                    const baseRemainder = Math.max(0, targetTotal - otherAmt);
+                    if (value === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                        newItem.amount = baseRemainder > 0 ? String(calculateDebtSurcharge(baseRemainder).totalWithSurcharge) : "";
+                    } else if (value === "card" && settings.card_surcharge_enabled) {
+                        newItem.amount = baseRemainder > 0 ? String(calculateCardSurcharge(baseRemainder).totalWithSurcharge) : "";
+                    } else {
+                        newItem.amount = baseRemainder > 0 ? String(roundUpTo50(baseRemainder)) : "";
+                    }
+                } else if (value === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    const currentAmt = Number(newItem.amount) || 0;
+                    if (currentAmt > 0) {
+                        newItem.amount = String(calculateDebtSurcharge(currentAmt).totalWithSurcharge);
+                    }
+                }
+            }
+
+            return newItem;
+        });
 
         // Auto-recalculate the other amount when splitting across 2 payment methods
         if (field === "amount" && targetTotal > 0 && updated.length === 2) {
@@ -98,9 +146,15 @@ function TransactionAmounts({
             const enteredVal = Number(value) || 0;
             if (value !== "" && enteredVal >= 0) {
                 const remainder = Math.max(0, targetTotal - enteredVal);
+                let finalOtherAmount = roundUpTo50(remainder);
+                if (updated[otherIndex].method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    finalOtherAmount = calculateDebtSurcharge(remainder).totalWithSurcharge;
+                } else if (updated[otherIndex].method === "card" && settings.card_surcharge_enabled) {
+                    finalOtherAmount = calculateCardSurcharge(remainder).totalWithSurcharge;
+                }
                 updated[otherIndex] = {
                     ...updated[otherIndex],
-                    amount: remainder > 0 ? String(remainder) : "0",
+                    amount: finalOtherAmount > 0 ? String(finalOtherAmount) : "0",
                 };
             }
         }
@@ -114,6 +168,8 @@ function TransactionAmounts({
             ? ["cash", "transfer", "card"]
             : ["cash", "transfer", "card", "debt"];
         const nextMethod = allMethods.find((m) => !usedMethods.has(m)) || "transfer";
+        const isDigital = nextMethod === "transfer" || nextMethod === "card";
+        const bankAccount = isDigital && defaultBank?.id ? defaultBank.id : undefined;
 
         if (targetTotal > 0) {
             const currentSum = amounts.reduce(
@@ -121,12 +177,19 @@ function TransactionAmounts({
                 0
             );
             const remainder = Math.max(0, targetTotal - currentSum);
+            let nextAmount = roundUpTo50(remainder);
+            if (nextMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                nextAmount = calculateDebtSurcharge(remainder).totalWithSurcharge;
+            } else if (nextMethod === "card" && settings.card_surcharge_enabled) {
+                nextAmount = calculateCardSurcharge(remainder).totalWithSurcharge;
+            }
 
             onAmountsChange([
                 ...amounts,
                 {
                     method: nextMethod,
-                    amount: remainder > 0 ? String(remainder) : "",
+                    amount: nextAmount > 0 ? String(nextAmount) : "",
+                    ...(bankAccount ? { bank_account: bankAccount } : {}),
                 },
             ]);
         } else {
@@ -135,6 +198,7 @@ function TransactionAmounts({
                 {
                     method: nextMethod,
                     amount: "",
+                    ...(bankAccount ? { bank_account: bankAccount } : {}),
                 },
             ]);
         }
@@ -144,9 +208,16 @@ function TransactionAmounts({
         if (amounts.length <= 1) return;
         const updated = amounts.filter((_, itemIndex) => itemIndex !== index);
         if (updated.length === 1 && targetTotal > 0) {
+            const method = updated[0].method;
+            let targetAmt = roundUpTo50(targetTotal);
+            if (method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                targetAmt = calculateDebtSurcharge(targetTotal).totalWithSurcharge;
+            } else if (method === "card" && settings.card_surcharge_enabled) {
+                targetAmt = calculateCardSurcharge(targetTotal).totalWithSurcharge;
+            }
             updated[0] = {
                 ...updated[0],
-                amount: String(targetTotal),
+                amount: String(targetAmt),
             };
         }
         onAmountsChange(updated);
@@ -210,17 +281,44 @@ function TransactionAmounts({
         };
     }, [amounts, client, getClientDebtLimit]);
 
-    const methods = [
-        { id: "cash", label: "Efectivo" },
-        { id: "transfer", label: "Transferencia" },
-        { id: "card", label: "Tarjeta" },
-        ...(!disableDebt ? [{ id: "debt", label: "A cuenta" }] : []),
-    ];
+    const methods = isExchange
+        ? [
+            { id: "transfer", label: "Transf. por Efectivo" },
+            { id: "cash", label: "Efectivo por Transf." },
+            { id: "card", label: "Tarjeta por Efectivo" },
+            ...(!disableDebt ? [{ id: "debt", label: "Fiado" }] : []),
+        ]
+        : [
+            { id: "cash", label: "Efectivo" },
+            { id: "transfer", label: "Transferencia" },
+            { id: "card", label: "Tarjeta" },
+            ...(!disableDebt ? [{ id: "debt", label: "Fiado" }] : []),
+        ];
+
+    const hasDebtMethod = amounts.some((a) => a.method === "debt");
+    const nonDebtSum = useMemo(() => {
+        return amounts
+            .filter((a) => a.method !== "debt")
+            .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    }, [amounts]);
+
+    const debtBaseTarget = useMemo(() => {
+        if (targetTotal <= 0) {
+            return amounts
+                .filter((a) => a.method === "debt")
+                .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        }
+        return isSingleMethod ? targetTotal : Math.max(0, targetTotal - nonDebtSum);
+    }, [targetTotal, isSingleMethod, nonDebtSum, amounts]);
+
+    const debtSurchargeInfo = useMemo(() => {
+        return calculateDebtSurcharge(debtBaseTarget);
+    }, [calculateDebtSurcharge, debtBaseTarget]);
 
     const hasCashMethod = amounts.some((a) => a.method === "cash");
 
     return (
-        <section className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+        <section className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-accent)]/40 px-4 py-2.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
@@ -280,7 +378,7 @@ function TransactionAmounts({
                                     value={amounts[0]?.amount || ""}
                                     onChange={(e) => updateAmount(0, "amount", e.target.value)}
                                     placeholder="0"
-                                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                    className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                                 />
                             </div>
 
@@ -295,7 +393,7 @@ function TransactionAmounts({
                                                 e.target.value ? Number(e.target.value) : null
                                             )
                                         }
-                                        className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] pl-3 pr-8 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
+                                        className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] pl-3 pr-8 text-xs font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
                                     >
                                         {bankAccounts.map((acc) => (
                                             <option key={acc.id} value={acc.id}>
@@ -335,11 +433,11 @@ function TransactionAmounts({
                         )}
 
                         {amounts[0]?.method === "debt" && settings.debt_surcharge_enabled && (
-                            <div className="rounded-lg border border-indigo-500/25 bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-300 space-y-1.5">
+                            <div className="rounded-md border border-indigo-500/25 bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-300 space-y-1.5">
                                 <div className="flex items-center justify-between font-bold">
                                     <div className="flex items-center gap-1.5">
                                         <span>
-                                            Recargo por cuenta corriente ({settings.debt_surcharge_type === "percentage" ? `${Number(settings.debt_surcharge_value)}%` : formatCurrency(Number(settings.debt_surcharge_value))}):
+                                            Recargo por fiado ({settings.debt_surcharge_type === "percentage" ? `${Number(settings.debt_surcharge_value)}%` : formatCurrency(Number(settings.debt_surcharge_value))}):
                                         </span>
                                         {ignoreDebtSurcharge && (
                                             <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
@@ -348,9 +446,9 @@ function TransactionAmounts({
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {targetTotal > 0 && !ignoreDebtSurcharge && (
+                                        {debtBaseTarget > 0 && !ignoreDebtSurcharge && (
                                             <span className="tabular-nums">
-                                                +{formatCurrency(calculateDebtSurcharge(targetTotal).surcharge)}
+                                                +{formatCurrency(debtSurchargeInfo.surcharge)}
                                             </span>
                                         )}
                                         {onToggleIgnoreDebtSurcharge && (
@@ -364,13 +462,13 @@ function TransactionAmounts({
                                         )}
                                     </div>
                                 </div>
-                                {targetTotal > 0 && (
+                                {debtBaseTarget > 0 && (
                                     <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                                        <span>Base: {formatCurrency(targetTotal)}</span>
+                                        <span>Base: {formatCurrency(debtBaseTarget)}</span>
                                         <span>
                                             {ignoreDebtSurcharge
-                                                ? `Total a cobrar (sin recargo): ${formatCurrency(targetTotal)}`
-                                                : `Total sugerido con recargo: ${formatCurrency(calculateDebtSurcharge(targetTotal).totalWithSurcharge)}`}
+                                                ? `Total a cobrar (sin recargo): ${formatCurrency(debtBaseTarget)}`
+                                                : `Total sugerido con recargo: ${formatCurrency(debtSurchargeInfo.totalWithSurcharge)}`}
                                         </span>
                                     </div>
                                 )}
@@ -410,12 +508,22 @@ function TransactionAmounts({
                                             onChange={(e) =>
                                                 updateAmount(index, "method", e.target.value)
                                             }
-                                            className="h-10 w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs sm:text-sm font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
+                                            className="h-10 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs sm:text-sm font-semibold text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
                                         >
-                                            <option value="cash">Efectivo</option>
-                                            <option value="transfer">Transferencia</option>
-                                            <option value="card">Tarjeta</option>
-                                            {!disableDebt && <option value="debt">A cuenta</option>}
+                                            {isExchange ? (
+                                                <>
+                                                    <option value="transfer">Transf. por Efectivo</option>
+                                                    <option value="cash">Efectivo por Transf.</option>
+                                                    <option value="card">Tarjeta por Efectivo</option>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <option value="cash">Efectivo</option>
+                                                    <option value="transfer">Transferencia</option>
+                                                    <option value="card">Tarjeta</option>
+                                                    {!disableDebt && <option value="debt">Fiado</option>}
+                                                </>
+                                            )}
                                         </select>
                                         <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
                                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
@@ -434,21 +542,21 @@ function TransactionAmounts({
                                                 updateAmount(index, "amount", e.target.value)
                                             }
                                             placeholder="0"
-                                            className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
+                                            className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
                                         />
                                     </div>
 
                                     <button
                                         type="button"
                                         onClick={() => removeAmount(index)}
-                                        className="h-10 w-10 flex items-center justify-center rounded-lg text-sm font-bold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition"
+                                        className="h-10 w-10 flex items-center justify-center rounded-md text-sm font-bold text-[var(--danger)] hover:bg-[var(--danger)]/10 transition"
                                         title="Eliminar medio"
                                     >
                                         ✕
                                     </button>
                                 </div>
 
-                                {["transfer", "card"].includes(item.method) && bankAccounts.length > 1 && (
+                                {["transfer", "card"].includes(item.method) && bankAccounts.length > 0 && (
                                     <div className="flex items-center gap-2 pl-1">
                                         <span className="text-[11px] text-[var(--text-secondary)]">Cuenta destino:</span>
                                         <div className="relative">
@@ -483,6 +591,50 @@ function TransactionAmounts({
                                 )}
                             </div>
                         ))}
+
+                        {/* FIADO SURCHARGE BANNER (SPLIT) */}
+                        {hasDebtMethod && settings.debt_surcharge_enabled && (
+                            <div className="rounded-md border border-indigo-500/25 bg-indigo-500/10 p-2.5 text-xs text-indigo-700 dark:text-indigo-300 space-y-1.5">
+                                <div className="flex items-center justify-between font-bold">
+                                    <div className="flex items-center gap-1.5">
+                                        <span>
+                                            Recargo por fiado ({settings.debt_surcharge_type === "percentage" ? `${Number(settings.debt_surcharge_value)}%` : formatCurrency(Number(settings.debt_surcharge_value))}):
+                                        </span>
+                                        {ignoreDebtSurcharge && (
+                                            <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                                                Omitido
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {debtBaseTarget > 0 && !ignoreDebtSurcharge && (
+                                            <span className="tabular-nums">
+                                                +{formatCurrency(debtSurchargeInfo.surcharge)}
+                                            </span>
+                                        )}
+                                        {onToggleIgnoreDebtSurcharge && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onToggleIgnoreDebtSurcharge(!ignoreDebtSurcharge)}
+                                                className="rounded-md border border-indigo-500/30 bg-[var(--surface)] px-2 py-0.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/10 transition shadow-2xs cursor-pointer"
+                                            >
+                                                {ignoreDebtSurcharge ? "Aplicar recargo" : "Omitir recargo"}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                {debtBaseTarget > 0 && (
+                                    <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                                        <span>Base en fiado: {formatCurrency(debtBaseTarget)}</span>
+                                        <span>
+                                            {ignoreDebtSurcharge
+                                                ? `Total fiado (sin recargo): ${formatCurrency(debtBaseTarget)}`
+                                                : `Total sugerido en fiado: ${formatCurrency(debtSurchargeInfo.totalWithSurcharge)}`}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* LIMIT BREACH WARNING (SPLIT) */}
                         {isLimitBreached && (

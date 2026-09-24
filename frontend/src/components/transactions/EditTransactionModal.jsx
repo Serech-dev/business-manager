@@ -7,7 +7,7 @@ import {
     createClient,
     getTransactionLabel,
 } from "../../services/business";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency, roundUpTo50 } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 
 function createEmptyOperation() {
@@ -193,7 +193,7 @@ function EditTransactionModal({
 
                 const isExchange = op.type === "exchange";
                 const exchangeNum = Number(op.exchangeAmount) || 0;
-                const exchangeFee = Math.round(exchangeNum * 0.1);
+                const exchangeFee = roundUpTo50(exchangeNum * 0.1);
                 const exchangeClientAmount = Math.max(0, exchangeNum - exchangeFee);
 
                 return {
