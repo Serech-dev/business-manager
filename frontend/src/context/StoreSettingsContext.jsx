@@ -103,9 +103,9 @@ export function StoreSettingsProvider({ children }) {
     }, []);
 
     const calculateExchangeFee = useCallback(
-        (amount) => {
+        (amount, mode = "payout") => {
             const num = Number(amount) || 0;
-            if (num <= 0) return { fee: 0, clientAmount: 0 };
+            if (num <= 0) return { fee: 0, clientAmount: 0, totalToCharge: 0 };
 
             const feeValue = Number(settings.exchange_fee_value) || 0;
             let fee = 0;
@@ -116,8 +116,19 @@ export function StoreSettingsProvider({ children }) {
                 fee = roundUpTo50(feeValue);
             }
 
-            const clientAmount = Math.max(0, num - fee);
-            return { fee, clientAmount };
+            let clientAmount = 0;
+            let totalToCharge = 0;
+
+            if (mode === "received") {
+                clientAmount = Math.max(0, num - fee);
+                totalToCharge = num;
+            } else {
+                // "payout": amount entered is what the customer receives in cash
+                clientAmount = num;
+                totalToCharge = num + fee;
+            }
+
+            return { fee, clientAmount, totalToCharge };
         },
         [settings.exchange_fee_type, settings.exchange_fee_value]
     );

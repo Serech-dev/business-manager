@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -20,6 +20,7 @@ import SaleProductSelector from "../components/transactions/SaleProductSelector"
 import ReceiptModal from "../components/transactions/ReceiptModal";
 import ProductModal from "../components/products/ProductModal";
 import DebtLimitAuthorizeModal from "../components/transactions/DebtLimitAuthorizeModal";
+import MoneyInput from "../components/MoneyInput";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useStoreSettings } from "../context/StoreSettingsContext";
 import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
@@ -63,16 +64,92 @@ function createNewOperation() {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: "sale",
         exchangeAmount: "",
+        exchangeMode: "payout",
         rechargeAmount: "",
         manualAmount: "",
         items: [],
-        amounts: [
-            {
-                method: "cash",
-                amount: "",
-            },
-        ],
+        paymentAmount: "",
     };
+}
+
+function allocateAmountsToOperations(opsWithTargets, validAmounts) {
+    if (opsWithTargets.length === 1) {
+        return [
+            {
+                ...opsWithTargets[0].op,
+                amounts:
+                    validAmounts.length > 0
+                        ? validAmounts
+                        : [{ method: "cash", amount: 0, bank_account: null }],
+            },
+        ];
+    }
+
+    const pools = validAmounts.map((a) => ({
+        method: a.method,
+        remaining: Number(a.amount),
+        bank_account: a.bank_account || null,
+    }));
+
+    // Prioritize constrained operations (payment and exchange cannot use debt)
+    const indexedOps = opsWithTargets.map((item, originalIndex) => ({
+        ...item,
+        originalIndex,
+    }));
+
+    indexedOps.sort((a, b) => {
+        const aNoDebt = a.op.type === "payment" || a.op.type === "exchange";
+        const bNoDebt = b.op.type === "payment" || b.op.type === "exchange";
+        if (aNoDebt && !bNoDebt) return -1;
+        if (!aNoDebt && bNoDebt) return 1;
+        return a.originalIndex - b.originalIndex;
+    });
+
+    const results = new Array(opsWithTargets.length);
+
+    indexedOps.forEach((item, idx) => {
+        const isLast = idx === indexedOps.length - 1;
+        const noDebtAllowed =
+            item.op.type === "payment" || item.op.type === "exchange";
+        let needed = item.targetTotal;
+        const opAmounts = [];
+
+        for (const pool of pools) {
+            if (pool.remaining <= 0) continue;
+            if (noDebtAllowed && pool.method === "debt") continue;
+            if (needed <= 0 && !isLast) break;
+
+            const take =
+                !isLast && needed > 0
+                    ? Math.min(pool.remaining, needed)
+                    : pool.remaining;
+
+            if (take > 0) {
+                opAmounts.push({
+                    method: pool.method,
+                    amount: take,
+                    bank_account: pool.bank_account,
+                });
+                pool.remaining -= take;
+                needed -= take;
+            }
+        }
+
+        if (opAmounts.length === 0) {
+            opAmounts.push({
+                method: validAmounts[0]?.method || "cash",
+                amount: 0,
+                bank_account: validAmounts[0]?.bank_account || null,
+            });
+        }
+
+        results[item.originalIndex] = {
+            ...item.op,
+            amounts: opAmounts,
+        };
+    });
+
+    return results;
 }
 
 function NewTransaction() {
@@ -87,6 +164,9 @@ function NewTransaction() {
     const [description, setDescription] = useState("");
     const [receivedCash, setReceivedCash] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
+    const [transactionAmounts, setTransactionAmounts] = useState([
+        { method: "cash", amount: "" },
+    ]);
     const [ignoreDebtSurcharge, setIgnoreDebtSurcharge] = useState(false);
     const [pendingDebtLimitData, setPendingDebtLimitData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -175,15 +255,10 @@ function NewTransaction() {
         if (selected && Number(selected.debt) > 0) {
             setOperations((prev) =>
                 prev.map((op) => {
-                    if (op.type === "payment" && op.amounts.length === 1 && !op.amounts[0].amount) {
+                    if (op.type === "payment" && !op.paymentAmount) {
                         return {
                             ...op,
-                            amounts: [
-                                {
-                                    ...op.amounts[0],
-                                    amount: String(Math.round(Number(selected.debt))),
-                                },
-                            ],
+                            paymentAmount: String(Math.round(Number(selected.debt))),
                         };
                     }
                     return op;
@@ -213,10 +288,11 @@ function NewTransaction() {
                     [field]: value,
                 };
 
-                // If type changed, reset inapplicable exchange/recharge fields
+                // If type changed, reset inapplicable fields
                 if (field === "type") {
                     if (value !== "exchange") {
                         updated.exchangeAmount = "";
+                        updated.exchangeMode = "payout";
                     }
                     if (value !== "sube" && value !== "phone") {
                         updated.rechargeAmount = "";
@@ -225,135 +301,10 @@ function NewTransaction() {
                         updated.items = [];
                         updated.manualAmount = "";
                     }
-                    if (value === "payment") {
-                        // Payment of debt cannot be paid with debt! Default any 'debt' method to 'cash'
-                        updated.amounts = (updated.amounts || []).map((a) =>
-                            a.method === "debt" ? { ...a, method: "cash" } : a
-                        );
-                    }
-                    // Recompute target total for the new type
-                    let targetTotal = 0;
-                    if (value === "sale") {
-                        targetTotal = roundUpTo50((op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0));
-                    } else if (value === "sube" && op.rechargeAmount) {
-                        targetTotal = calculateSubeFee(op.rechargeAmount).totalToCharge;
-                    } else if (value === "phone" && op.rechargeAmount) {
-                        targetTotal = calculatePhoneFee(op.rechargeAmount).totalToCharge;
-                    } else if (value === "exchange" && op.exchangeAmount) {
-                        targetTotal = Number(op.exchangeAmount) || 0;
-                    }
-                    if (updated.amounts.length === 1) {
-                        const currentMethod = updated.amounts[0]?.method || "cash";
-                        let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (value === "payment") {
-                            // If switching to payment, prefill with client debt if available, or keep previously entered amount
-                            if (client && Number(client.debt) > 0 && (!updated.amounts[0]?.amount || (op.items && op.items.length > 0))) {
-                                targetAmount = String(Math.round(Number(client.debt)));
-                            } else {
-                                targetAmount = updated.amounts[0]?.amount || "";
-                            }
-                        } else if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
-                            targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
-                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
-                            targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
-                        }
-                        updated.amounts = [
-                            {
-                                ...updated.amounts[0],
-                                amount: targetAmount,
-                            },
-                        ];
-                    }
-                }
-
-                // If exchange amount changed in an exchange operation, sync default amount
-                if (field === "exchangeAmount" && op.type === "exchange") {
-                    updated.amounts = [
-                        {
-                            method: op.amounts[0]?.method || "transfer",
-                            amount: value,
-                        },
-                    ];
-                }
-
-                // If recharge amount changed in a SUBE or phone recharge operation, sync total with fee & method surcharges
-                if (field === "rechargeAmount" && (op.type === "sube" || op.type === "phone")) {
-                    const feeInfo = op.type === "sube" ? calculateSubeFee(value) : calculatePhoneFee(value);
-                    const baseTotal = feeInfo.totalToCharge;
-                    if (updated.amounts.length === 1) {
-                        const currentMethod = updated.amounts[0]?.method || "cash";
-                        let targetAmount = baseTotal > 0 ? String(baseTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && baseTotal > 0) {
-                            targetAmount = String(calculateDebtSurcharge(baseTotal).totalWithSurcharge);
-                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && baseTotal > 0) {
-                            targetAmount = String(calculateCardSurcharge(baseTotal).totalWithSurcharge);
-                        }
-                        updated.amounts = [
-                            {
-                                ...updated.amounts[0],
-                                amount: targetAmount,
-                            },
-                        ];
-                    } else if (updated.amounts.length === 2 && baseTotal > 0) {
-                        const firstAmt = Number(updated.amounts[0].amount) || 0;
-                        const remainder = Math.max(0, baseTotal - firstAmt);
-                        let secondAmt = remainder;
-                        if (updated.amounts[1].method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
-                            secondAmt = calculateDebtSurcharge(remainder).totalWithSurcharge;
-                        } else if (updated.amounts[1].method === "card" && settings.card_surcharge_enabled) {
-                            secondAmt = calculateCardSurcharge(remainder).totalWithSurcharge;
-                        }
-                        updated.amounts = [
-                            updated.amounts[0],
-                            {
-                                ...updated.amounts[1],
-                                amount: secondAmt > 0 ? String(secondAmt) : "0",
-                            },
-                        ];
-                    }
-                }
-
-                // If items changed in a sale operation, sync default amount
-                if (field === "items" && op.type === "sale") {
-                    const itemsTotal = (value || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0);
-                    const manualTotal = Number(op.manualAmount) || 0;
-                    const targetTotal = roundUpTo50(itemsTotal + manualTotal);
-                    if (updated.amounts.length === 1) {
-                        const currentMethod = updated.amounts[0]?.method || "cash";
-                        let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
-                            targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
-                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
-                            targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
-                        }
-                        updated.amounts = [
-                            {
-                                ...updated.amounts[0],
-                                amount: targetAmount,
-                            },
-                        ];
-                    }
-                }
-
-                // If manual amount changed in a sale operation, sync default amount
-                if (field === "manualAmount" && op.type === "sale") {
-                    const itemsTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0);
-                    const manualTotal = Number(value) || 0;
-                    const targetTotal = roundUpTo50(itemsTotal + manualTotal);
-                    if (updated.amounts.length === 1) {
-                        const currentMethod = updated.amounts[0]?.method || "cash";
-                        let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                        if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
-                            targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
-                        } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
-                            targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
-                        }
-                        updated.amounts = [
-                            {
-                                ...updated.amounts[0],
-                                amount: targetAmount,
-                            },
-                        ];
+                    if (value !== "payment") {
+                        updated.paymentAmount = "";
+                    } else if (client && Number(client.debt) > 0 && !updated.paymentAmount) {
+                        updated.paymentAmount = String(Math.round(Number(client.debt)));
                     }
                 }
 
@@ -366,30 +317,9 @@ function NewTransaction() {
         setOperations((current) =>
             current.map((op, opIndex) => {
                 if (opIndex !== index) return op;
-
-                const itemsTotal = (items || []).reduce((sum, it) => sum + (Number(it.subtotal) || 0), 0);
-                const manualTotal = Number(op.manualAmount) || 0;
-                const targetTotal = itemsTotal + manualTotal;
-                let updatedAmounts = [...op.amounts];
-
-                if (updatedAmounts.length === 1) {
-                    const currentMethod = updatedAmounts[0]?.method || "cash";
-                    let targetAmount = targetTotal > 0 ? String(targetTotal) : "";
-                    if (currentMethod === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge && targetTotal > 0) {
-                        targetAmount = String(calculateDebtSurcharge(targetTotal).totalWithSurcharge);
-                    } else if (currentMethod === "card" && settings.card_surcharge_enabled && targetTotal > 0) {
-                        targetAmount = String(calculateCardSurcharge(targetTotal).totalWithSurcharge);
-                    }
-                    updatedAmounts[0] = {
-                        ...updatedAmounts[0],
-                        amount: targetAmount,
-                    };
-                }
-
                 return {
                     ...op,
                     items,
-                    amounts: updatedAmounts,
                 };
             })
         );
@@ -397,74 +327,127 @@ function NewTransaction() {
 
     function handleToggleIgnoreDebtSurcharge(ignored) {
         setIgnoreDebtSurcharge(ignored);
-        setOperations((current) =>
-            current.map((op) => {
-                let opTargetTotal = 0;
-                if (op.type === "sale") {
-                    opTargetTotal = (op.items || []).reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (Number(op.manualAmount) || 0);
-                } else if (op.type === "exchange") {
-                    opTargetTotal = Number(op.exchangeAmount) || 0;
-                } else if (op.type === "sube") {
-                    opTargetTotal = calculateSubeFee(op.rechargeAmount || "").totalToCharge;
-                } else if (op.type === "phone") {
-                    opTargetTotal = calculatePhoneFee(op.rechargeAmount || "").totalToCharge;
-                }
-
-                if (op.amounts.length === 1 && op.amounts[0]?.method === "debt") {
-                    const nextAmount = (ignored || !settings.debt_surcharge_enabled)
-                        ? (opTargetTotal > 0 ? String(opTargetTotal) : "")
-                        : (opTargetTotal > 0 ? String(calculateDebtSurcharge(opTargetTotal).totalWithSurcharge) : "");
-
-                    return {
-                        ...op,
-                        amounts: [
-                            {
-                                ...op.amounts[0],
-                                amount: nextAmount,
-                            },
-                        ],
-                    };
-                } else if (op.amounts.length > 1 && op.amounts.some((a) => a.method === "debt")) {
-                    const nonDebtSum = op.amounts
-                        .filter((a) => a.method !== "debt")
-                        .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                    const debtBase = Math.max(0, opTargetTotal - nonDebtSum);
-                    const nextDebtAmount = (ignored || !settings.debt_surcharge_enabled)
-                        ? debtBase
-                        : calculateDebtSurcharge(debtBase).totalWithSurcharge;
-
-                    return {
-                        ...op,
-                        amounts: op.amounts.map((a) =>
-                            a.method === "debt"
-                                ? { ...a, amount: nextDebtAmount > 0 ? String(nextDebtAmount) : "" }
-                                : a
-                        ),
-                    };
-                }
-                return op;
-            })
-        );
     }
 
-    const grandTotal = operations.reduce((total, op) => {
-        return (
-            total +
-            (op.amounts || []).reduce(
-                (sum, a) => sum + (Number(a.amount) || 0),
-                0
-            )
-        );
-    }, 0);
+    const getOpTargetTotal = useCallback(
+        (op) => {
+            if (op.type === "sale") {
+                const itemsTotal = (op.items || []).reduce(
+                    (s, it) => s + (Number(it.subtotal) || 0),
+                    0
+                );
+                const manualTotal = Number(op.manualAmount) || 0;
+                return roundUpTo50(itemsTotal + manualTotal);
+            }
+            if (op.type === "sube") {
+                return calculateSubeFee(op.rechargeAmount || 0).totalToCharge;
+            }
+            if (op.type === "phone") {
+                return calculatePhoneFee(op.rechargeAmount || 0).totalToCharge;
+            }
+            if (op.type === "exchange") {
+                return calculateExchangeFee(
+                    op.exchangeAmount || 0,
+                    op.exchangeMode || "payout"
+                ).totalToCharge;
+            }
+            if (op.type === "payment") {
+                return Number(op.paymentAmount) || 0;
+            }
+            return 0;
+        },
+        [calculateSubeFee, calculatePhoneFee, calculateExchangeFee]
+    );
 
-    const totalCashDue = operations.reduce((sum, op) => {
-        return (
-            sum +
-            (op.amounts || [])
-                .filter((a) => a.method === "cash")
-                .reduce((s, a) => s + (Number(a.amount) || 0), 0)
+    const grandTargetTotal = useMemo(() => {
+        return operations.reduce((sum, op) => sum + getOpTargetTotal(op), 0);
+    }, [operations, getOpTargetTotal]);
+
+    // Reactive sync for transactionAmounts when grandTargetTotal or surcharge settings change
+    useEffect(() => {
+        setTransactionAmounts((current) => {
+            if (current.length === 2 && grandTargetTotal > 0) {
+                const firstAmt = Number(current[0].amount) || 0;
+                const remainder = Math.max(0, grandTargetTotal - firstAmt);
+                let secondAmt = roundUpTo50(remainder);
+                if (
+                    current[1].method === "debt" &&
+                    settings.debt_surcharge_enabled &&
+                    !ignoreDebtSurcharge
+                ) {
+                    secondAmt = calculateDebtSurcharge(remainder).totalWithSurcharge;
+                } else if (
+                    current[1].method === "card" &&
+                    settings.card_surcharge_enabled
+                ) {
+                    secondAmt = calculateCardSurcharge(remainder).totalWithSurcharge;
+                }
+                const nextVal = secondAmt > 0 ? String(secondAmt) : "0";
+                if (current[1].amount !== nextVal) {
+                    return [current[0], { ...current[1], amount: nextVal }];
+                }
+                return current;
+            }
+
+            if (current.length === 1) {
+                const method = current[0]?.method || "cash";
+                let nextAmount = "";
+                if (grandTargetTotal > 0) {
+                    if (
+                        method === "debt" &&
+                        settings.debt_surcharge_enabled &&
+                        !ignoreDebtSurcharge
+                    ) {
+                        nextAmount = String(
+                            calculateDebtSurcharge(grandTargetTotal).totalWithSurcharge
+                        );
+                    } else if (
+                        method === "card" &&
+                        settings.card_surcharge_enabled
+                    ) {
+                        nextAmount = String(
+                            calculateCardSurcharge(grandTargetTotal).totalWithSurcharge
+                        );
+                    } else {
+                        nextAmount = String(roundUpTo50(grandTargetTotal));
+                    }
+                }
+
+                if (current[0]?.amount === nextAmount) {
+                    return current;
+                }
+
+                return [
+                    {
+                        ...current[0],
+                        amount: nextAmount,
+                    },
+                ];
+            }
+
+            return current;
+        });
+    }, [
+        grandTargetTotal,
+        settings.debt_surcharge_enabled,
+        settings.card_surcharge_enabled,
+        ignoreDebtSurcharge,
+        calculateDebtSurcharge,
+        calculateCardSurcharge,
+    ]);
+
+    const grandTotal = useMemo(() => {
+        return transactionAmounts.reduce(
+            (total, a) => total + (Number(a.amount) || 0),
+            0
         );
-    }, 0);
+    }, [transactionAmounts]);
+
+    const totalCashDue = useMemo(() => {
+        return transactionAmounts
+            .filter((a) => a.method === "cash")
+            .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    }, [transactionAmounts]);
 
     const executeSubmit = useCallback(async (allowOverLimit = false) => {
         setIsSubmitting(true);
@@ -479,59 +462,90 @@ function NewTransaction() {
                 clientId = newClient.id;
             }
 
-            const resolvedOperations = [];
+            const validAmounts = transactionAmounts
+                .filter(
+                    (item) => item.amount !== "" && Number(item.amount) > 0
+                )
+                .map((item) => ({
+                    method: item.method,
+                    amount: Number(item.amount),
+                    bank_account: ["transfer", "card"].includes(item.method)
+                        ? (item.bank_account ? Number(item.bank_account) : null)
+                        : null,
+                }));
+
+            const opsWithTargets = [];
 
             for (const op of operations) {
-                const validAmounts = op.amounts
-                    .filter(
-                        (item) => item.amount !== "" && Number(item.amount) > 0
-                    )
-                    .map((item) => ({
-                        method: item.method,
-                        amount: item.amount,
-                        bank_account: ["transfer", "card"].includes(item.method)
-                            ? (item.bank_account ? Number(item.bank_account) : null)
-                            : null,
-                    }));
-
                 const isExchange = op.type === "exchange";
                 const exchangeNum = Number(op.exchangeAmount) || 0;
-                const { clientAmount: exchangeClientAmount } = calculateExchangeFee(exchangeNum);
+                const {
+                    clientAmount: exchangeClientAmount,
+                    totalToCharge: exchangeTotalToCharge,
+                } = calculateExchangeFee(
+                    exchangeNum,
+                    op.exchangeMode || "payout"
+                );
 
+                let opTarget = 0;
                 let resolvedItems = [];
-                if (op.type === "sale" && op.items && op.items.length > 0) {
-                    for (const it of op.items) {
-                        let productId = it.product?.id || null;
-                        if (it.product && !it.product.id && it.product.name) {
-                            const newProd = await createProduct({
-                                name: it.product.name,
-                                sale_price: it.product.sale_price,
-                                cost_price: it.product.cost_price || 0,
-                                unit_type: it.unitType || "unit",
-                                category: it.product.category || null,
-                            });
-                            productId = newProd.id;
-                        }
 
-                        resolvedItems.push({
-                            product: productId,
-                            product_name: it.product?.name || "Producto",
-                            unit_type: it.unitType || "unit",
-                            quantity: it.quantity || 1,
-                            grams: it.grams || 0,
-                            unit_price: it.unitPrice || 0,
-                            subtotal: it.subtotal || 0,
-                        });
+                if (op.type === "sale") {
+                    if (op.items && op.items.length > 0) {
+                        for (const it of op.items) {
+                            let productId = it.product?.id || null;
+                            if (it.product && !it.product.id && it.product.name) {
+                                const newProd = await createProduct({
+                                    name: it.product.name,
+                                    sale_price: it.product.sale_price,
+                                    cost_price: it.product.cost_price || 0,
+                                    unit_type: it.unitType || "unit",
+                                    category: it.product.category || null,
+                                });
+                                productId = newProd.id;
+                            }
+
+                            resolvedItems.push({
+                                product: productId,
+                                product_name: it.product?.name || "Producto",
+                                unit_type: it.unitType || "unit",
+                                quantity: it.quantity || 1,
+                                grams: it.grams || 0,
+                                unit_price: it.unitPrice || 0,
+                                subtotal: it.subtotal || 0,
+                            });
+                        }
                     }
+                    const itemsTotal = (op.items || []).reduce(
+                        (s, it) => s + (Number(it.subtotal) || 0),
+                        0
+                    );
+                    const manualTotal = Number(op.manualAmount) || 0;
+                    opTarget = roundUpTo50(itemsTotal + manualTotal);
+                } else if (op.type === "sube") {
+                    opTarget = calculateSubeFee(op.rechargeAmount || 0).totalToCharge;
+                } else if (op.type === "phone") {
+                    opTarget = calculatePhoneFee(op.rechargeAmount || 0).totalToCharge;
+                } else if (op.type === "exchange") {
+                    opTarget = exchangeTotalToCharge;
+                } else if (op.type === "payment") {
+                    opTarget = Number(op.paymentAmount) || 0;
                 }
 
-                resolvedOperations.push({
-                    type: op.type,
-                    exchange_amount: isExchange ? exchangeClientAmount : null,
-                    amounts: validAmounts,
-                    items: resolvedItems,
+                opsWithTargets.push({
+                    targetTotal: opTarget,
+                    op: {
+                        type: op.type,
+                        exchange_amount: isExchange ? exchangeClientAmount : null,
+                        items: resolvedItems,
+                    },
                 });
             }
+
+            const resolvedOperations = allocateAmountsToOperations(
+                opsWithTargets,
+                validAmounts
+            );
 
             // Auto-generate description from cart items / services if no custom description is provided
             let finalDescription = description.trim();
@@ -565,17 +579,11 @@ function NewTransaction() {
                         itemSummaries.push(`Recarga Celular${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     } else if (op.type === "exchange") {
                         const amt = Number(op.exchangeAmount) || 0;
-                        const exMethod = op.amounts[0]?.method;
-                        const directionLabel = exMethod === "cash"
-                            ? "Efectivo por Transf."
-                            : exMethod === "debt"
-                                ? "Fiado"
-                                : exMethod === "card"
-                                    ? "Tarjeta por Efectivo"
-                                    : "Transf. por Efectivo";
-                        itemSummaries.push(`Cambio (${directionLabel})${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
+                        const modeLabel = (op.exchangeMode || "payout") === "payout" ? "Retiro" : "Recibido";
+                        itemSummaries.push(`Cambio (${modeLabel})${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     } else if (op.type === "payment") {
-                        itemSummaries.push("Pago a cuenta");
+                        const amt = Number(op.paymentAmount) || 0;
+                        itemSummaries.push(`A cuenta${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     }
                 }
                 if (itemSummaries.length > 0) {
@@ -638,6 +646,8 @@ function NewTransaction() {
         }
     }, [
         calculateExchangeFee,
+        calculatePhoneFee,
+        calculateSubeFee,
         client,
         description,
         navigate,
@@ -645,6 +655,7 @@ function NewTransaction() {
         printTicketOnSave,
         receivedCash,
         totalCashDue,
+        transactionAmounts,
     ]);
 
     const handleSubmit = useCallback(async (event) => {
@@ -652,9 +663,16 @@ function NewTransaction() {
         if (isSubmitting || grandTotal <= 0) return;
 
         // VALIDATION
-        const hasDebtAmount = operations.some((op) =>
-            op.amounts.some((a) => a.method === "debt" && Number(a.amount) > 0)
+        const validAmounts = transactionAmounts.filter(
+            (item) => item.amount !== "" && Number(item.amount) > 0
         );
+
+        if (validAmounts.length === 0) {
+            toast.error("Ingresá al menos un monto de pago válido.");
+            return;
+        }
+
+        const hasDebtAmount = validAmounts.some((a) => a.method === "debt");
 
         if ((hasPaymentOperation || hasDebtAmount) && !client) {
             toast.error(
@@ -672,30 +690,35 @@ function NewTransaction() {
                     ? `En la operación #${i + 1} (${getTransactionLabel(op.type)}): `
                     : "";
 
-            const validAmounts = op.amounts.filter(
-                (item) => item.amount !== "" && Number(item.amount) > 0
-            );
-
-            if (validAmounts.length === 0) {
-                toast.error(`${opLabel}Ingresá al menos un monto válido.`);
-                return;
-            }
-
-            if (
-                op.type === "exchange" &&
-                (!op.exchangeAmount || Number(op.exchangeAmount) <= 0)
-            ) {
-                toast.error(`${opLabel}Ingresá el monto de cambio.`);
-                return;
+            if (op.type === "sale") {
+                const hasItems = op.items && op.items.length > 0;
+                const hasManual = Number(op.manualAmount) > 0;
+                if (!hasItems && !hasManual) {
+                    toast.error(`${opLabel}Agregá productos al carrito o un monto manual.`);
+                    return;
+                }
+            } else if (op.type === "sube" || op.type === "phone") {
+                if (!op.rechargeAmount || Number(op.rechargeAmount) <= 0) {
+                    toast.error(`${opLabel}Ingresá el monto de recarga.`);
+                    return;
+                }
+            } else if (op.type === "exchange") {
+                if (!op.exchangeAmount || Number(op.exchangeAmount) <= 0) {
+                    toast.error(`${opLabel}Ingresá el monto de cambio.`);
+                    return;
+                }
+            } else if (op.type === "payment") {
+                if (!op.paymentAmount || Number(op.paymentAmount) <= 0) {
+                    toast.error(`${opLabel}Ingresá el monto a abonar a la cuenta.`);
+                    return;
+                }
             }
         }
 
         // Check credit limit if paying on account
-        const totalSaleDebt = operations.reduce((sum, op) => {
-            return sum + (op.amounts || [])
-                .filter((a) => a.method === "debt")
-                .reduce((s, a) => s + (Number(a.amount) || 0), 0);
-        }, 0);
+        const totalSaleDebt = validAmounts
+            .filter((a) => a.method === "debt")
+            .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
 
         const clientDebt = Number(client?.debt || 0);
         const effectiveLimit = client ? getClientDebtLimit(client) : null;
@@ -730,6 +753,7 @@ function NewTransaction() {
         isUnlocked,
         operations,
         requireOwnerAccess,
+        transactionAmounts,
     ]);
 
     // Global shortcut Ctrl+Enter or F9 to submit sale from anywhere
@@ -784,47 +808,47 @@ function NewTransaction() {
 
             <div className="space-y-6">
                 {/* OPERATIONS LIST (UNIFIED OPERATION CARDS) */}
-                <div className="space-y-5">
+                <div className="space-y-4">
                     {operations.map((op, index) => {
                         const isExchange = op.type === "exchange";
                         const isRecharge = op.type === "sube" || op.type === "phone";
-
-                        let opTargetTotal = 0;
-                        if (op.type === "sale") {
-                            opTargetTotal = roundUpTo50((op.items || []).reduce((s, it) => s + it.subtotal, 0) + (Number(op.manualAmount) || 0));
-                        } else if (op.type === "exchange") {
-                            opTargetTotal = Number(op.exchangeAmount) || 0;
-                        } else if (op.type === "sube") {
-                            opTargetTotal = calculateSubeFee(op.rechargeAmount || "").totalToCharge;
-                        } else if (op.type === "phone") {
-                            opTargetTotal = calculatePhoneFee(op.rechargeAmount || "").totalToCharge;
-                        }
+                        const opSubtotal = getOpTargetTotal(op);
 
                         return (
                             <article
                                 key={op.id}
-                                className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs space-y-4 p-4 sm:p-5"
+                                className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs space-y-4 p-4 sm:p-5"
                             >
-                                {/* OPERATION HEADER (WHEN MULTIPLE OPERATIONS) */}
-                                {operations.length > 1 && (
-                                    <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--primary)] text-xs font-bold text-white">
+                                {/* OPERATION HEADER */}
+                                <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                                    <div className="flex items-center gap-2">
+                                        {operations.length > 1 && (
+                                            <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-[var(--primary)] text-xs font-bold text-white">
                                                 {index + 1}
                                             </span>
-                                            <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                                                Operación #{index + 1}
-                                            </h3>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveOperation(index)}
-                                            className="text-xs font-semibold text-[var(--danger)] hover:underline"
-                                        >
-                                            Eliminar operación
-                                        </button>
+                                        )}
+                                        <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                            {operations.length > 1
+                                                ? `Operación #${index + 1}: ${getTransactionLabel(op.type)}`
+                                                : getTransactionLabel(op.type)}
+                                        </h3>
                                     </div>
-                                )}
+
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-bold text-[var(--text-primary)] tabular-nums">
+                                            Subtotal: {formatCurrency(opSubtotal)}
+                                        </span>
+                                        {operations.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveOperation(index)}
+                                                className="text-xs font-semibold text-[var(--danger)] hover:underline cursor-pointer"
+                                            >
+                                                Eliminar
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
 
                                 {/* PROMINENT TRANSACTION TYPE SELECTOR */}
                                 <div data-tour="sale-type-selector">
@@ -851,9 +875,9 @@ function NewTransaction() {
                                                             t.value
                                                         )
                                                     }
-                                                    className={`rounded-lg border py-3 px-3 text-xs sm:text-sm font-bold transition-all text-center ${
+                                                    className={`rounded-md border py-2.5 px-3 text-xs sm:text-sm font-bold transition-all text-center cursor-pointer ${
                                                         isSelected
-                                                            ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-sm ring-1 ring-[var(--primary)] scale-[1.01]"
+                                                            ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-xs scale-[1.01]"
                                                             : "border-[var(--border)] bg-[var(--surface-accent)]/80 text-[var(--text-primary)] hover:border-[var(--primary)]/50 hover:bg-[var(--surface-accent)]"
                                                     }`}
                                                 >
@@ -866,7 +890,7 @@ function NewTransaction() {
 
                                 {/* PRODUCT SELECTION & CART TABLE (FOR SALES) */}
                                 {op.type === "sale" && (
-                                    <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-accent)]/20 p-3.5 sm:p-4">
+                                    <div className="space-y-2 rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/20 p-3.5 sm:p-4">
                                         <SaleProductSelector
                                             products={products}
                                             categories={categories}
@@ -906,7 +930,7 @@ function NewTransaction() {
                                 {isExchange && (
                                     <TransactionExchange
                                         exchangeAmount={op.exchangeAmount}
-                                        currentMethod={op.amounts[0]?.method || "transfer"}
+                                        exchangeMode={op.exchangeMode || "payout"}
                                         onChangeExchangeAmount={(val) =>
                                             handleUpdateOperation(
                                                 index,
@@ -914,32 +938,73 @@ function NewTransaction() {
                                                 val
                                             )
                                         }
+                                        onChangeExchangeMode={(mode) =>
+                                            handleUpdateOperation(
+                                                index,
+                                                "exchangeMode",
+                                                mode
+                                            )
+                                        }
                                     />
                                 )}
 
-                                {/* PAYMENT METHODS & AMOUNTS (INTEGRATED DIRECTLY IN THE OPERATION CARD) */}
-                                <div data-tour="sale-payment-amounts">
-                                    <TransactionAmounts
-                                        amounts={op.amounts}
-                                        targetTotal={opTargetTotal}
-                                        onAmountsChange={(amounts) =>
-                                            handleUpdateOperation(
-                                                index,
-                                                "amounts",
-                                                amounts
-                                            )
-                                        }
-                                        isExchange={isExchange}
-                                        disableDebt={op.type === "payment"}
-                                        hasClient={Boolean(client)}
-                                        client={client}
-                                        ignoreDebtSurcharge={ignoreDebtSurcharge}
-                                        onToggleIgnoreDebtSurcharge={handleToggleIgnoreDebtSurcharge}
-                                        onRequireClient={() => {}}
-                                        receivedCash={receivedCash}
-                                        onReceivedCashChange={setReceivedCash}
-                                    />
-                                </div>
+                                {/* PAYMENT / A CUENTA DETAILS */}
+                                {op.type === "payment" && (
+                                    <div className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3.5 sm:p-4">
+                                        {client && Number(client.debt) > 0 && (
+                                            <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+                                                <div className="space-y-0.5">
+                                                    <span className="text-[var(--text-secondary)]">
+                                                        Deuda pendiente del cliente:
+                                                    </span>
+                                                    <strong className="block text-sm font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                                                        {formatCurrency(Number(client.debt))}
+                                                    </strong>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleUpdateOperation(
+                                                            index,
+                                                            "paymentAmount",
+                                                            String(Math.round(Number(client.debt)))
+                                                        )
+                                                    }
+                                                    className="rounded-md border border-amber-500/40 bg-amber-500/20 px-2.5 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 transition cursor-pointer"
+                                                >
+                                                    Abonar deuda total
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label
+                                                htmlFor={`payment-amount-${op.id}`}
+                                                className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
+                                            >
+                                                Monto a abonar a la cuenta ($)
+                                            </label>
+                                            <div className="relative">
+                                                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-secondary)]">
+                                                    $
+                                                </span>
+                                                <MoneyInput
+                                                    id={`payment-amount-${op.id}`}
+                                                    value={op.paymentAmount || ""}
+                                                    onChange={(e) =>
+                                                        handleUpdateOperation(
+                                                            index,
+                                                            "paymentAmount",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </article>
                         );
                     })}
@@ -949,14 +1014,14 @@ function NewTransaction() {
                 <button
                     type="button"
                     onClick={handleAddOperation}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] py-3 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-accent)]/50"
+                    className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-[var(--border)] bg-[var(--surface)] py-3 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-accent)]/50 cursor-pointer"
                 >
                     <span>+</span>
                     <span>Agregar otra operación a esta venta</span>
                 </button>
 
                 {/* CLIENT & NOTES (SLEEK INLINE 2-COLUMN TOOLBAR) */}
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
@@ -984,10 +1049,49 @@ function NewTransaction() {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Ej: Descuento aplicado, pedido especial, etc."
-                                className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-xs sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                             />
                         </div>
                     </div>
+                </div>
+
+                {/* UNIFIED PAYMENT SECTION */}
+                <div
+                    data-tour="sale-payment-amounts"
+                    className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-4"
+                >
+                    <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                        <div>
+                            <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                                Método de pago
+                            </h2>
+                            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                Seleccioná el método para abonar el total de la transacción
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-[11px] uppercase tracking-wider text-[var(--text-secondary)] block">
+                                Total a cubrir
+                            </span>
+                            <span className="text-base sm:text-lg font-black text-[var(--text-primary)] tabular-nums">
+                                {formatCurrency(grandTargetTotal)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <TransactionAmounts
+                        amounts={transactionAmounts}
+                        targetTotal={grandTargetTotal}
+                        onAmountsChange={setTransactionAmounts}
+                        disableDebt={hasPaymentOperation}
+                        hasClient={Boolean(client)}
+                        client={client}
+                        ignoreDebtSurcharge={ignoreDebtSurcharge}
+                        onToggleIgnoreDebtSurcharge={handleToggleIgnoreDebtSurcharge}
+                        onRequireClient={() => {}}
+                        receivedCash={receivedCash}
+                        onReceivedCashChange={setReceivedCash}
+                    />
                 </div>
 
                 {/* BOTTOM CHECKOUT BAR (STICKY) */}

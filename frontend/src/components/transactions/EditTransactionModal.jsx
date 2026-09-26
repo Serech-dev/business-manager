@@ -7,8 +7,9 @@ import {
     createClient,
     getTransactionLabel,
 } from "../../services/business";
-import { formatCurrency, roundUpTo50 } from "../../utils/formatCurrency";
+import { formatCurrency } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
+import { useStoreSettings } from "../../context/StoreSettingsContext";
 
 function createEmptyOperation() {
     return {
@@ -30,6 +31,7 @@ function EditTransactionModal({
     transaction,
     onSuccess,
 }) {
+    const { calculateExchangeFee } = useStoreSettings();
     const [client, setClient] = useState(null);
     const [description, setDescription] = useState("");
     const [operations, setOperations] = useState([]);
@@ -193,8 +195,7 @@ function EditTransactionModal({
 
                 const isExchange = op.type === "exchange";
                 const exchangeNum = Number(op.exchangeAmount) || 0;
-                const exchangeFee = roundUpTo50(exchangeNum * 0.1);
-                const exchangeClientAmount = Math.max(0, exchangeNum - exchangeFee);
+                const { clientAmount: exchangeClientAmount } = calculateExchangeFee(exchangeNum);
 
                 return {
                     type: op.type,

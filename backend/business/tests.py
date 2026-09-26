@@ -734,4 +734,202 @@ class ProviderDebtAndCreditLimitTests(TestCase):
         self.assertEqual(res2.status_code, status.HTTP_201_CREATED, res2.data)
 
 
+class CurrencyExchangeAndMultiOperationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="exchangetestuser",
+            email="exchange@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("50000.00"),
+            initial_bank=Decimal("50000.00"),
+        )
+        self.bank_account = BankAccount.objects.create(
+            user=self.user,
+            name="Mercado Pago",
+            account_type=BankAccount.AccountType.VIRTUAL_WALLET,
+            is_default=True,
+        )
+        self.test_client = Client.objects.create(
+            user=self.user,
+            name="Juan Perez",
+            debt_limit=Decimal("50000.00"),
+        )
+
+    def test_transfer_for_cash_exchange(self):
+        # Client withdraws $50,000 cash, transfers $55,000 ($5,000 fee)
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "exchange",
+                        "exchange_amount": 50000,
+                        "amounts": [
+                            {
+                                "method": "transfer",
+                                "amount": 55000,
+                                "received": True,
+                                "bank_account": self.bank_account.id,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        op_data = res.data["operations"][0]
+        self.assertEqual(Decimal(str(op_data["exchange_fee"])), Decimal("5000"))
+
+        # Verify register drawer physical cash reduced by $50,000, bank increased by $55,000, revenue is only fee $5,000
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(reg_res.data["total"])), Decimal("5000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("50000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(reg_res.data["bank_in"])), Decimal("55000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_bank"])), Decimal("105000.00"))
+
+    def test_cash_for_virtual_exchange(self):
+        # Client pays $55,000 cash, receives $50,000 virtual transfer from store ($5,000 fee)
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "exchange",
+                        "exchange_amount": 50000,
+                        "amounts": [
+                            {
+                                "method": "cash",
+                                "amount": 55000,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        op_data = res.data["operations"][0]
+        self.assertEqual(Decimal(str(op_data["exchange_fee"])), Decimal("5000"))
+
+        # Verify register drawer physical cash increased by $55,000, bank decreased by $50,000, revenue is only fee $5,000
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(reg_res.data["total"])), Decimal("5000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["cash_in"])), Decimal("55000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("105000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["bank_out"])), Decimal("50000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_bank"])), Decimal("0.00"))
+
+    def test_card_for_cash_exchange(self):
+        # Client pays $22,000 on card, receives $20,000 cash ($2,000 fee)
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "exchange",
+                        "exchange_amount": 20000,
+                        "amounts": [
+                            {
+                                "method": "card",
+                                "amount": 22000,
+                                "bank_account": self.bank_account.id,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        op_data = res.data["operations"][0]
+        self.assertEqual(Decimal(str(op_data["exchange_fee"])), Decimal("2000"))
+
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(reg_res.data["total"])), Decimal("2000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("20000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("30000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["bank_in"])), Decimal("22000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_bank"])), Decimal("72000.00"))
+
+    def test_fiado_for_cash_exchange(self):
+        # Client takes $10,000 cash on account (fiado), debt increases by $11,000 ($1,000 fee)
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": self.test_client.id,
+                "operations": [
+                    {
+                        "type": "exchange",
+                        "exchange_amount": 10000,
+                        "amounts": [
+                            {
+                                "method": "debt",
+                                "amount": 11000,
+                            }
+                        ],
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        op_data = res.data["operations"][0]
+        self.assertEqual(Decimal(str(op_data["exchange_fee"])), Decimal("1000"))
+
+        # Verify client debt balance increased by $11,000
+        client_res = self.client.get(f"/api/business/clients/{self.test_client.id}/")
+        self.assertEqual(client_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(client_res.data["debt"])), Decimal("11000"))
+
+        # Verify register drawer physical cash reduced by $10,000, revenue is only fee $1,000
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(reg_res.data["total"])), Decimal("1000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("10000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("40000.00"))
+
+    def test_multi_operation_sale_and_exchange(self):
+        # Transaction combining a sale ($10,000 cash) and an exchange ($20,000 cash, $22,000 transferred)
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {"method": "cash", "amount": 10000}
+                        ],
+                    },
+                    {
+                        "type": "exchange",
+                        "exchange_amount": 20000,
+                        "amounts": [
+                            {
+                                "method": "transfer",
+                                "amount": 22000,
+                                "received": True,
+                                "bank_account": self.bank_account.id,
+                            }
+                        ],
+                    },
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        self.assertEqual(len(res.data["operations"]), 2)
+
+
+
 

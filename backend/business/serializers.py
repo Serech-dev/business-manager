@@ -304,8 +304,6 @@ class TransactionOperationSerializer(
         paid_amount = sum(
             amount["amount"]
             for amount in amounts
-            if amount["method"]
-            != TransactionOperationAmount.Method.DEBT
         )
 
         fee = (
@@ -585,6 +583,9 @@ class TransactionSerializer(
                     amounts,
                 )
             )
+            operation.save(
+                update_fields=["exchange_fee"]
+            )
 
             user = self.context["request"].user if "request" in self.context else transaction.user
             default_bank = BankAccount.objects.filter(user=user, is_default=True, is_active=True).first()
@@ -831,26 +832,43 @@ class RegisterListSerializer(serializers.ModelSerializer):
                 is_out = self._is_outgoing(op)
                 op_money = self._get_operation_money_amount(op)
 
-                if is_out:
-                    money_out += op_money
-                else:
-                    money_in += op_money
-
                 if op.type == TransactionOperation.Type.EXCHANGE:
                     fee = op.exchange_fee or Decimal("0")
                     total += fee
-                    for amount in op.amounts.all():
-                        if not self._is_money_movement(amount):
-                            continue
-                        if amount.method == TransactionOperationAmount.Method.CASH:
-                            cash_in += fee
-                        elif amount.method in [
-                            TransactionOperationAmount.Method.TRANSFER,
-                            TransactionOperationAmount.Method.CARD,
-                        ]:
-                            bank_in += fee
-                        break
+
+                    if op_money >= 0:
+                        money_in += op_money
+                    else:
+                        money_out += abs(op_money)
+
+                    is_cash_exchange = any(
+                        amount.method == TransactionOperationAmount.Method.CASH
+                        for amount in op.amounts.all()
+                    )
+
+                    if is_cash_exchange:
+                        # Cash received into drawer, virtual money sent out of bank
+                        for amount in op.amounts.all():
+                            if amount.method == TransactionOperationAmount.Method.CASH:
+                                cash_in += amount.amount
+                        bank_out += (op.exchange_amount or Decimal("0"))
+                    else:
+                        # Physical cash handed out of drawer to customer
+                        cash_out += (op.exchange_amount or Decimal("0"))
+                        for amount in op.amounts.all():
+                            if not self._is_money_movement(amount):
+                                continue
+                            if amount.method in [
+                                TransactionOperationAmount.Method.TRANSFER,
+                                TransactionOperationAmount.Method.CARD,
+                            ]:
+                                bank_in += amount.amount
                 else:
+                    if is_out:
+                        money_out += op_money
+                    else:
+                        money_in += op_money
+
                     for amount in op.amounts.all():
                         total += amount.amount
                         if not self._is_money_movement(amount):
@@ -1115,9 +1133,11 @@ class RegisterSerializer(
                 if self._is_outgoing(operation):
                     continue
 
-                total += self._get_operation_money_amount(
+                op_money = self._get_operation_money_amount(
                     operation
                 )
+                if op_money > 0:
+                    total += op_money
 
         return total
 
@@ -1128,12 +1148,16 @@ class RegisterSerializer(
 
             for operation in transaction.operations.all():
 
-                if not self._is_outgoing(operation):
-                    continue
-
-                total += self._get_operation_money_amount(
-                    operation
-                )
+                if self._is_outgoing(operation):
+                    total += self._get_operation_money_amount(
+                        operation
+                    )
+                elif operation.type == TransactionOperation.Type.EXCHANGE:
+                    op_money = self._get_operation_money_amount(
+                        operation
+                    )
+                    if op_money < 0:
+                        total += abs(op_money)
 
         return total
 
@@ -1157,18 +1181,28 @@ class RegisterSerializer(
                 is_out = self._is_outgoing(operation)
 
                 if operation.type == TransactionOperation.Type.EXCHANGE:
-                    fee = operation.exchange_fee or Decimal("0")
-                    for amount in operation.amounts.all():
-                        if not self._is_money_movement(amount):
-                            continue
-                        if amount.method == TransactionOperationAmount.Method.CASH:
-                            cash_in += fee
-                        elif amount.method in [
-                            TransactionOperationAmount.Method.TRANSFER,
-                            TransactionOperationAmount.Method.CARD,
-                        ]:
-                            bank_in += fee
-                        break
+                    is_cash_exchange = any(
+                        amount.method == TransactionOperationAmount.Method.CASH
+                        for amount in operation.amounts.all()
+                    )
+
+                    if is_cash_exchange:
+                        # Cash received into drawer, virtual money sent out of bank
+                        for amount in operation.amounts.all():
+                            if amount.method == TransactionOperationAmount.Method.CASH:
+                                cash_in += amount.amount
+                        bank_out += (operation.exchange_amount or Decimal("0"))
+                    else:
+                        # Physical cash handed out of drawer to customer
+                        cash_out += (operation.exchange_amount or Decimal("0"))
+                        for amount in operation.amounts.all():
+                            if not self._is_money_movement(amount):
+                                continue
+                            if amount.method in [
+                                TransactionOperationAmount.Method.TRANSFER,
+                                TransactionOperationAmount.Method.CARD,
+                            ]:
+                                bank_in += amount.amount
                     continue
 
                 for amount in operation.amounts.all():
@@ -1341,20 +1375,31 @@ class RegisterSerializer(
                 is_out = self._is_outgoing(op)
 
                 if op.type == TransactionOperation.Type.EXCHANGE:
-                    fee = op.exchange_fee or Decimal("0")
-                    for amount in op.amounts.all():
-                        if not self._is_money_movement(amount):
-                            continue
-                        if amount.method in [
-                            TransactionOperationAmount.Method.TRANSFER,
-                            TransactionOperationAmount.Method.CARD,
-                        ]:
+                    is_cash_exchange = any(
+                        amount.method == TransactionOperationAmount.Method.CASH
+                        for amount in op.amounts.all()
+                    )
+                    if is_cash_exchange:
+                        for amount in op.amounts.all():
                             acc_id = amount.bank_account_id
                             target = accounts_map.get(acc_id, unassigned if acc_id is None else None)
                             if target:
-                                target["money_in"] += fee
+                                target["money_out"] += (op.exchange_amount or Decimal("0"))
                                 touched_account_ids_in_tx.add(acc_id)
-                        break
+                            break
+                    else:
+                        for amount in op.amounts.all():
+                            if not self._is_money_movement(amount):
+                                continue
+                            if amount.method in [
+                                TransactionOperationAmount.Method.TRANSFER,
+                                TransactionOperationAmount.Method.CARD,
+                            ]:
+                                acc_id = amount.bank_account_id
+                                target = accounts_map.get(acc_id, unassigned if acc_id is None else None)
+                                if target:
+                                    target["money_in"] += amount.amount
+                                    touched_account_ids_in_tx.add(acc_id)
                     continue
 
                 for amount in op.amounts.all():
