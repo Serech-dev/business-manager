@@ -15,6 +15,7 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
 
   /* DEFAULT / DARK THEME */
   --background: #0b0d13;
@@ -53,6 +54,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --background: #0b0d13;
   --surface: #151822;
   --surface-accent: #1e2230;
@@ -89,6 +91,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --background: #edf1f7;
   --surface: #ffffff;
   --surface-accent: #e2e8f2;
@@ -162,10 +165,32 @@ input[type="number"] {
   appearance: textfield;
 }
 
-/* Global Select & Option styling to prevent OS default white boxes */
+/* Global Input, Select & Option styling to prevent OS default white boxes */
+input, select, textarea {
+  color-scheme: inherit;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
 select option {
   background-color: var(--surface);
   color: var(--text-primary);
+}
+
+/* Prevent browser autofill from painting inputs bright white */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--background) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* THEMED SLICK SCROLLBARS */
