@@ -23,6 +23,7 @@ export default function AdminAnnouncementsSection() {
     const [etaMinutes, setEtaMinutes] = useState("");
     const [showReloadButton, setShowReloadButton] = useState(true);
     const [allowDismiss, setAllowDismiss] = useState(true);
+    const [autoDismissOnReload, setAutoDismissOnReload] = useState(true);
 
     const loadAnnouncements = useCallback(async () => {
         setIsLoading(true);
@@ -101,6 +102,7 @@ export default function AdminAnnouncementsSection() {
                     is_active: true,
                     show_reload_button: false,
                     allow_dismiss: false,
+                    auto_dismiss_on_reload: false,
                     eta_minutes: "2 a 5 min",
                 };
             } else if (presetKey === "update") {
@@ -111,6 +113,7 @@ export default function AdminAnnouncementsSection() {
                     is_active: true,
                     show_reload_button: true,
                     allow_dismiss: true,
+                    auto_dismiss_on_reload: true,
                     eta_minutes: null,
                 };
             }
@@ -143,6 +146,7 @@ export default function AdminAnnouncementsSection() {
                 eta_minutes: etaMinutes.trim() || null,
                 show_reload_button: showReloadButton,
                 allow_dismiss: allowDismiss,
+                auto_dismiss_on_reload: autoDismissOnReload,
                 is_active: true,
             });
 
@@ -461,6 +465,25 @@ export default function AdminAnnouncementsSection() {
                                 </button>
                                 <span className="text-xs text-[var(--text-primary)] select-none">
                                     Permitir que el comerciante lo cierre
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setAutoDismissOnReload(!autoDismissOnReload)}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                        autoDismissOnReload ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+                                    }`}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                            autoDismissOnReload ? "translate-x-4" : "translate-x-0"
+                                        }`}
+                                    />
+                                </button>
+                                <span className="text-xs text-[var(--text-primary)] select-none">
+                                    Ocultar al recargar (Ctrl + F5)
                                 </span>
                             </div>
                         </div>

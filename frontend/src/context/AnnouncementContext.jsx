@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import toast from "react-hot-toast";
 import { getActiveAnnouncement } from "../services/announcements";
 
 const AnnouncementContext = createContext(null);
@@ -13,12 +14,47 @@ export function AnnouncementProvider({ children }) {
             const data = await getActiveAnnouncement();
             if (data && data.is_active) {
                 setActiveAnnouncement(data);
+
                 const storedDismissedId = localStorage.getItem("dismissed_announcement_id");
                 if (data.allow_dismiss && String(storedDismissedId) === String(data.id)) {
                     setIsDismissed(true);
-                } else {
-                    setIsDismissed(false);
+                    return;
                 }
+
+                // AUTO-DISMISS ON REFRESH:
+                // If the announcement has auto_dismiss_on_reload enabled (or is an update / prompts for reload):
+                const shouldAutoDismissOnReload =
+                    data.auto_dismiss_on_reload !== false &&
+                    (data.announcement_type === "update" ||
+                        data.show_reload_button ||
+                        data.auto_dismiss_on_reload);
+
+                if (shouldAutoDismissOnReload) {
+                    const seenKey = `bm_announcement_seen_${data.id}`;
+                    const alreadySeenBeforeThisLoad = sessionStorage.getItem(seenKey);
+                    if (alreadySeenBeforeThisLoad) {
+                        // The user already saw this notice before refreshing the page.
+                        // Now that the page reloaded, dismiss it so it is removed!
+                        localStorage.setItem("dismissed_announcement_id", String(data.id));
+                        setIsDismissed(true);
+
+                        // Show a reassuring toast confirming the update
+                        const toastKey = `bm_update_toast_${data.id}`;
+                        if (!sessionStorage.getItem(toastKey)) {
+                            sessionStorage.setItem(toastKey, "true");
+                            toast.success("¡Sistema actualizado a la última versión!", {
+                                id: "pwa-update-success",
+                                duration: 4000,
+                            });
+                        }
+                        return;
+                    }
+
+                    // First time seen in this tab session: record it
+                    sessionStorage.setItem(seenKey, "true");
+                }
+
+                setIsDismissed(false);
             } else {
                 setActiveAnnouncement(null);
                 setIsDismissed(false);
@@ -57,6 +93,10 @@ export function AnnouncementProvider({ children }) {
 
     const forceAppReload = useCallback(async () => {
         setIsReloading(true);
+        if (activeAnnouncement) {
+            localStorage.setItem("dismissed_announcement_id", String(activeAnnouncement.id));
+            sessionStorage.setItem(`bm_announcement_seen_${activeAnnouncement.id}`, "true");
+        }
         try {
             // 1. Force update and trigger service workers
             if ("serviceWorker" in navigator) {
@@ -79,7 +119,7 @@ export function AnnouncementProvider({ children }) {
             // 3. Force cache-busting reload
             window.location.reload(true);
         }
-    }, []);
+    }, [activeAnnouncement]);
 
     return (
         <AnnouncementContext.Provider

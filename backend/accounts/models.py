@@ -553,6 +553,10 @@ class SystemAnnouncement(models.Model):
     is_active = models.BooleanField(default=True)
     show_reload_button = models.BooleanField(default=True)
     allow_dismiss = models.BooleanField(default=True)
+    auto_dismiss_on_reload = models.BooleanField(
+        default=True,
+        help_text="Se oculta automáticamente en el navegador una vez que el usuario recarga la página",
+    )
     eta_minutes = models.CharField(
         max_length=100,
         blank=True,

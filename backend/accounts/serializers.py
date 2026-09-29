@@ -292,6 +292,7 @@ class SystemAnnouncementSerializer(serializers.ModelSerializer):
             "is_active",
             "show_reload_button",
             "allow_dismiss",
+            "auto_dismiss_on_reload",
             "eta_minutes",
             "created_by_username",
             "created_at",
