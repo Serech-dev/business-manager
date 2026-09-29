@@ -121,13 +121,19 @@ function ReceiptTicket({
                     </div>
                 )}
                 {transaction.is_delivery && (
-                    <div className="text-left text-[10px] pt-1 space-y-0.5 border-t border-dotted border-gray-300">
-                        <div className="font-bold uppercase tracking-wider">*** PEDIDO CON ENVÍO ***</div>
+                    <div className="text-center text-[10px] pt-1.5 space-y-0.5 border-t border-dotted border-gray-300">
+                        <div className="font-bold uppercase tracking-wider text-black">
+                            *** PEDIDO CON ENVÍO ***
+                        </div>
                         {transaction.delivery_address && (
-                            <div><span className="font-semibold">Entrega:</span> {transaction.delivery_address}</div>
+                            <div>
+                                <span className="font-semibold">Entrega:</span> {transaction.delivery_address}
+                            </div>
                         )}
                         {transaction.delivery_notes && (
-                            <div className="italic text-gray-700">Obs: {transaction.delivery_notes}</div>
+                            <div className="italic text-gray-700">
+                                Obs: {transaction.delivery_notes}
+                            </div>
                         )}
                     </div>
                 )}
