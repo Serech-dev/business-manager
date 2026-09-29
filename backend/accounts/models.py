@@ -536,3 +536,43 @@ class PaymentNotification(models.Model):
     def __str__(self):
         return f"Pago #{self.id} ({self.get_payment_method_display()}) de {self.user.email} - ${self.amount} ({self.get_status_display()})"
 
+
+class SystemAnnouncement(models.Model):
+    class AnnouncementType(models.TextChoices):
+        MAINTENANCE = "maintenance", "Mantenimiento / Parada Técnica"
+        UPDATE = "update", "Nueva Actualización"
+        INFO = "info", "Aviso Informativo"
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    announcement_type = models.CharField(
+        max_length=20,
+        choices=AnnouncementType.choices,
+        default=AnnouncementType.UPDATE,
+    )
+    is_active = models.BooleanField(default=True)
+    show_reload_button = models.BooleanField(default=True)
+    allow_dismiss = models.BooleanField(default=True)
+    eta_minutes = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Ej: '2 a 5 minutos' o '10 min'",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="announcements_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        status = "Activo" if self.is_active else "Inactivo"
+        return f"[{status}] {self.title} ({self.get_announcement_type_display()})"
+

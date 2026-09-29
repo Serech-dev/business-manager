@@ -8,6 +8,7 @@ import {
     reviewAdminPayment,
 } from "../services/auth";
 import { useSubscription } from "../context/SubscriptionContext";
+import AdminAnnouncementsSection from "../components/announcements/AdminAnnouncementsSection";
 
 function AdminPanel() {
     const navigate = useNavigate();
@@ -290,6 +291,9 @@ function AdminPanel() {
                     </div>
                 </div>
             )}
+
+            {/* GLOBAL ANNOUNCEMENTS & MAINTENANCE BROADCAST */}
+            <AdminAnnouncementsSection />
 
             {/* STORES LIST & MANAGEMENT */}
             <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs overflow-hidden space-y-4">

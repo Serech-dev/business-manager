@@ -4,6 +4,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import HelpButton from "./HelpButton";
 import MobileSimpleLayout from "./mobile/MobileSimpleLayout";
+import SystemAnnouncementBanner from "./announcements/SystemAnnouncementBanner";
 import { getCurrentRegister } from "../services/business";
 import { useDeviceMode } from "../hooks/useDeviceMode";
 
@@ -37,14 +38,19 @@ function AppLayout() {
                 />
             </div>
 
-            <main className="ml-64 min-h-screen print:ml-0 print:p-0">
-                <Outlet
-                    context={{
-                        register,
-                        setRegister,
-                        loadRegister,
-                    }}
-                />
+            <main className="ml-64 min-h-screen print:ml-0 print:p-0 flex flex-col">
+                <div className="print:hidden">
+                    <SystemAnnouncementBanner />
+                </div>
+                <div className="flex-1">
+                    <Outlet
+                        context={{
+                            register,
+                            setRegister,
+                            loadRegister,
+                        }}
+                    />
+                </div>
             </main>
 
             <div className="print:hidden">

@@ -1,8 +1,12 @@
 from django.urls import path
 
-from .views import (AdminManageSubscriptionView,
+from .views import (ActiveSystemAnnouncementView,
+                    AdminManageSubscriptionView,
                     AdminPaymentNotificationsListView,
-                    AdminReviewPaymentNotificationView, AdminStoresListView,
+                    AdminReviewPaymentNotificationView,
+                    AdminStoresListView,
+                    AdminSystemAnnouncementDetailView,
+                    AdminSystemAnnouncementListView,
                     CreateCheckoutPreferenceView, LoginView, LogoutView,
                     MercadoPagoWebhookView, MyPaymentNotificationsView,
                     NotifyPaymentView, RegisterView, SubscriptionView,
@@ -18,6 +22,11 @@ urlpatterns = [
     path("subscription/verify-payment/", VerifyPaymentStatusView.as_view(), name="verify-payment-status"),
     path("subscription/notify-payment/", NotifyPaymentView.as_view(), name="notify-payment"),
     path("subscription/my-payments/", MyPaymentNotificationsView.as_view(), name="my-payments"),
+
+    # System Announcements & Broadcasts
+    path("announcements/active/", ActiveSystemAnnouncementView.as_view(), name="active-announcement"),
+    path("admin/announcements/", AdminSystemAnnouncementListView.as_view(), name="admin-announcements-list"),
+    path("admin/announcements/<int:pk>/", AdminSystemAnnouncementDetailView.as_view(), name="admin-announcement-detail"),
 
     # Superuser / Owner Panel
     path("admin/stores/", AdminStoresListView.as_view(), name="admin-stores"),

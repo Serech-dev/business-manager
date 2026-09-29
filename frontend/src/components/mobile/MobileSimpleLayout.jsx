@@ -6,6 +6,7 @@ import SimpleCashRegister from "../../pages/mobile/SimpleCashRegister";
 import MobileCameraScanner from "./MobileCameraScanner";
 import SimpleMoreHub from "./SimpleMoreHub";
 import NotificationMenu from "../notifications/NotificationMenu";
+import SystemAnnouncementBanner from "../announcements/SystemAnnouncementBanner";
 import { useDeviceMode } from "../../hooks/useDeviceMode";
 import { useSubscription } from "../../context/SubscriptionContext";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
@@ -103,6 +104,8 @@ export function MobileSimpleLayout() {
                     )}
                 </div>
             </header>
+
+            <SystemAnnouncementBanner />
 
             {/* Main Tab Content / Subroute */}
             <main className="flex-1 pb-20">

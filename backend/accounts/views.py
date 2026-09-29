@@ -16,11 +16,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import PaymentNotification, Subscription
+from .models import PaymentNotification, Subscription, SystemAnnouncement
 from .permissions import IsSuperUserOrStaff
 from .serializers import (AdminStoreOverviewSerializer, LoginSerializer,
                           PaymentNotificationSerializer, RegisterSerializer,
-                          SubscriptionSerializer)
+                          SubscriptionSerializer, SystemAnnouncementSerializer)
 
 User = get_user_model()
 
@@ -667,3 +667,50 @@ class AdminReviewPaymentNotificationView(APIView):
             {"error": "Decisión inválida. Debe ser 'approve' o 'reject'."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+
+class ActiveSystemAnnouncementView(APIView):
+    """
+    Public / user endpoint to get the currently active system announcement.
+    Used for live banners: downtime alerts, maintenance, new versions, and reload reminders.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        active = SystemAnnouncement.objects.filter(is_active=True).first()
+        data = SystemAnnouncementSerializer(active).data if active else None
+        return Response({"announcement": data})
+
+
+class AdminSystemAnnouncementListView(generics.ListCreateAPIView):
+    """
+    Admin endpoint to view all past/present announcements and publish new broadcasts.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsSuperUserOrStaff]
+    serializer_class = SystemAnnouncementSerializer
+    queryset = SystemAnnouncement.objects.all().order_by("-created_at")
+
+    def perform_create(self, serializer):
+        is_active = serializer.validated_data.get("is_active", True)
+        if is_active:
+            SystemAnnouncement.objects.filter(is_active=True).update(is_active=False)
+        serializer.save(created_by=self.request.user)
+
+
+class AdminSystemAnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Admin endpoint to edit, toggle active status, or delete an announcement.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsSuperUserOrStaff]
+    serializer_class = SystemAnnouncementSerializer
+    queryset = SystemAnnouncement.objects.all()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        next_is_active = serializer.validated_data.get("is_active", instance.is_active)
+        if next_is_active:
+            SystemAnnouncement.objects.exclude(id=instance.id).filter(is_active=True).update(is_active=False)
+        serializer.save()

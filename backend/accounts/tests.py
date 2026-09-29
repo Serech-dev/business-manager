@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import PaymentNotification, Subscription
+from .models import PaymentNotification, Subscription, SystemAnnouncement
 
 User = get_user_model()
 
@@ -413,6 +413,85 @@ class SubscriptionTests(TestCase):
         sub = Subscription.objects.get(user=self.user)
         self.assertEqual(sub.notes, "Modificación manual de prueba")
         self.assertTrue(sub.is_premium)
+
+
+class SystemAnnouncementTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="merchant_user",
+            email="merchant@test.com",
+            password="testpass123",
+        )
+        self.admin_user = User.objects.create_superuser(
+            username="admin_boss",
+            email="admin_boss@test.com",
+            password="adminpass123",
+        )
+
+    def test_active_announcement_empty(self):
+        res = self.client.get("/api/auth/announcements/active/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNone(res.data["announcement"])
+
+    def test_active_announcement_returns_latest_active(self):
+        SystemAnnouncement.objects.create(
+            title="Aviso Viejo",
+            message="Mensaje viejo",
+            announcement_type="info",
+            is_active=False,
+        )
+        active = SystemAnnouncement.objects.create(
+            title="Mantenimiento en curso",
+            message="Estaremos en mantenimiento 2 minutos. Presione Ctrl + F5.",
+            announcement_type="maintenance",
+            is_active=True,
+            show_reload_button=True,
+            eta_minutes="2 a 5 min",
+        )
+
+        res = self.client.get("/api/auth/announcements/active/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["announcement"])
+        self.assertEqual(res.data["announcement"]["id"], active.id)
+        self.assertEqual(res.data["announcement"]["title"], "Mantenimiento en curso")
+        self.assertEqual(res.data["announcement"]["announcement_type"], "maintenance")
+        self.assertTrue(res.data["announcement"]["show_reload_button"])
+        self.assertEqual(res.data["announcement"]["eta_minutes"], "2 a 5 min")
+
+    def test_admin_create_announcement_auto_deactivates_previous(self):
+        old_active = SystemAnnouncement.objects.create(
+            title="Aviso Anterior",
+            message="Mensaje",
+            is_active=True,
+        )
+
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "title": "Nueva Actualización Disponible",
+            "message": "Nuevas mejoras en envíos y combos. Presione Ctrl + F5.",
+            "announcement_type": "update",
+            "is_active": True,
+            "show_reload_button": True,
+            "allow_dismiss": True,
+        }
+        res = self.client.post("/api/auth/admin/announcements/", payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["title"], "Nueva Actualización Disponible")
+
+        # Verify old active was deactivated
+        old_active.refresh_from_db()
+        self.assertFalse(old_active.is_active)
+
+    def test_non_admin_cannot_manage_announcements(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post(
+            "/api/auth/admin/announcements/",
+            {"title": "Hacker Announcement", "message": "Test"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
 
 
 

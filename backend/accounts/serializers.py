@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import PaymentNotification, Subscription
+from .models import PaymentNotification, Subscription, SystemAnnouncement
 
 User = get_user_model()
 
@@ -275,3 +275,26 @@ class AdminStoreOverviewSerializer(serializers.Serializer):
 
     def get_pending_payments_count(self, user):
         return user.payment_notifications.filter(status=PaymentNotification.Status.PENDING).count()
+
+
+class SystemAnnouncementSerializer(serializers.ModelSerializer):
+    type_display = serializers.CharField(source="get_announcement_type_display", read_only=True)
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True, default=None)
+
+    class Meta:
+        model = SystemAnnouncement
+        fields = [
+            "id",
+            "title",
+            "message",
+            "announcement_type",
+            "type_display",
+            "is_active",
+            "show_reload_button",
+            "allow_dismiss",
+            "eta_minutes",
+            "created_by_username",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by_username", "created_at", "updated_at"]

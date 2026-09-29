@@ -30,6 +30,7 @@ import { SubscriptionProvider, useSubscription } from "./context/SubscriptionCon
 import { StoreSettingsProvider, useStoreSettings } from "./context/StoreSettingsContext";
 import { DeviceModeProvider } from "./hooks/useDeviceMode";
 import { NotificationProvider } from "./context/NotificationContext";
+import { AnnouncementProvider } from "./context/AnnouncementContext";
 
 
 function SubscriptionModalContainer() {
@@ -68,7 +69,8 @@ function App() {
                 <SubscriptionProvider>
                     <StoreSettingsProvider>
                         <NotificationProvider>
-                            <OnboardingProvider>
+                            <AnnouncementProvider>
+                                <OnboardingProvider>
                             <Toaster
                                 position="top-center"
                                 gutter={8}
@@ -225,8 +227,9 @@ function App() {
                             </Route>
                         </Routes>
                     </BrowserRouter>
-                </OnboardingProvider>
-            </NotificationProvider>
+                                </OnboardingProvider>
+                            </AnnouncementProvider>
+                        </NotificationProvider>
         </StoreSettingsProvider>
     </SubscriptionProvider>
 </DeviceSecurityProvider>
