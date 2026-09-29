@@ -78,30 +78,6 @@ function TransactionCard({
     const [updatingAmountId, setUpdatingAmountId] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-    const [deliveryStatus, setDeliveryStatus] = useState(transaction.delivery_status || "pending");
-    const [isUpdatingDeliveryStatus, setIsUpdatingDeliveryStatus] = useState(false);
-
-    async function handleDeliveryStatusChange(newStatus) {
-        setDeliveryStatus(newStatus);
-        setIsUpdatingDeliveryStatus(true);
-        try {
-            const updated = await updateTransaction(transaction.id, { delivery_status: newStatus });
-            toast.success("Estado de entrega actualizado.");
-            if (onTransactionUpdate) {
-                onTransactionUpdate({
-                    ...transaction,
-                    delivery_status: newStatus,
-                    delivery_status_display: updated.delivery_status_display,
-                });
-            }
-        } catch (err) {
-            console.error("Error updating delivery status:", err);
-            toast.error("No se pudo actualizar el estado del envío.");
-            setDeliveryStatus(transaction.delivery_status || "pending");
-        } finally {
-            setIsUpdatingDeliveryStatus(false);
-        }
-    }
 
     const operations = transaction.operations || [];
 
@@ -259,41 +235,6 @@ function TransactionCard({
                                     ({transaction.delivery_notes})
                                 </span>
                             )}
-
-                            {/* DELIVERY STATUS SELECTOR */}
-                            <div className="relative ml-auto">
-                                <select
-                                    value={deliveryStatus}
-                                    onChange={(e) => handleDeliveryStatusChange(e.target.value)}
-                                    disabled={isUpdatingDeliveryStatus}
-                                    className={`appearance-none rounded-md border px-2 py-0.5 pr-6 text-xs font-bold outline-none cursor-pointer disabled:opacity-50 ${
-                                        deliveryStatus === "delivered"
-                                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                            : deliveryStatus === "out_for_delivery"
-                                            ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                                            : deliveryStatus === "preparing"
-                                            ? "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400"
-                                            : deliveryStatus === "cancelled"
-                                            ? "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                                            : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                    }`}
-                                >
-                                    <option value="pending">Pendiente</option>
-                                    <option value="preparing">En preparación</option>
-                                    <option value="out_for_delivery">En camino</option>
-                                    <option value="delivered">Entregado</option>
-                                    <option value="cancelled">Cancelado</option>
-                                </select>
-                                <svg
-                                    className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 opacity-60"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth="2"
-                                    stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                </svg>
-                            </div>
                         </div>
                     )}
                 </div>

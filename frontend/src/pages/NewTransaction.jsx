@@ -683,7 +683,6 @@ function NewTransaction() {
                 delivery_fee: isDelivery ? (Number(deliveryFee) || 0) : 0,
                 delivery_address: isDelivery ? deliveryAddress.trim() : "",
                 delivery_notes: isDelivery ? deliveryNotes.trim() : "",
-                delivery_status: isDelivery ? "pending" : "",
             };
 
             const createdTx = await createTransaction(payload);

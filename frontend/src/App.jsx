@@ -1,4 +1,4 @@
-import { Toaster, ToastBar, toast } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -116,30 +116,7 @@ function App() {
                                         },
                                     },
                                 }}
-                            >
-                                {(t) => (
-                                    <ToastBar toast={t} style={{ ...t.style }}>
-                                        {({ icon, message }) => (
-                                            <>
-                                                {icon}
-                                                <div className="flex-1 text-xs leading-snug">{message}</div>
-                                                {t.type !== "loading" && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toast.dismiss(t.id)}
-                                                        className="ml-1.5 -mr-1 rounded p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition cursor-pointer"
-                                                        aria-label="Cerrar notificación"
-                                                    >
-                                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-                                    </ToastBar>
-                                )}
-                            </Toaster>
+                            />
 
                             <PinModal />
 
