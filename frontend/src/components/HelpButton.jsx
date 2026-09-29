@@ -10,10 +10,6 @@ function HelpButton() {
                 type="button"
                 onClick={() => setIsOpen(true)}
                 className="
-                    fixed
-                    bottom-4
-                    right-4
-                    z-40
                     flex
                     h-9
                     w-9
@@ -31,7 +27,6 @@ function HelpButton() {
                     hover:border-[var(--primary)]
                     hover:bg-[var(--surface-accent)]
                     hover:text-[var(--primary)]
-                    print:hidden
                 "
                 title="Centro de ayuda y tutorial"
                 aria-label="Abrir guía y ayuda"

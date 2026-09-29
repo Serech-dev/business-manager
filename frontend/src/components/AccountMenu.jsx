@@ -66,7 +66,7 @@ function AccountMenu() {
     async function handleLogout() {
         setIsOpen(false);
         await logout();
-        navigate("/login", { replace: true });
+        window.location.href = "/login";
     }
 
     const isSuspended = subscription?.status === "suspended";

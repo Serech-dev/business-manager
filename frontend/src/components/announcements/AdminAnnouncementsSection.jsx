@@ -388,7 +388,23 @@ export default function AdminAnnouncementsSection() {
                                 <div className="relative">
                                     <select
                                         value={announcementType}
-                                        onChange={(e) => setAnnouncementType(e.target.value)}
+                                        onChange={(e) => {
+                                            const next = e.target.value;
+                                            setAnnouncementType(next);
+                                            if (next === "update") {
+                                                setShowReloadButton(true);
+                                                setAllowDismiss(true);
+                                                setAutoDismissOnReload(true);
+                                            } else if (next === "maintenance") {
+                                                setShowReloadButton(false);
+                                                setAllowDismiss(false);
+                                                setAutoDismissOnReload(false);
+                                            } else if (next === "info") {
+                                                setShowReloadButton(false);
+                                                setAllowDismiss(true);
+                                                setAutoDismissOnReload(false);
+                                            }
+                                        }}
                                         className="h-9 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] pr-8"
                                     >
                                         <option value="update">Actualización (Azul/Violeta)</option>

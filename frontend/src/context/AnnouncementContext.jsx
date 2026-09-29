@@ -4,6 +4,9 @@ import { getActiveAnnouncement } from "../services/announcements";
 
 const AnnouncementContext = createContext(null);
 
+// Unique identifier generated once per browser page load (resets on F5 or reload, but persists during intervals)
+const PAGE_LOAD_ID = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
 export function AnnouncementProvider({ children }) {
     const [activeAnnouncement, setActiveAnnouncement] = useState(null);
     const [isDismissed, setIsDismissed] = useState(false);
@@ -22,23 +25,20 @@ export function AnnouncementProvider({ children }) {
                 }
 
                 // AUTO-DISMISS ON REFRESH:
-                // If the announcement has auto_dismiss_on_reload enabled (or is an update / prompts for reload):
-                const shouldAutoDismissOnReload =
-                    data.auto_dismiss_on_reload !== false &&
-                    (data.announcement_type === "update" ||
-                        data.show_reload_button ||
-                        data.auto_dismiss_on_reload);
+                // Only if the announcement explicitly has auto_dismiss_on_reload enabled:
+                const shouldAutoDismissOnReload = Boolean(data.auto_dismiss_on_reload);
 
                 if (shouldAutoDismissOnReload) {
-                    const seenKey = `bm_announcement_seen_${data.id}`;
-                    const alreadySeenBeforeThisLoad = sessionStorage.getItem(seenKey);
-                    if (alreadySeenBeforeThisLoad) {
-                        // The user already saw this notice before refreshing the page.
-                        // Now that the page reloaded, dismiss it so it is removed!
+                    const seenKey = `bm_announcement_seen_load_${data.id}`;
+                    const storedLoadId = sessionStorage.getItem(seenKey);
+
+                    if (storedLoadId && storedLoadId !== PAGE_LOAD_ID) {
+                        // The user was viewing this announcement in a PREVIOUS page load,
+                        // and has now actually refreshed or reloaded the browser!
                         localStorage.setItem("dismissed_announcement_id", String(data.id));
                         setIsDismissed(true);
 
-                        // Show a reassuring toast confirming the update
+                        // Show a reassuring toast confirming the update once
                         const toastKey = `bm_update_toast_${data.id}`;
                         if (!sessionStorage.getItem(toastKey)) {
                             sessionStorage.setItem(toastKey, "true");
@@ -50,8 +50,10 @@ export function AnnouncementProvider({ children }) {
                         return;
                     }
 
-                    // First time seen in this tab session: record it
-                    sessionStorage.setItem(seenKey, "true");
+                    // First time seen in this page load: record the current page load ID
+                    if (!storedLoadId) {
+                        sessionStorage.setItem(seenKey, PAGE_LOAD_ID);
+                    }
                 }
 
                 setIsDismissed(false);

@@ -10,10 +10,6 @@ export default function FeedbackButton() {
                 type="button"
                 onClick={() => setIsOpen(true)}
                 className="
-                    fixed
-                    bottom-4
-                    right-15
-                    z-40
                     flex
                     h-9
                     w-9
@@ -29,7 +25,6 @@ export default function FeedbackButton() {
                     hover:border-[var(--primary)]
                     hover:bg-[var(--surface-accent)]
                     hover:text-[var(--primary)]
-                    print:hidden
                 "
                 title="Reportar error o sugerir cambio"
                 aria-label="Abrir formulario de reporte y sugerencias"

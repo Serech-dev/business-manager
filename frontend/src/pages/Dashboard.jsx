@@ -145,6 +145,18 @@ function Dashboard() {
                     content: "Accedé a tus productos, clientes con libreta, proveedores y reportes detallados en cualquier momento.",
                     position: "right",
                 },
+                {
+                    target: '[data-tour="sidebar-store-settings"]',
+                    title: "Configuración del Comercio",
+                    content: "Personalizá el nombre de tu tienda, datos del ticket impreso, opciones de Delivery/Envío, comisiones y límites de fiado.",
+                    position: "right",
+                },
+                {
+                    target: '[data-tour="help-feedback-dock"]',
+                    title: "Ayuda & Reporte de Errores",
+                    content: "¿Tenés dudas o encontraste una falla? Usá la guía interactiva (?) o el botón de mensajes para enviarnos reportes y sugerencias en cualquier momento.",
+                    position: "top",
+                },
             ];
         }
 
@@ -171,6 +183,18 @@ function Dashboard() {
                 target: '[data-tour="dashboard-kpis"]',
                 title: "Saldos en Vivo",
                 content: "Monitoreá en tiempo real el efectivo físico en cajón y los cobros digitales acumulados en la jornada.",
+                position: "top",
+            },
+            {
+                target: '[data-tour="sidebar-store-settings"]',
+                title: "Configuración del Comercio",
+                content: "Personalizá el nombre de tu tienda, datos del ticket impreso, opciones de Delivery/Envío, comisiones y límites de fiado.",
+                position: "right",
+            },
+            {
+                target: '[data-tour="help-feedback-dock"]',
+                title: "Ayuda & Reporte de Errores",
+                content: "¿Tenés dudas o encontraste una falla? Usá la guía interactiva (?) o el botón de mensajes para enviarnos reportes y sugerencias en cualquier momento.",
                 position: "top",
             },
         ];

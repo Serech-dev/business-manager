@@ -2,11 +2,15 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useOnboarding } from "../context/OnboardingContext";
+import { useStoreSettings } from "../context/StoreSettingsContext";
+import UserFeedbackModal from "./feedback/UserFeedbackModal";
 
 function GuideModal({ isOpen, onClose }) {
     const [activeTab, setActiveTab] = useState("caja");
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const location = useLocation();
     const { startTour, resetAllTours } = useOnboarding();
+    const { openSettingsModal } = useStoreSettings();
 
     if (!isOpen) return null;
 
@@ -49,6 +53,7 @@ function GuideModal({ isOpen, onClose }) {
         { id: "ventas", label: "Ventas & Libreta" },
         { id: "stock", label: "Stock & Control" },
         { id: "proveedores", label: "Proveedores & Gastos" },
+        { id: "configuracion", label: "Configuración & Tienda" },
         { id: "seguridad", label: "Seguridad & Reportes" },
     ];
 
@@ -107,8 +112,8 @@ function GuideModal({ isOpen, onClose }) {
                     </div>
                 </div>
 
-                {/* 5 TABS - CLEAN SHARP RESPONSIVE ROW */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
+                {/* 6 TABS - CLEAN SHARP RESPONSIVE ROW */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1 border-b border-[var(--border)] bg-[var(--background)] px-4 py-2">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -269,6 +274,63 @@ function GuideModal({ isOpen, onClose }) {
                         </div>
                     )}
 
+                    {activeTab === "configuracion" && (
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Datos del Negocio e Impresión de Tickets
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Configurá el <strong>nombre de fantasía</strong>, dirección, teléfono y leyenda al pie (ej: "¡Gracias por su compra!") para imprimir tickets profesionales en impresoras térmicas de 58mm u 80mm.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Módulo de Delivery & Envíos
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Activá la opción de envíos para sumar automáticamente costo de delivery a las ventas, ingresar dirección de entrega y notas para el repartidor, y hacer seguimiento del pedido en el Historial de Ventas.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Recargos y Comisiones
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Establecé porcentajes automáticos para cobros con tarjeta o débito, y fijá tu margen de ganancia en operaciones de reventa de saldo virtual o carga de tarjeta SUBE.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Límites de Deuda para Libreta (Fiado)
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Definí el monto máximo permitido a deber por cliente. Si una venta a cuenta supera este límite, el sistema requerirá confirmación o autorización del dueño para proteger tu caja.
+                                </p>
+                            </div>
+
+                            <div className="pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onClose();
+                                        openSettingsModal();
+                                    }}
+                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                    </svg>
+                                    <span>Abrir Configuración de Tienda →</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === "seguridad" && (
                         <div className="space-y-3">
                             <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
@@ -303,17 +365,30 @@ function GuideModal({ isOpen, onClose }) {
 
                 {/* FOOTER */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--background)] px-6 py-3">
-                    <button
-                        type="button"
-                        onClick={handleResetAllTours}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] transition"
-                        title="Vuelve a activar las guías visuales automáticas en todas las pantallas"
-                    >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                        <span>Reiniciar todas las guías visuales</span>
-                    </button>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <button
+                            type="button"
+                            onClick={handleResetAllTours}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] transition"
+                            title="Vuelve a activar las guías visuales automáticas en todas las pantallas"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            <span>Reiniciar guías visuales</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsFeedbackModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                        >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                            </svg>
+                            <span>Reportar error o sugerencia</span>
+                        </button>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <button
@@ -326,6 +401,11 @@ function GuideModal({ isOpen, onClose }) {
                     </div>
                 </div>
             </div>
+
+            <UserFeedbackModal
+                isOpen={isFeedbackModalOpen}
+                onClose={() => setIsFeedbackModalOpen(false)}
+            />
         </div>
     );
 }
