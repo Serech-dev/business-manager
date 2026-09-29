@@ -151,6 +151,24 @@ class TransactionOperationAmountSerializer(
 class TransactionOperationItemSerializer(
     serializers.ModelSerializer
 ):
+    product_name = serializers.CharField(
+        max_length=150,
+        required=False,
+        allow_blank=True,
+    )
+    unit_price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        default=Decimal("0.00"),
+    )
+    subtotal = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        default=Decimal("0.00"),
+    )
+
     class Meta:
         model = TransactionOperationItem
         fields = [
@@ -166,12 +184,27 @@ class TransactionOperationItemSerializer(
             "id",
         ]
 
+    def validate(self, attrs):
+        if not attrs.get("product_name"):
+            product = attrs.get("product")
+            if product:
+                attrs["product_name"] = product.name
+            else:
+                attrs["product_name"] = "Artículo"
+        if not attrs.get("subtotal") or attrs.get("subtotal") == Decimal("0.00"):
+            qty = attrs.get("quantity", Decimal("1.00"))
+            price = attrs.get("unit_price", Decimal("0.00"))
+            attrs["subtotal"] = qty * price
+        return attrs
+
 
 class TransactionOperationSerializer(
     serializers.ModelSerializer
 ):
     amounts = TransactionOperationAmountSerializer(
-        many=True
+        many=True,
+        required=False,
+        default=list,
     )
     items = TransactionOperationItemSerializer(
         many=True,
@@ -203,9 +236,15 @@ class TransactionOperationSerializer(
         ]
 
     def get_total(self, obj):
-        return sum(
+        amounts_total = sum(
             amount.amount
             for amount in obj.amounts.all()
+        )
+        if amounts_total > 0:
+            return amounts_total
+        return sum(
+            item.subtotal
+            for item in obj.items.all()
         )
 
     def validate(self, attrs):
@@ -227,7 +266,18 @@ class TransactionOperationSerializer(
             ),
         )
 
-        amounts = attrs.get("amounts")
+        amounts = attrs.get("amounts", [])
+        items = attrs.get("items", [])
+
+        # EXPENSE / LOSS VALIDATION
+        if operation_type in [
+            TransactionOperation.Type.EXPENSE,
+            TransactionOperation.Type.LOSS,
+        ]:
+            if not amounts and not items:
+                raise serializers.ValidationError({
+                    "amounts": "Debe especificar al menos un monto de dinero o artículo de mercadería."
+                })
 
         # CLIENT PAYMENTS
 
@@ -444,6 +494,10 @@ class TransactionSerializer(
         default=False,
         write_only=True,
     )
+    delivery_status_display = serializers.CharField(
+        source="get_delivery_status_display",
+        read_only=True,
+    )
 
     class Meta:
         model = Transaction
@@ -456,6 +510,12 @@ class TransactionSerializer(
             "description",
             "operations",
             "allow_over_limit",
+            "is_delivery",
+            "delivery_fee",
+            "delivery_address",
+            "delivery_notes",
+            "delivery_status",
+            "delivery_status_display",
         ]
 
         read_only_fields = [
@@ -564,7 +624,8 @@ class TransactionSerializer(
 
         for operation_data in operations:
             amounts = operation_data.pop(
-                "amounts"
+                "amounts",
+                [],
             )
             items = operation_data.pop(
                 "items",
@@ -576,34 +637,36 @@ class TransactionSerializer(
                 **operation_data,
             )
 
-            operation.exchange_fee = (
-                TransactionOperationSerializer()
-                ._calculate_exchange_fee(
-                    operation,
-                    amounts,
+            if operation.type == TransactionOperation.Type.EXCHANGE:
+                operation.exchange_fee = (
+                    TransactionOperationSerializer()
+                    ._calculate_exchange_fee(
+                        operation,
+                        amounts,
+                    )
                 )
-            )
-            operation.save(
-                update_fields=["exchange_fee"]
-            )
-
-            user = self.context["request"].user if "request" in self.context else transaction.user
-            default_bank = BankAccount.objects.filter(user=user, is_default=True, is_active=True).first()
-
-            for amount in amounts:
-                if amount.get("method") in [
-                    TransactionOperationAmount.Method.TRANSFER,
-                    TransactionOperationAmount.Method.CARD,
-                ] and not amount.get("bank_account"):
-                    amount["bank_account"] = default_bank
-
-            TransactionOperationAmount.objects.bulk_create([
-                TransactionOperationAmount(
-                    operation=operation,
-                    **amount,
+                operation.save(
+                    update_fields=["exchange_fee"]
                 )
-                for amount in amounts
-            ])
+
+            if amounts:
+                user = self.context["request"].user if "request" in self.context else transaction.user
+                default_bank = BankAccount.objects.filter(user=user, is_default=True, is_active=True).first()
+
+                for amount in amounts:
+                    if amount.get("method") in [
+                        TransactionOperationAmount.Method.TRANSFER,
+                        TransactionOperationAmount.Method.CARD,
+                    ] and not amount.get("bank_account"):
+                        amount["bank_account"] = default_bank
+
+                TransactionOperationAmount.objects.bulk_create([
+                    TransactionOperationAmount(
+                        operation=operation,
+                        **amount,
+                    )
+                    for amount in amounts
+                ])
 
             for item_data in items:
                 prod = item_data.get("product")
@@ -631,21 +694,39 @@ class TransactionSerializer(
                             if sub_prod and sub_prod.stock is not None:
                                 deduct_qty = bi.quantity * qty
                                 Product.objects.filter(id=sub_prod.id).update(stock=F("stock") - deduct_qty)
+                                if operation.type == TransactionOperation.Type.LOSS:
+                                    m_type = StockMovement.MovementType.LOSS
+                                    note_text = f"Pérdida #{transaction.id} (Combo: {prod.name})"
+                                elif operation.type == TransactionOperation.Type.EXPENSE:
+                                    m_type = StockMovement.MovementType.ADJUSTMENT
+                                    note_text = f"Gasto/Consumo #{transaction.id} (Combo: {prod.name})"
+                                else:
+                                    m_type = StockMovement.MovementType.SALE
+                                    note_text = f"Venta #{transaction.id} (Combo: {prod.name})"
                                 StockMovement.objects.create(
                                     user=self.context["request"].user,
                                     product=sub_prod,
-                                    movement_type=StockMovement.MovementType.SALE,
+                                    movement_type=m_type,
                                     quantity=-Decimal(str(deduct_qty)),
-                                    notes=f"Venta #{transaction.id} (Combo: {prod.name})",
+                                    notes=note_text,
                                 )
                     elif prod.stock is not None:
                         Product.objects.filter(id=prod.id).update(stock=F("stock") - qty)
+                        if operation.type == TransactionOperation.Type.LOSS:
+                            m_type = StockMovement.MovementType.LOSS
+                            note_text = f"Pérdida #{transaction.id}: {p_name}"
+                        elif operation.type == TransactionOperation.Type.EXPENSE:
+                            m_type = StockMovement.MovementType.ADJUSTMENT
+                            note_text = f"Gasto/Consumo #{transaction.id}: {p_name}"
+                        else:
+                            m_type = StockMovement.MovementType.SALE
+                            note_text = f"Venta #{transaction.id}"
                         StockMovement.objects.create(
                             user=self.context["request"].user,
                             product=prod,
-                            movement_type=StockMovement.MovementType.SALE,
+                            movement_type=m_type,
                             quantity=-Decimal(str(qty)),
-                            notes=f"Venta #{transaction.id}",
+                            notes=note_text,
                         )
 
         return transaction
@@ -731,6 +812,12 @@ class TransactionSerializer(
             for operation in instance.operations.all()
             for amount in operation.amounts.all()
         )
+        if total == 0:
+            total = sum(
+                item.subtotal
+                for operation in instance.operations.all()
+                for item in operation.items.all()
+            )
         representation["total"] = total
 
         return representation
@@ -1321,6 +1408,12 @@ class RegisterSerializer(
                         operation
                     )
                 )
+
+                if operation_total <= 0:
+                    operation_total = sum(
+                        item.subtotal
+                        for item in operation.items.all()
+                    )
 
                 if operation_total <= 0:
                     continue
@@ -2199,6 +2292,8 @@ class StoreSettingsSerializer(serializers.ModelSerializer):
             "card_surcharge_type_display",
             "card_surcharge_value",
             "is_setup_completed",
+            "delivery_enabled",
+            "default_delivery_fee",
             "created_at",
             "updated_at",
         ]

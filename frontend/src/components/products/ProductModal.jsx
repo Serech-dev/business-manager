@@ -20,6 +20,7 @@ function ProductModal({
     initialSalePrice = "",
     initialCostPrice = "",
     initialUnitType = "unit",
+    initialIsBundle = false,
     categories = [],
     providers = [],
     onSuccess,
@@ -197,18 +198,18 @@ function ProductModal({
             setHasPromo(false);
             setPromoQuantity("3");
             setPromoPrice("");
-            setIsBundle(false);
+            setIsBundle(Boolean(initialIsBundle));
             setBundleItems([]);
             setBundleSearchQuery("");
             setIsBundleSearchOpen(false);
             setHighlightedBundleIndex(0);
-            setShowAdvanced(Boolean(startBarcode));
+            setShowAdvanced(Boolean(startBarcode) || Boolean(initialIsBundle));
 
             if (startBarcode && !startName) {
                 applyBarcodeData(startBarcode);
             }
         }
-    }, [product, isEditing, isOpen, initialBarcode, initialName, initialSalePrice, initialCostPrice, initialUnitType]);
+    }, [product, isEditing, isOpen, initialBarcode, initialName, initialSalePrice, initialCostPrice, initialUnitType, initialIsBundle]);
 
     // Close bundle search dropdown on outside click
     useEffect(() => {

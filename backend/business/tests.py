@@ -931,5 +931,269 @@ class CurrencyExchangeAndMultiOperationTests(TestCase):
         self.assertEqual(len(res.data["operations"]), 2)
 
 
+class ProductExpenseAndLossTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="losstestuser",
+            email="loss@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("50000.00"),
+            initial_bank=Decimal("20000.00"),
+        )
+        self.product = Product.objects.create(
+            user=self.user,
+            name="Alfajor Havanna",
+            cost_price=Decimal("800.00"),
+            sale_price=Decimal("1500.00"),
+            stock=Decimal("20.00"),
+        )
+
+    def test_product_expense_decrements_stock_and_preserves_cash(self):
+        # Internal consumption / expense of 2 alfajores
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Consumo personal",
+                "operations": [
+                    {
+                        "type": "expense",
+                        "amounts": [],
+                        "items": [
+                            {
+                                "product": self.product.id,
+                                "quantity": "2.00",
+                                "unit_price": "800.00",
+                                "subtotal": "1600.00",
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+
+        # Verify stock decremented by 2
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, Decimal("18.00"))
+
+        # Verify StockMovement created
+        movement = StockMovement.objects.filter(product=self.product).latest("id")
+        self.assertEqual(movement.movement_type, StockMovement.MovementType.ADJUSTMENT)
+        self.assertEqual(movement.quantity, Decimal("-2.00"))
+
+        # Verify cash drawer is UNTOUCHED ($0 cash_out, expected_cash = initial_cash)
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("50000.00"))
+
+        # Verify register totals_by_type reflects the expense valuation
+        self.assertEqual(Decimal(str(reg_res.data["totals_by_type"]["expense"])), Decimal("1600.00"))
+
+        # Verify register closing report also reflects the expense valuation
+        self.client.post("/api/business/register/close/")
+        detail_res = self.client.get(f"/api/business/registers/{self.register.id}/")
+        self.assertEqual(detail_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(detail_res.data["totals_by_type"]["expense"])), Decimal("1600.00"))
+
+    def test_product_loss_decrements_stock_and_preserves_cash(self):
+        # Loss / breakage of 3 alfajores
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Mercadería vencida",
+                "operations": [
+                    {
+                        "type": "loss",
+                        "amounts": [],
+                        "items": [
+                            {
+                                "product": self.product.id,
+                                "quantity": "3.00",
+                                "unit_price": "800.00",
+                                "subtotal": "2400.00",
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+
+        # Verify stock decremented by 3
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, Decimal("17.00"))
+
+        # Verify StockMovement created as LOSS
+        movement = StockMovement.objects.filter(product=self.product).latest("id")
+        self.assertEqual(movement.movement_type, StockMovement.MovementType.LOSS)
+        self.assertEqual(movement.quantity, Decimal("-3.00"))
+
+        # Verify cash drawer is UNTOUCHED
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("50000.00"))
+
+    def test_direct_merchandise_loss_without_stock(self):
+        # Merchant inputs direct money valuation in merchandise without catalog item
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Rotura de botellas en depósito",
+                "operations": [
+                    {
+                        "type": "loss",
+                        "amounts": [],
+                        "items": [
+                            {
+                                "product": None,
+                                "product_name": "Botellas rotas",
+                                "quantity": "1.00",
+                                "unit_price": "5000.00",
+                                "subtotal": "5000.00",
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+
+        # Verify cash drawer untouched
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("50000.00"))
+
+        # Verify register totals_by_type reflects the loss
+        self.assertEqual(Decimal(str(reg_res.data["totals_by_type"]["loss"])), Decimal("5000.00"))
+
+        # Verify register closing report also reflects the loss
+        self.client.post("/api/business/register/close/")
+        detail_res = self.client.get(f"/api/business/registers/{self.register.id}/")
+        self.assertEqual(detail_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(detail_res.data["totals_by_type"]["loss"])), Decimal("5000.00"))
+
+    def test_traditional_cash_expense_deducts_drawer(self):
+        # Money expense of $3,000 cash for cleaning supplies
+        res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Artículos de limpieza",
+                "operations": [
+                    {
+                        "type": "expense",
+                        "amounts": [
+                            {"method": "cash", "amount": 3000}
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+
+        # Verify cash drawer deducted
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(Decimal(str(reg_res.data["cash_out"])), Decimal("3000.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("47000.00"))
+
+
+class DeliveryOrderTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="deliveryuser",
+            email="delivery@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.register = Register.objects.create(user=self.user, initial_cash=Decimal("10000.00"))
+        self.product = Product.objects.create(
+            user=self.user,
+            name="Pizza Especial",
+            sale_price=Decimal("8000.00"),
+            stock=10,
+        )
+
+    def test_delivery_transaction_creation_and_status_update(self):
+        # 1. Update StoreSettings to enable delivery and set default fee
+        settings_res = self.client.patch(
+            "/api/business/settings/",
+            {
+                "delivery_enabled": True,
+                "default_delivery_fee": "1200.00",
+            },
+            format="json",
+        )
+        self.assertEqual(settings_res.status_code, status.HTTP_200_OK)
+        self.assertTrue(settings_res.data["delivery_enabled"])
+        self.assertEqual(Decimal(str(settings_res.data["default_delivery_fee"])), Decimal("1200.00"))
+
+        # 2. Create a delivery sale transaction (Pizza 8000 + Delivery Fee 1200 = 9200)
+        tx_res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "description": "Pedido Delivery - Pizza",
+                "is_delivery": True,
+                "delivery_fee": "1200.00",
+                "delivery_address": "Av. Belgrano 240, 2do B",
+                "delivery_notes": "Tocar timbre 2B y avisar por WhatsApp",
+                "delivery_status": "pending",
+                "operations": [
+                    {
+                        "type": "sale",
+                        "items": [
+                            {
+                                "product": self.product.id,
+                                "quantity": "1.00",
+                                "unit_price": "8000.00",
+                                "subtotal": "8000.00",
+                            }
+                        ],
+                        "amounts": [
+                            {
+                                "method": "cash",
+                                "amount": 9200,
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(tx_res.status_code, status.HTTP_201_CREATED, tx_res.data)
+        data = tx_res.data
+        self.assertTrue(data["is_delivery"])
+        self.assertEqual(Decimal(str(data["delivery_fee"])), Decimal("1200.00"))
+        self.assertEqual(data["delivery_address"], "Av. Belgrano 240, 2do B")
+        self.assertEqual(data["delivery_status"], "pending")
+        self.assertEqual(data["delivery_status_display"], "Pendiente")
+
+        # 3. Patch transaction to mark as delivered
+        tx_id = data["id"]
+        patch_res = self.client.patch(
+            f"/api/business/transactions/{tx_id}/",
+            {
+                "delivery_status": "delivered",
+            },
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, status.HTTP_200_OK, patch_res.data)
+        self.assertEqual(patch_res.data["delivery_status"], "delivered")
+        self.assertEqual(patch_res.data["delivery_status_display"], "Entregado")
+
+
+
+
 
 

@@ -163,6 +163,7 @@ function ProductList() {
 
     // Modals
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [isCreatingBundle, setIsCreatingBundle] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [scannedBarcodeForNew, setScannedBarcodeForNew] = useState("");
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -399,6 +400,15 @@ function ProductList() {
     function handleOpenCreate() {
         requireOwnerAccess(() => {
             setEditingProduct(null);
+            setIsCreatingBundle(false);
+            setIsProductModalOpen(true);
+        });
+    }
+
+    function handleOpenCreateBundle() {
+        requireOwnerAccess(() => {
+            setEditingProduct(null);
+            setIsCreatingBundle(true);
             setIsProductModalOpen(true);
         });
     }
@@ -667,6 +677,23 @@ function ProductList() {
                             </div>
                         )}
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={() => requireOwnerAccess(handleOpenCreateBundle)}
+                        className="inline-flex items-center gap-2 rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3.5 py-2.5 text-xs font-bold text-[var(--primary)] shadow-xs transition hover:bg-[var(--primary)]/20"
+                    >
+                        <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="2"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" />
+                        </svg>
+                        <span>Nueva Oferta / Combo</span>
+                    </button>
 
                     <button
                         type="button"
@@ -957,9 +984,9 @@ function ProductList() {
 
             {/* PRODUCT LIST / DENSE TABLE */}
             {sortedProducts.length === 0 ? (
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-8 sm:p-12 text-center shadow-xs">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-8 sm:p-12 text-center shadow-xs">
                     <div className="mx-auto max-w-md space-y-4">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)]">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-accent)] text-[var(--text-secondary)]">
                             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                             </svg>
@@ -967,23 +994,40 @@ function ProductList() {
 
                         <div>
                             <h3 className="text-lg font-bold text-[var(--text-primary)]">
-                                {activeFiltersList.length > 0
+                                {statusFilter === "promos"
+                                    ? "No tenés ofertas ni combos todavía"
+                                    : activeFiltersList.length > 0
                                     ? "No se encontraron productos"
                                     : "Catálogo vacío"}
                             </h3>
                             <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
-                                {activeFiltersList.length > 0
+                                {statusFilter === "promos"
+                                    ? "Creá combos con descuento combinando artículos existentes de tu almacén o configurá promociones por volumen (ej: 3 por $1.500)."
+                                    : activeFiltersList.length > 0
                                     ? "Probá ajustando la búsqueda o los filtros seleccionados."
                                     : "Podés cargar automáticamente el catálogo base de almacén con más de 80 productos y categorías comunes, o crearlos uno por uno."}
                             </p>
                         </div>
 
-                        {activeFiltersList.length === 0 && (
+                        {statusFilter === "promos" ? (
+                            <div className="flex justify-center pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => requireOwnerAccess(handleOpenCreateBundle)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-5 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                    <span>Crear Primer Combo u Oferta</span>
+                                </button>
+                            </div>
+                        ) : activeFiltersList.length === 0 ? (
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                                 <button
                                     type="button"
                                     onClick={() => requireOwnerAccess(() => setIsImportModalOpen(true))}
-                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-5 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                                 >
                                     <span>Cargar catálogo base (Multi-Rubro)</span>
                                 </button>
@@ -991,16 +1035,16 @@ function ProductList() {
                                 <button
                                     type="button"
                                     onClick={handleOpenCreate}
-                                    className="w-full sm:w-auto rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-3 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+                                    className="w-full sm:w-auto rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-3 text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
                                 >
                                     + Crear producto manual
                                 </button>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse text-xs">
                             {/* TABLE HEADER (STRICT FIXED HEIGHT h-12 TO PREVENT EXPANDING/JITTER) */}
@@ -1457,9 +1501,11 @@ function ProductList() {
                 onClose={() => {
                     setIsProductModalOpen(false);
                     setScannedBarcodeForNew("");
+                    setIsCreatingBundle(false);
                 }}
                 product={editingProduct}
                 initialBarcode={scannedBarcodeForNew}
+                initialIsBundle={isCreatingBundle}
                 categories={categories}
                 providers={providers}
                 onSuccess={handleProductSaved}

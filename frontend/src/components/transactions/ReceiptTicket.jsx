@@ -120,6 +120,17 @@ function ReceiptTicket({
                         <span className="font-semibold">Cliente:</span> {clientName}
                     </div>
                 )}
+                {transaction.is_delivery && (
+                    <div className="text-left text-[10px] pt-1 space-y-0.5 border-t border-dotted border-gray-300">
+                        <div className="font-bold uppercase tracking-wider">*** PEDIDO CON ENVÍO ***</div>
+                        {transaction.delivery_address && (
+                            <div><span className="font-semibold">Entrega:</span> {transaction.delivery_address}</div>
+                        )}
+                        {transaction.delivery_notes && (
+                            <div className="italic text-gray-700">Obs: {transaction.delivery_notes}</div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* ITEMS / DETAILS */}
@@ -164,15 +175,29 @@ function ReceiptTicket({
                             );
                         })}
 
-                        {/* Extra manual / unitemized amount if grandTotal > itemized total */}
-                        {grandTotal > cartItems.reduce((s, it) => s + (Number(it.subtotal) || 0), 0) && (
+                        {/* Delivery fee line item */}
+                        {transaction.is_delivery && Number(transaction.delivery_fee) > 0 && (
+                            <div className="flex justify-between items-start gap-1 pt-1 border-t border-dotted border-gray-300">
+                                <span className="font-medium text-gray-800">
+                                    Costo de Envío / Delivery
+                                </span>
+                                <span className="font-bold shrink-0 tabular-nums">
+                                    {formatCurrency(Number(transaction.delivery_fee))}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Extra manual / unitemized amount if grandTotal > itemized total + delivery fee */}
+                        {grandTotal > (cartItems.reduce((s, it) => s + (Number(it.subtotal) || 0), 0) + (transaction.is_delivery ? (Number(transaction.delivery_fee) || 0) : 0)) && (
                             <div className="flex justify-between items-start gap-1 pt-1 border-t border-dotted border-gray-300">
                                 <span className="font-medium text-gray-800">
                                     Varios / Monto manual
                                 </span>
                                 <span className="font-bold shrink-0 tabular-nums">
                                     {formatCurrency(
-                                        grandTotal - cartItems.reduce((s, it) => s + (Number(it.subtotal) || 0), 0)
+                                        grandTotal -
+                                            cartItems.reduce((s, it) => s + (Number(it.subtotal) || 0), 0) -
+                                            (transaction.is_delivery ? (Number(transaction.delivery_fee) || 0) : 0)
                                     )}
                                 </span>
                             </div>
@@ -202,6 +227,17 @@ function ReceiptTicket({
                                 </div>
                             );
                         })}
+
+                        {transaction.is_delivery && Number(transaction.delivery_fee) > 0 && (
+                            <div className="flex justify-between items-start gap-1 pt-1 border-t border-dotted border-gray-300">
+                                <span className="font-medium text-gray-800">
+                                    Costo de Envío / Delivery
+                                </span>
+                                <span className="font-bold shrink-0 tabular-nums">
+                                    {formatCurrency(Number(transaction.delivery_fee))}
+                                </span>
+                            </div>
+                        )}
 
                         {transaction.description && !changeInfo && (
                             <p className="text-[10px] text-gray-700 italic pt-1">

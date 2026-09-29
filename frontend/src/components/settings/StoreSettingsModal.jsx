@@ -40,6 +40,9 @@ function StoreSettingsModal({ isOpen, onClose }) {
     const [cardSurchargeType, setCardSurchargeType] = useState("percentage");
     const [cardSurchargeValue, setCardSurchargeValue] = useState("10");
 
+    const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+    const [defaultDeliveryFee, setDefaultDeliveryFee] = useState("0");
+
     // Bank accounts state
     const [bankAccounts, setBankAccounts] = useState([]);
     const [isLoadingBanks, setIsLoadingBanks] = useState(false);
@@ -89,6 +92,12 @@ function StoreSettingsModal({ isOpen, onClose }) {
             setCardSurchargeEnabled(Boolean(settings.card_surcharge_enabled));
             setCardSurchargeType(settings.card_surcharge_type || "percentage");
             setCardSurchargeValue(settings.card_surcharge_value ? String(Math.round(Number(settings.card_surcharge_value))) : "10");
+            setDeliveryEnabled(Boolean(settings.delivery_enabled));
+            setDefaultDeliveryFee(
+                settings.default_delivery_fee !== null && settings.default_delivery_fee !== undefined
+                    ? String(Math.round(Number(settings.default_delivery_fee)))
+                    : "0"
+            );
         }
         if (isOpen) {
             loadBanks();
@@ -202,6 +211,8 @@ function StoreSettingsModal({ isOpen, onClose }) {
                 card_surcharge_enabled: cardSurchargeEnabled,
                 card_surcharge_type: cardSurchargeType,
                 card_surcharge_value: cardSurchargeValue,
+                delivery_enabled: deliveryEnabled,
+                default_delivery_fee: defaultDeliveryFee === "" ? 0 : Number(defaultDeliveryFee),
             });
             onClose();
         } catch {
@@ -245,6 +256,7 @@ function StoreSettingsModal({ isOpen, onClose }) {
                         { id: "general", label: "Datos del Comercio" },
                         { id: "fees", label: "Comisiones y Recargos" },
                         { id: "banks", label: "Cuentas y Billeteras" },
+                        { id: "delivery", label: "Envíos y Pedidos" },
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -935,6 +947,78 @@ function StoreSettingsModal({ isOpen, onClose }) {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* TAB 4: DELIVERY & ENVIOS */}
+                    {activeTab === "delivery" && (
+                        <div className="space-y-4 text-xs">
+                            <div>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Envíos a Domicilio y Pedidos (Delivery)
+                                </h3>
+                                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                    Configurá si tu local toma pedidos con entrega a domicilio y definí una tarifa de envío sugerida.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] bg-[var(--background)] p-4 space-y-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-xs text-[var(--text-primary)]">
+                                                Habilitar Envíos en Caja
+                                            </span>
+                                            {deliveryEnabled && (
+                                                <span className="rounded-sm bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                    Activo
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[11px] text-[var(--text-secondary)]">
+                                            Muestra la opción de envío en la pantalla de cobro para ingresar dirección, notas para el repartidor y sumar la tarifa al ticket.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryEnabled(!deliveryEnabled)}
+                                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                            deliveryEnabled ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                                deliveryEnabled ? "translate-x-4" : "translate-x-0"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {deliveryEnabled && (
+                                    <div className="pt-3 border-t border-[var(--border)] space-y-3 animate-in fade-in duration-150">
+                                        <div>
+                                            <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
+                                                Costo de Envío por Defecto ($)
+                                            </label>
+                                            <div className="relative w-44">
+                                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
+                                                    $
+                                                </span>
+                                                <MoneyInput
+                                                    value={defaultDeliveryFee}
+                                                    onChange={(e) => setDefaultDeliveryFee(e.target.value)}
+                                                    placeholder="0"
+                                                    className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] pl-7 pr-3 py-1.5 text-xs font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                />
+                                            </div>
+                                            <span className="text-[11px] text-[var(--text-secondary)] mt-1 block">
+                                                Este monto se cargará automáticamente al marcar un pedido con envío, pero siempre podrás editarlo en cada venta.
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 

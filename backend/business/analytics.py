@@ -147,6 +147,9 @@ def calculate_analytics(user, period="today", start_date_str=None, end_date_str=
 
         for op in tx.operations.all():
             op_total = sum(a.amount for a in op.amounts.all())
+            amounts_sum = sum(a.amount for a in op.amounts.all())
+            items_sum = sum(i.subtotal for i in op.items.all())
+            op_total = amounts_sum if amounts_sum > 0 else items_sum
             op_type = op.type
 
             # Categorize operation

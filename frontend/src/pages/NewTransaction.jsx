@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -64,6 +64,7 @@ function createNewOperation() {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: "sale",
         exchangeAmount: "",
+        exchangeMethod: "transfer",
         exchangeMode: "payout",
         rechargeAmount: "",
         manualAmount: "",
@@ -91,17 +92,17 @@ function allocateAmountsToOperations(opsWithTargets, validAmounts) {
         bank_account: a.bank_account || null,
     }));
 
-    // Prioritize constrained operations (payment and exchange cannot use debt)
+    // Prioritize constrained operations (payment cannot use debt; exchange prefers matching pool)
     const indexedOps = opsWithTargets.map((item, originalIndex) => ({
         ...item,
         originalIndex,
     }));
 
     indexedOps.sort((a, b) => {
-        const aNoDebt = a.op.type === "payment" || a.op.type === "exchange";
-        const bNoDebt = b.op.type === "payment" || b.op.type === "exchange";
-        if (aNoDebt && !bNoDebt) return -1;
-        if (!aNoDebt && bNoDebt) return 1;
+        const aSpecial = a.op.type === "payment" || a.op.type === "exchange";
+        const bSpecial = b.op.type === "payment" || b.op.type === "exchange";
+        if (aSpecial && !bSpecial) return -1;
+        if (!aSpecial && bSpecial) return 1;
         return a.originalIndex - b.originalIndex;
     });
 
@@ -109,14 +110,40 @@ function allocateAmountsToOperations(opsWithTargets, validAmounts) {
 
     indexedOps.forEach((item, idx) => {
         const isLast = idx === indexedOps.length - 1;
-        const noDebtAllowed =
-            item.op.type === "payment" || item.op.type === "exchange";
+        const isPayment = item.op.type === "payment";
+        const isExchange = item.op.type === "exchange";
+        const preferredMethod = isExchange ? (item.op.exchangeMethod || "transfer") : null;
         let needed = item.targetTotal;
         const opAmounts = [];
 
+        // First pass for exchange: try to take from preferredMethod pool
+        if (isExchange && preferredMethod) {
+            const preferredPool = pools.find(
+                (p) => p.method === preferredMethod && p.remaining > 0
+            );
+            if (preferredPool) {
+                const take =
+                    !isLast && needed > 0
+                        ? Math.min(preferredPool.remaining, needed)
+                        : preferredPool.remaining;
+                if (take > 0) {
+                    opAmounts.push({
+                        method: preferredPool.method,
+                        amount: take,
+                        bank_account: preferredPool.bank_account,
+                    });
+                    preferredPool.remaining -= take;
+                    needed -= take;
+                }
+            }
+        }
+
         for (const pool of pools) {
             if (pool.remaining <= 0) continue;
-            if (noDebtAllowed && pool.method === "debt") continue;
+            // Payment cannot be funded by debt
+            if (isPayment && pool.method === "debt") continue;
+            // Exchange can only be funded by debt if its exchangeMethod is debt
+            if (isExchange && pool.method === "debt" && preferredMethod !== "debt") continue;
             if (needed <= 0 && !isLast) break;
 
             const take =
@@ -143,8 +170,11 @@ function allocateAmountsToOperations(opsWithTargets, validAmounts) {
             });
         }
 
+        const cleanedOp = { ...item.op };
+        delete cleanedOp.exchangeMethod;
+
         results[item.originalIndex] = {
-            ...item.op,
+            ...cleanedOp,
             amounts: opAmounts,
         };
     });
@@ -161,6 +191,16 @@ function NewTransaction() {
     const [categories, setCategories] = useState([]);
     const [providers, setProviders] = useState([]);
     const [client, setClient] = useState(null);
+    const clientSectionRef = useRef(null);
+
+    function handleScrollToClient() {
+        if (clientSectionRef.current) {
+            clientSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            const input = clientSectionRef.current.querySelector("input");
+            input?.focus();
+        }
+    }
+
     const [description, setDescription] = useState("");
     const [receivedCash, setReceivedCash] = useState("");
     const [operations, setOperations] = useState([createNewOperation()]);
@@ -170,6 +210,12 @@ function NewTransaction() {
     const [ignoreDebtSurcharge, setIgnoreDebtSurcharge] = useState(false);
     const [pendingDebtLimitData, setPendingDebtLimitData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Delivery state
+    const [isDelivery, setIsDelivery] = useState(false);
+    const [deliveryFee, setDeliveryFee] = useState("0");
+    const [deliveryAddress, setDeliveryAddress] = useState("");
+    const [deliveryNotes, setDeliveryNotes] = useState("");
 
     // Post-sale completion & ticket modal
     const [printTicketOnSave, setPrintTicketOnSave] = useState(() => {
@@ -293,6 +339,9 @@ function NewTransaction() {
                     if (value !== "exchange") {
                         updated.exchangeAmount = "";
                         updated.exchangeMode = "payout";
+                        updated.exchangeMethod = "transfer";
+                    } else {
+                        updated.exchangeMethod = updated.exchangeMethod || "transfer";
                     }
                     if (value !== "sube" && value !== "phone") {
                         updated.rechargeAmount = "";
@@ -359,9 +408,22 @@ function NewTransaction() {
         [calculateSubeFee, calculatePhoneFee, calculateExchangeFee]
     );
 
+    function handleToggleDelivery(enabled) {
+        setIsDelivery(enabled);
+        if (enabled && (!deliveryFee || Number(deliveryFee) === 0)) {
+            setDeliveryFee(
+                settings?.default_delivery_fee !== null && settings?.default_delivery_fee !== undefined
+                    ? String(Math.round(Number(settings.default_delivery_fee)))
+                    : "0"
+            );
+        }
+    }
+
     const grandTargetTotal = useMemo(() => {
-        return operations.reduce((sum, op) => sum + getOpTargetTotal(op), 0);
-    }, [operations, getOpTargetTotal]);
+        const opsTotal = operations.reduce((sum, op) => sum + getOpTargetTotal(op), 0);
+        const deliveryExtra = isDelivery ? (Number(deliveryFee) || 0) : 0;
+        return opsTotal + deliveryExtra;
+    }, [operations, getOpTargetTotal, isDelivery, deliveryFee]);
 
     // Reactive sync for transactionAmounts when grandTargetTotal or surcharge settings change
     useEffect(() => {
@@ -537,6 +599,7 @@ function NewTransaction() {
                     op: {
                         type: op.type,
                         exchange_amount: isExchange ? exchangeClientAmount : null,
+                        exchangeMethod: isExchange ? (op.exchangeMethod || "transfer") : null,
                         items: resolvedItems,
                     },
                 });
@@ -579,8 +642,16 @@ function NewTransaction() {
                         itemSummaries.push(`Recarga Celular${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     } else if (op.type === "exchange") {
                         const amt = Number(op.exchangeAmount) || 0;
-                        const modeLabel = (op.exchangeMode || "payout") === "payout" ? "Retiro" : "Recibido";
-                        itemSummaries.push(`Cambio (${modeLabel})${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
+                        const exMethod = op.exchangeMethod || "transfer";
+                        const directionLabel =
+                            exMethod === "cash"
+                                ? "Efectivo por Virtual"
+                                : exMethod === "debt"
+                                    ? "Fiado"
+                                    : exMethod === "card"
+                                        ? "Tarjeta por Efectivo"
+                                        : "Transf. por Efectivo";
+                        itemSummaries.push(`Cambio (${directionLabel})${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
                     } else if (op.type === "payment") {
                         const amt = Number(op.paymentAmount) || 0;
                         itemSummaries.push(`A cuenta${amt > 0 ? ` (${formatCurrency(amt)})` : ""}`);
@@ -608,6 +679,11 @@ function NewTransaction() {
                 description: finalDescription,
                 operations: resolvedOperations,
                 ...(allowOverLimit ? { allow_over_limit: true } : {}),
+                is_delivery: isDelivery,
+                delivery_fee: isDelivery ? (Number(deliveryFee) || 0) : 0,
+                delivery_address: isDelivery ? deliveryAddress.trim() : "",
+                delivery_notes: isDelivery ? deliveryNotes.trim() : "",
+                delivery_status: isDelivery ? "pending" : "",
             };
 
             const createdTx = await createTransaction(payload);
@@ -625,6 +701,10 @@ function NewTransaction() {
                         ...createdTx,
                         client: client?.name || (typeof client === "string" ? client : null) || createdTx?.client,
                         description: finalDescription,
+                        is_delivery: isDelivery,
+                        delivery_fee: isDelivery ? (Number(deliveryFee) || 0) : 0,
+                        delivery_address: isDelivery ? deliveryAddress.trim() : "",
+                        delivery_notes: isDelivery ? deliveryNotes.trim() : "",
                     },
                     items: allCartItems,
                 });
@@ -649,7 +729,11 @@ function NewTransaction() {
         calculatePhoneFee,
         calculateSubeFee,
         client,
+        deliveryAddress,
+        deliveryFee,
+        deliveryNotes,
         description,
+        isDelivery,
         navigate,
         operations,
         printTicketOnSave,
@@ -705,6 +789,10 @@ function NewTransaction() {
             } else if (op.type === "exchange") {
                 if (!op.exchangeAmount || Number(op.exchangeAmount) <= 0) {
                     toast.error(`${opLabel}Ingresá el monto de cambio.`);
+                    return;
+                }
+                if (op.exchangeMethod === "debt" && !client) {
+                    toast.error(`${opLabel}El cambio por fiado requiere seleccionar un cliente.`);
                     return;
                 }
             } else if (op.type === "payment") {
@@ -777,6 +865,10 @@ function NewTransaction() {
         setIgnoreDebtSurcharge(false);
         setDescription("");
         setReceivedCash("");
+        setIsDelivery(false);
+        setDeliveryFee("0");
+        setDeliveryAddress("");
+        setDeliveryNotes("");
         setCompletedSale(null);
         setShowSuccessModal(false);
         setShowReceiptModal(false);
@@ -931,6 +1023,8 @@ function NewTransaction() {
                                     <TransactionExchange
                                         exchangeAmount={op.exchangeAmount}
                                         exchangeMode={op.exchangeMode || "payout"}
+                                        exchangeMethod={op.exchangeMethod || "transfer"}
+                                        hasClient={Boolean(client)}
                                         onChangeExchangeAmount={(val) =>
                                             handleUpdateOperation(
                                                 index,
@@ -945,6 +1039,22 @@ function NewTransaction() {
                                                 mode
                                             )
                                         }
+                                        onChangeExchangeMethod={(method) => {
+                                            handleUpdateOperation(
+                                                index,
+                                                "exchangeMethod",
+                                                method
+                                            );
+                                            // When single payment method is active, keep it in sync with the selected exchange method
+                                            if (transactionAmounts.length === 1) {
+                                                setTransactionAmounts((curr) => [
+                                                    {
+                                                        ...curr[0],
+                                                        method,
+                                                    },
+                                                ]);
+                                            }
+                                        }}
                                     />
                                 )}
 
@@ -1021,7 +1131,7 @@ function NewTransaction() {
                 </button>
 
                 {/* CLIENT & NOTES (SLEEK INLINE 2-COLUMN TOOLBAR) */}
-                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
+                <div ref={clientSectionRef} className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
@@ -1054,6 +1164,105 @@ function NewTransaction() {
                         </div>
                     </div>
                 </div>
+
+                {/* DELIVERY / PEDIDOS A DOMICILIO */}
+                {settings?.delivery_enabled && (
+                    <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div
+                                    className={`flex h-8 w-8 items-center justify-center rounded-md border transition ${
+                                        isDelivery
+                                            ? "border-[var(--primary)]/40 bg-[var(--primary)]/15 text-[var(--primary)]"
+                                            : "border-[var(--border)] bg-[var(--surface-accent)]/50 text-[var(--text-secondary)]"
+                                    }`}
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V15.5c0-.441-.157-.866-.442-1.2l-2.433-2.839A2.25 2.25 0 0 0 17.06 10.5H15v7.5m4.5 0H15m-1.5 0H9m5.25 0v-7.5m0 0H9m5.25 0h2.81" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                            Envío a Domicilio (Delivery)
+                                        </h3>
+                                        {isDelivery && (
+                                            <span className="rounded-sm bg-[var(--primary)]/15 px-1.5 py-0.2 text-[10px] font-bold text-[var(--primary)]">
+                                                +{formatCurrency(Number(deliveryFee) || 0)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                        {isDelivery
+                                            ? "Pedido con entrega a domicilio y seguimiento"
+                                            : "¿Es un pedido para entregar a domicilio?"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => handleToggleDelivery(!isDelivery)}
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                    isDelivery ? "bg-[var(--primary)]" : "bg-[var(--border)]"
+                                }`}
+                            >
+                                <span
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                        isDelivery ? "translate-x-4" : "translate-x-0"
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        {isDelivery && (
+                            <div className="pt-3 border-t border-[var(--border)] grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in duration-150">
+                                <div>
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
+                                        Costo de Envío ($)
+                                    </label>
+                                    <div className="relative">
+                                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
+                                            $
+                                        </span>
+                                        <MoneyInput
+                                            value={deliveryFee}
+                                            onChange={(e) => setDeliveryFee(e.target.value)}
+                                            placeholder="0"
+                                            className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-7 pr-3 text-xs font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
+                                        Dirección de Entrega
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={deliveryAddress}
+                                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                                        placeholder="Ej: Mitre 345, 2°B"
+                                        className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
+                                        Notas para el Cadete / Repartidor
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={deliveryNotes}
+                                        onChange={(e) => setDeliveryNotes(e.target.value)}
+                                        placeholder="Ej: Timbre no anda, llamar al llegar"
+                                        className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* UNIFIED PAYMENT SECTION */}
                 <div
@@ -1088,14 +1297,14 @@ function NewTransaction() {
                         client={client}
                         ignoreDebtSurcharge={ignoreDebtSurcharge}
                         onToggleIgnoreDebtSurcharge={handleToggleIgnoreDebtSurcharge}
-                        onRequireClient={() => {}}
+                        onRequireClient={handleScrollToClient}
                         receivedCash={receivedCash}
                         onReceivedCashChange={setReceivedCash}
                     />
                 </div>
 
                 {/* BOTTOM CHECKOUT BAR (STICKY) */}
-                <div data-tour="sale-submit-bar" className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:px-5 sm:py-3.5 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+                <div data-tour="sale-submit-bar" className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:px-5 sm:py-3.5 shadow-xl sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-baseline justify-between gap-3 sm:block">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                             Total a cobrar

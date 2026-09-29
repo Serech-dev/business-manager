@@ -118,10 +118,12 @@ function TransactionAmounts({
                     delete newItem.bank_account;
                 }
 
-                if (targetTotal > 0 && amounts.length === 2) {
-                    const otherIndex = index === 0 ? 1 : 0;
-                    const otherAmt = Number(amounts[otherIndex].amount) || 0;
-                    const baseRemainder = Math.max(0, targetTotal - otherAmt);
+                if (targetTotal > 0 && amounts.length >= 2) {
+                    const otherAmtsSum = amounts.reduce(
+                        (sum, item, idx) => (idx !== index ? sum + (Number(item.amount) || 0) : sum),
+                        0
+                    );
+                    const baseRemainder = Math.max(0, targetTotal - otherAmtsSum);
                     if (value === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
                         newItem.amount = baseRemainder > 0 ? String(calculateDebtSurcharge(baseRemainder).totalWithSurcharge) : "";
                     } else if (value === "card" && settings.card_surcharge_enabled) {
@@ -140,20 +142,28 @@ function TransactionAmounts({
             return newItem;
         });
 
-        // Auto-recalculate the other amount when splitting across 2 payment methods
-        if (field === "amount" && targetTotal > 0 && updated.length === 2) {
-            const otherIndex = index === 0 ? 1 : 0;
+        // Auto-recalculate the other amount when splitting across 2, 3 or 4 payment methods
+        if (field === "amount" && targetTotal > 0 && updated.length >= 2) {
+            // When editing an amount, automatically allocate the remaining balance
+            // to the last method in the list (or the first method if we're editing the last one)
+            const targetIndex = index === updated.length - 1 ? 0 : updated.length - 1;
             const enteredVal = Number(value) || 0;
             if (value !== "" && enteredVal >= 0) {
-                const remainder = Math.max(0, targetTotal - enteredVal);
+                const sumOfOthers = updated.reduce((sum, item, idx) => {
+                    if (idx === targetIndex) return sum;
+                    if (idx === index) return sum + enteredVal;
+                    return sum + (Number(item.amount) || 0);
+                }, 0);
+
+                const remainder = Math.max(0, targetTotal - sumOfOthers);
                 let finalOtherAmount = roundUpTo50(remainder);
-                if (updated[otherIndex].method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                if (updated[targetIndex].method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
                     finalOtherAmount = calculateDebtSurcharge(remainder).totalWithSurcharge;
-                } else if (updated[otherIndex].method === "card" && settings.card_surcharge_enabled) {
+                } else if (updated[targetIndex].method === "card" && settings.card_surcharge_enabled) {
                     finalOtherAmount = calculateCardSurcharge(remainder).totalWithSurcharge;
                 }
-                updated[otherIndex] = {
-                    ...updated[otherIndex],
+                updated[targetIndex] = {
+                    ...updated[targetIndex],
                     amount: finalOtherAmount > 0 ? String(finalOtherAmount) : "0",
                 };
             }
@@ -207,18 +217,37 @@ function TransactionAmounts({
     function removeAmount(index) {
         if (amounts.length <= 1) return;
         const updated = amounts.filter((_, itemIndex) => itemIndex !== index);
-        if (updated.length === 1 && targetTotal > 0) {
-            const method = updated[0].method;
-            let targetAmt = roundUpTo50(targetTotal);
-            if (method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
-                targetAmt = calculateDebtSurcharge(targetTotal).totalWithSurcharge;
-            } else if (method === "card" && settings.card_surcharge_enabled) {
-                targetAmt = calculateCardSurcharge(targetTotal).totalWithSurcharge;
+        if (targetTotal > 0 && updated.length >= 1) {
+            if (updated.length === 1) {
+                const method = updated[0].method;
+                let targetAmt = roundUpTo50(targetTotal);
+                if (method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    targetAmt = calculateDebtSurcharge(targetTotal).totalWithSurcharge;
+                } else if (method === "card" && settings.card_surcharge_enabled) {
+                    targetAmt = calculateCardSurcharge(targetTotal).totalWithSurcharge;
+                }
+                updated[0] = {
+                    ...updated[0],
+                    amount: String(targetAmt),
+                };
+            } else {
+                const lastIdx = updated.length - 1;
+                const sumOthers = updated.reduce(
+                    (sum, item, idx) => (idx !== lastIdx ? sum + (Number(item.amount) || 0) : sum),
+                    0
+                );
+                const remainder = Math.max(0, targetTotal - sumOthers);
+                let finalAmt = roundUpTo50(remainder);
+                if (updated[lastIdx].method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
+                    finalAmt = calculateDebtSurcharge(remainder).totalWithSurcharge;
+                } else if (updated[lastIdx].method === "card" && settings.card_surcharge_enabled) {
+                    finalAmt = calculateCardSurcharge(remainder).totalWithSurcharge;
+                }
+                updated[lastIdx] = {
+                    ...updated[lastIdx],
+                    amount: finalAmt > 0 ? String(finalAmt) : "0",
+                };
             }
-            updated[0] = {
-                ...updated[0],
-                amount: String(targetAmt),
-            };
         }
         onAmountsChange(updated);
     }
@@ -491,8 +520,17 @@ function TransactionAmounts({
                         )}
 
                         {amounts[0]?.method === "debt" && !hasClient && (
-                            <div className="rounded-lg bg-[var(--warning)]/10 p-2.5 text-xs font-medium text-[var(--warning)]">
-                                Para registrar a cuenta, asigná un cliente en la sección de abajo.
+                            <div className="flex items-center justify-between rounded-md bg-[var(--warning)]/10 p-2.5 text-xs font-medium text-[var(--warning)]">
+                                <span>Para registrar a cuenta, asigná un cliente en la sección de arriba.</span>
+                                {onRequireClient && (
+                                    <button
+                                        type="button"
+                                        onClick={onRequireClient}
+                                        className="ml-2 shrink-0 font-bold underline hover:opacity-80 cursor-pointer"
+                                    >
+                                        Seleccionar cliente ↑
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -585,8 +623,17 @@ function TransactionAmounts({
                                 )}
 
                                 {item.method === "debt" && !hasClient && (
-                                    <div className="rounded-lg bg-[var(--warning)]/10 px-3 py-1.5 text-xs font-medium text-[var(--warning)]">
-                                        Requiere asignar cliente abajo.
+                                    <div className="flex items-center justify-between rounded-md bg-[var(--warning)]/10 px-3 py-1.5 text-xs font-medium text-[var(--warning)]">
+                                        <span>Requiere asignar cliente arriba.</span>
+                                        {onRequireClient && (
+                                            <button
+                                                type="button"
+                                                onClick={onRequireClient}
+                                                className="ml-2 shrink-0 font-bold underline hover:opacity-80 cursor-pointer"
+                                            >
+                                                Seleccionar cliente ↑
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>

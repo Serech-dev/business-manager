@@ -23,6 +23,8 @@ const DEFAULT_SETTINGS = {
     card_surcharge_enabled: false,
     card_surcharge_type: "percentage",
     card_surcharge_value: "10",
+    delivery_enabled: false,
+    default_delivery_fee: "0",
     is_setup_completed: false,
 };
 
@@ -87,6 +89,9 @@ export function StoreSettingsProvider({ children }) {
             }
             if (cleanData.card_surcharge_value !== undefined) {
                 cleanData.card_surcharge_value = String(Math.round(Number(cleanData.card_surcharge_value) || 0));
+            }
+            if (cleanData.default_delivery_fee !== undefined) {
+                cleanData.default_delivery_fee = String(Math.round(Number(cleanData.default_delivery_fee) || 0));
             }
 
             const updated = await updateStoreSettings(cleanData);

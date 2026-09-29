@@ -156,6 +156,13 @@ class Provider(models.Model):
         return self.name
 
 class Transaction(models.Model):
+    class DeliveryStatus(models.TextChoices):
+        PENDING = "pending", "Pendiente"
+        PREPARING = "preparing", "En preparación"
+        OUT_FOR_DELIVERY = "out_for_delivery", "En camino"
+        DELIVERED = "delivered", "Entregado"
+        CANCELLED = "cancelled", "Cancelado"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -182,6 +189,39 @@ class Transaction(models.Model):
 
     description = models.CharField(
         max_length=255,
+        blank=True,
+    )
+
+    is_delivery = models.BooleanField(
+        default=False,
+        help_text="Indica si es un pedido con envío a domicilio",
+    )
+
+    delivery_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Costo del envío cobrado al cliente",
+    )
+
+    delivery_address = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Dirección de entrega",
+    )
+
+    delivery_notes = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Notas o instrucciones para el repartidor / cadete",
+    )
+
+    delivery_status = models.CharField(
+        max_length=20,
+        choices=DeliveryStatus.choices,
+        default=DeliveryStatus.PENDING,
         blank=True,
     )
 
@@ -896,6 +936,18 @@ class StoreSettings(models.Model):
         default=Decimal("10.00"),
     )
 
+    delivery_enabled = models.BooleanField(
+        default=False,
+        help_text="Indica si el local realiza envíos a domicilio / pedidos delivery",
+    )
+
+    default_delivery_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Costo predeterminado de envío ($)",
+    )
+
     is_setup_completed = models.BooleanField(
         default=False,
         help_text="True si el usuario ya completó el asistente inicial de configuración",
@@ -961,6 +1013,8 @@ class StoreSettings(models.Model):
                 "card_surcharge_enabled": False,
                 "card_surcharge_type": cls.FeeType.PERCENTAGE,
                 "card_surcharge_value": Decimal("10.00"),
+                "delivery_enabled": False,
+                "default_delivery_fee": Decimal("0.00"),
                 "is_setup_completed": False,
             },
         )
