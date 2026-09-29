@@ -5,6 +5,7 @@ import ThemeSelector from "../ThemeSelector";
 import ChangePinModal from "../ChangePinModal";
 import GuideModal from "../GuideModal";
 import TermsModal from "../subscription/TermsModal";
+import UserFeedbackModal from "../feedback/UserFeedbackModal";
 import { APP_VERSION } from "../../utils/version";
 import { useSubscription } from "../../context/SubscriptionContext";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
@@ -28,6 +29,7 @@ export function SimpleMoreHub() {
     const [isPinModalOpen, setIsPinModalOpen] = useState(false);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
     let user = null;
     const storedUser = localStorage.getItem("businessManagerAuthUser");
@@ -85,6 +87,10 @@ export function SimpleMoreHub() {
             <TermsModal
                 isOpen={isTermsModalOpen}
                 onClose={() => setIsTermsModalOpen(false)}
+            />
+            <UserFeedbackModal
+                isOpen={isFeedbackModalOpen}
+                onClose={() => setIsFeedbackModalOpen(false)}
             />
 
             {/* 1. HERO MERCHANT & LICENSE CARD */}
@@ -421,6 +427,32 @@ export function SimpleMoreHub() {
                                 </span>
                                 <span className="text-[11px] text-[var(--text-secondary)]">
                                     Tutorial interactivo y preguntas frecuentes
+                                </span>
+                            </div>
+                        </div>
+                        <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition">
+                            →
+                        </span>
+                    </button>
+
+                    {/* FEEDBACK & REPORT */}
+                    <button
+                        type="button"
+                        onClick={() => setIsFeedbackModalOpen(true)}
+                        className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-[var(--surface-accent)]/50 transition active:bg-[var(--surface-accent)] group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span className="font-semibold text-xs sm:text-sm text-[var(--text-primary)] block">
+                                    Reportar Error / Sugerencia
+                                </span>
+                                <span className="text-[11px] text-[var(--text-secondary)]">
+                                    Avisanos si algo falla o proponé una mejora
                                 </span>
                             </div>
                         </div>

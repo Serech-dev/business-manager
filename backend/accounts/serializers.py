@@ -5,7 +5,8 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import PaymentNotification, Subscription, SystemAnnouncement
+from .models import (PaymentNotification, Subscription,
+                    SystemAnnouncement, UserFeedback)
 
 User = get_user_model()
 
@@ -298,4 +299,64 @@ class SystemAnnouncementSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_by_username", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_by_username", "created_at", "updated_at"]
+
+
+class UserFeedbackCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFeedback
+        fields = [
+            "id",
+            "feedback_type",
+            "subject",
+            "message",
+            "page_url",
+            "device_info",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+
+class AdminUserFeedbackSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+    store_name = serializers.SerializerMethodField()
+    type_display = serializers.CharField(source="get_feedback_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = UserFeedback
+        fields = [
+            "id",
+            "user",
+            "user_email",
+            "store_name",
+            "feedback_type",
+            "type_display",
+            "subject",
+            "message",
+            "page_url",
+            "device_info",
+            "status",
+            "status_display",
+            "admin_notes",
+            "resolved_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "user",
+            "user_email",
+            "store_name",
+            "type_display",
+            "status_display",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_store_name(self, obj):
+        store_settings = getattr(obj.user, "store_settings", None)
+        if store_settings and store_settings.store_name:
+            return store_settings.store_name
+        return "Mi Negocio"
+

@@ -580,3 +580,64 @@ class SystemAnnouncement(models.Model):
         status = "Activo" if self.is_active else "Inactivo"
         return f"[{status}] {self.title} ({self.get_announcement_type_display()})"
 
+
+class UserFeedback(models.Model):
+    class FeedbackType(models.TextChoices):
+        BUG = "bug", "Error / Falla técnica"
+        SUGGESTION = "suggestion", "Sugerencia o Mejora"
+        INQUIRY = "inquiry", "Consulta o Pregunta"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendiente"
+        IN_REVIEW = "in_review", "En Revisión"
+        RESOLVED = "resolved", "Resuelto / Implementado"
+        DISMISSED = "dismissed", "Descartado"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="feedbacks",
+    )
+    feedback_type = models.CharField(
+        max_length=20,
+        choices=FeedbackType.choices,
+        default=FeedbackType.SUGGESTION,
+    )
+    subject = models.CharField(
+        max_length=200,
+        blank=True,
+    )
+    message = models.TextField()
+    page_url = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="URL o sección donde se originó el reporte",
+    )
+    device_info = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Modo de dispositivo, resolución o navegador",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    admin_notes = models.TextField(
+        blank=True,
+        help_text="Notas internas del administrador",
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.get_feedback_type_display()} de {self.user.email} - #{self.id}"
+
+

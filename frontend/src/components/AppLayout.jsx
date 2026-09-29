@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 
 import Sidebar from "./Sidebar";
 import HelpButton from "./HelpButton";
+import FeedbackButton from "./feedback/FeedbackButton";
 import MobileSimpleLayout from "./mobile/MobileSimpleLayout";
 import SystemAnnouncementBanner from "./announcements/SystemAnnouncementBanner";
 import { getCurrentRegister } from "../services/business";
@@ -54,6 +55,7 @@ function AppLayout() {
             </main>
 
             <div className="print:hidden">
+                <FeedbackButton />
                 <HelpButton />
             </div>
         </div>

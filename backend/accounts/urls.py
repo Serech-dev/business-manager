@@ -7,10 +7,12 @@ from .views import (ActiveSystemAnnouncementView,
                     AdminStoresListView,
                     AdminSystemAnnouncementDetailView,
                     AdminSystemAnnouncementListView,
+                    AdminUserFeedbackDetailView,
+                    AdminUserFeedbackListView,
                     CreateCheckoutPreferenceView, LoginView, LogoutView,
                     MercadoPagoWebhookView, MyPaymentNotificationsView,
                     NotifyPaymentView, RegisterView, SubscriptionView,
-                    VerifyPaymentStatusView)
+                    UserFeedbackCreateView, VerifyPaymentStatusView)
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
@@ -22,6 +24,11 @@ urlpatterns = [
     path("subscription/verify-payment/", VerifyPaymentStatusView.as_view(), name="verify-payment-status"),
     path("subscription/notify-payment/", NotifyPaymentView.as_view(), name="notify-payment"),
     path("subscription/my-payments/", MyPaymentNotificationsView.as_view(), name="my-payments"),
+
+    # User Feedback & Bug Reports
+    path("feedback/", UserFeedbackCreateView.as_view(), name="user-feedback-create"),
+    path("admin/feedback/", AdminUserFeedbackListView.as_view(), name="admin-feedback-list"),
+    path("admin/feedback/<int:pk>/", AdminUserFeedbackDetailView.as_view(), name="admin-feedback-detail"),
 
     # System Announcements & Broadcasts
     path("announcements/active/", ActiveSystemAnnouncementView.as_view(), name="active-announcement"),

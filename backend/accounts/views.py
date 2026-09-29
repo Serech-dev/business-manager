@@ -16,11 +16,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import PaymentNotification, Subscription, SystemAnnouncement
+from .models import (PaymentNotification, Subscription,
+                    SystemAnnouncement, UserFeedback)
 from .permissions import IsSuperUserOrStaff
-from .serializers import (AdminStoreOverviewSerializer, LoginSerializer,
+from .serializers import (AdminStoreOverviewSerializer,
+                          AdminUserFeedbackSerializer, LoginSerializer,
                           PaymentNotificationSerializer, RegisterSerializer,
-                          SubscriptionSerializer, SystemAnnouncementSerializer)
+                          SubscriptionSerializer, SystemAnnouncementSerializer,
+                          UserFeedbackCreateSerializer)
 
 User = get_user_model()
 
@@ -713,4 +716,65 @@ class AdminSystemAnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
         next_is_active = serializer.validated_data.get("is_active", instance.is_active)
         if next_is_active:
             SystemAnnouncement.objects.exclude(id=instance.id).filter(is_active=True).update(is_active=False)
-        serializer.save()
+        serializer.save()
+
+
+class UserFeedbackCreateView(generics.CreateAPIView):
+    """
+    Endpoint for logged-in merchants to quickly report bugs, suggest features, or ask questions.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserFeedbackCreateSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class AdminUserFeedbackListView(generics.ListAPIView):
+    """
+    Superadmin inbox to view and filter all user reports, bugs, and feature suggestions.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsSuperUserOrStaff]
+    serializer_class = AdminUserFeedbackSerializer
+
+    def get_queryset(self):
+        qs = UserFeedback.objects.select_related("user").order_by("-created_at")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        type_filter = self.request.query_params.get("feedback_type")
+        if type_filter:
+            qs = qs.filter(feedback_type=type_filter)
+        search = self.request.query_params.get("search")
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(user__email__icontains=search) |
+                Q(user__username__icontains=search) |
+                Q(subject__icontains=search) |
+                Q(message__icontains=search)
+            )
+        return qs
+
+
+class AdminUserFeedbackDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Superadmin endpoint to change feedback status (in_review, resolved, dismissed) or add admin notes.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsSuperUserOrStaff]
+    serializer_class = AdminUserFeedbackSerializer
+    queryset = UserFeedback.objects.select_related("user").all()
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        next_status = serializer.validated_data.get("status", instance.status)
+        resolved_at = instance.resolved_at
+        if next_status == UserFeedback.Status.RESOLVED and not resolved_at:
+            resolved_at = timezone.now()
+        elif next_status != UserFeedback.Status.RESOLVED:
+            resolved_at = None
+        serializer.save(resolved_at=resolved_at)
+

@@ -7,7 +7,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import PaymentNotification, Subscription, SystemAnnouncement
+from .models import (PaymentNotification, Subscription,
+                    SystemAnnouncement, UserFeedback)
 
 User = get_user_model()
 
@@ -491,6 +492,68 @@ class SystemAnnouncementTests(TestCase):
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class UserFeedbackTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="kiosk_owner",
+            email="kiosk@test.com",
+            password="testpass123",
+        )
+        self.admin_user = User.objects.create_superuser(
+            username="sysadmin",
+            email="sysadmin@test.com",
+            password="adminpass123",
+        )
+
+    def test_user_can_submit_feedback(self):
+        self.client.force_authenticate(user=self.user)
+        payload = {
+            "feedback_type": "bug",
+            "subject": "Fallo en lector de barras",
+            "message": "Al escanear un código nuevo no abre el modal en mobile.",
+            "page_url": "/sales/new",
+            "device_info": "Mobile Touchscreen (768x1024)",
+        }
+        res = self.client.post("/api/auth/feedback/", payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["feedback_type"], "bug")
+
+        fb = UserFeedback.objects.get(id=res.data["id"])
+        self.assertEqual(fb.user, self.user)
+        self.assertEqual(fb.status, UserFeedback.Status.PENDING)
+
+    def test_admin_can_list_and_update_feedback(self):
+        fb = UserFeedback.objects.create(
+            user=self.user,
+            feedback_type="suggestion",
+            subject="Agregar delivery",
+            message="Estaría bueno que los tickets tengan la dirección del delivery.",
+            status="pending",
+        )
+
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.get("/api/auth/admin/feedback/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(res.data), 1)
+
+        patch_res = self.client.patch(
+            f"/api/auth/admin/feedback/{fb.id}/",
+            {"status": "resolved", "admin_notes": "Implementado en versión 1.7.4"},
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, status.HTTP_200_OK)
+        fb.refresh_from_db()
+        self.assertEqual(fb.status, UserFeedback.Status.RESOLVED)
+        self.assertIsNotNone(fb.resolved_at)
+        self.assertEqual(fb.admin_notes, "Implementado en versión 1.7.4")
+
+    def test_unauthenticated_cannot_submit_feedback(self):
+        res = self.client.post("/api/auth/feedback/", {"message": "Test"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 
 

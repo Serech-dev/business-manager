@@ -9,6 +9,7 @@ import {
 } from "../services/auth";
 import { useSubscription } from "../context/SubscriptionContext";
 import AdminAnnouncementsSection from "../components/announcements/AdminAnnouncementsSection";
+import AdminFeedbackSection from "../components/admin/AdminFeedbackSection";
 
 function AdminPanel() {
     const navigate = useNavigate();
@@ -294,6 +295,9 @@ function AdminPanel() {
 
             {/* GLOBAL ANNOUNCEMENTS & MAINTENANCE BROADCAST */}
             <AdminAnnouncementsSection />
+
+            {/* USER FEEDBACK & BUG REPORTS INBOX */}
+            <AdminFeedbackSection />
 
             {/* STORES LIST & MANAGEMENT */}
             <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs overflow-hidden space-y-4">
