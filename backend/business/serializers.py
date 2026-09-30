@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db import transaction as db_transaction
+from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import F
 from rest_framework import serializers
 
@@ -2051,10 +2051,48 @@ class ProductSerializer(serializers.ModelSerializer):
             return "low_stock"
         return "normal"
 
+    def validate(self, attrs):
+        user = (self.context.get("request") and getattr(self.context["request"], "user", None)) or (self.instance and self.instance.user)
+        name = attrs.get("name")
+        barcode = attrs.get("barcode")
+
+        if user and getattr(user, "is_authenticated", False):
+            # Check duplicate product name (case-insensitive) for this user
+            if name:
+                name_clean = name.strip()
+                name_qs = Product.objects.filter(user=user, name__iexact=name_clean)
+                if self.instance:
+                    name_qs = name_qs.exclude(pk=self.instance.pk)
+                if name_qs.exists():
+                    existing = name_qs.first()
+                    raise serializers.ValidationError({
+                        "name": f'Ya existe un producto registrado con el nombre "{existing.name}".'
+                    })
+
+            # Check duplicate barcode for this user
+            if barcode:
+                barcode_clean = str(barcode).strip()
+                if barcode_clean:
+                    barcode_qs = Product.objects.filter(user=user, barcode=barcode_clean)
+                    if self.instance:
+                        barcode_qs = barcode_qs.exclude(pk=self.instance.pk)
+                    if barcode_qs.exists():
+                        existing = barcode_qs.first()
+                        raise serializers.ValidationError({
+                            "barcode": f'El código de barras ya pertenece a "{existing.name}".'
+                        })
+
+        return super().validate(attrs)
+
     @db_transaction.atomic
     def create(self, validated_data):
         bundle_items_data = self.initial_data.get("bundle_items")
-        product = super().create(validated_data)
+        try:
+            product = super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError({
+                "name": "Ya existe un producto registrado con este nombre."
+            })
         if product.is_bundle and bundle_items_data:
             self._save_bundle_items(product, bundle_items_data)
         return product

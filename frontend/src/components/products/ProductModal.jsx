@@ -43,9 +43,10 @@ function ProductModal({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Quantity Promo States (e.g. 3x $1500)
+    // Quantity / Weight Promo States (e.g. 3x $1500, or 1kg $8500, or 500g $4500)
     const [hasPromo, setHasPromo] = useState(false);
     const [promoQuantity, setPromoQuantity] = useState("3");
+    const [promoWeightUnit, setPromoWeightUnit] = useState("kg");
     const [promoPrice, setPromoPrice] = useState("");
 
     // Combo / Multi-product Bundle States
@@ -152,12 +153,26 @@ function ProductModal({
             setIsActive(product.is_active ?? true);
 
             // Promo states
+            const isWeightProd = product.unit_type === "kg" || product.unit_type === "100g";
             const hasPromoConfig = Boolean(
-                product.promo_quantity && Number(product.promo_quantity) >= 2 &&
+                product.promo_quantity &&
+                (isWeightProd ? Number(product.promo_quantity) > 0 : Number(product.promo_quantity) >= 2) &&
                 product.promo_price && Number(product.promo_price) > 0
             );
             setHasPromo(hasPromoConfig);
-            setPromoQuantity(product.promo_quantity ? String(product.promo_quantity) : "3");
+            if (isWeightProd && product.promo_quantity) {
+                const gramsVal = Number(product.promo_quantity);
+                if (product.unit_type === "kg" && gramsVal >= 1000 && gramsVal % 1000 === 0) {
+                    setPromoQuantity(String(gramsVal / 1000));
+                    setPromoWeightUnit("kg");
+                } else {
+                    setPromoQuantity(String(gramsVal));
+                    setPromoWeightUnit("g");
+                }
+            } else {
+                setPromoQuantity(product.promo_quantity ? String(product.promo_quantity) : "3");
+                setPromoWeightUnit("kg");
+            }
             setPromoPrice(product.promo_price ? String(product.promo_price) : "");
 
             // Bundle states
@@ -269,14 +284,28 @@ function ProductModal({
     const profit = numSale - numCost;
     const markupPct = numCost > 0 ? Math.round(((numSale - numCost) / numCost) * 100) : null;
 
-    // Live calculations for quantity promo
-    const numPromoQty = parseInt(promoQuantity, 10) || 0;
+    // Live calculations for quantity / weight promo
+    const isWeightProduct = unitType === "kg" || unitType === "100g";
+    const numPromoInput = parseFloat(promoQuantity) || 0;
+    const effectivePromoGrams = isWeightProduct
+        ? (unitType === "kg" && promoWeightUnit === "kg" ? numPromoInput * 1000 : numPromoInput)
+        : null;
+    const effectivePromoQty = isWeightProduct ? Math.round(effectivePromoGrams) : (parseInt(promoQuantity, 10) || 0);
     const numPromoPrice = Number(promoPrice) || 0;
-    const regularPromoSum = numPromoQty * numSale;
-    const promoSavings = hasPromo && numPromoQty >= 2 && numPromoPrice > 0 && regularPromoSum > numPromoPrice
+
+    // Regular cost without promo
+    const regularPromoSum = isWeightProduct
+        ? (unitType === "kg" ? (effectivePromoGrams / 1000) * numSale : (effectivePromoGrams / 100) * numSale)
+        : effectivePromoQty * numSale;
+
+    const isPromoValid = hasPromo && numPromoPrice > 0 && numSale > 0 && (
+        isWeightProduct ? (effectivePromoGrams > 0) : (effectivePromoQty >= 2)
+    );
+
+    const promoSavings = isPromoValid && regularPromoSum > numPromoPrice
         ? regularPromoSum - numPromoPrice
         : 0;
-    const promoUnitCost = numPromoQty > 0 ? numPromoPrice / numPromoQty : 0;
+
     const promoDiscountPct = regularPromoSum > 0 ? Math.round((promoSavings / regularPromoSum) * 100) : 0;
 
     // Live calculations for combo / bundle
@@ -437,10 +466,17 @@ function ProductModal({
             return;
         }
 
-        if (hasPromo) {
-            if (!numPromoQty || numPromoQty < 2) {
-                toast.error("La cantidad de la promo debe ser de al menos 2 unidades.");
-                return;
+        if (hasPromo && !isBundle) {
+            if (isWeightProduct) {
+                if (!effectivePromoGrams || effectivePromoGrams <= 0) {
+                    toast.error("Ingresá un peso válido para la promo.");
+                    return;
+                }
+            } else {
+                if (!effectivePromoQty || effectivePromoQty < 2) {
+                    toast.error("La cantidad de la promo debe ser de al menos 2 unidades.");
+                    return;
+                }
             }
             if (!numPromoPrice || numPromoPrice <= 0) {
                 toast.error("Ingresá un precio de promo válido.");
@@ -461,7 +497,7 @@ function ProductModal({
                 stock: isBundle ? null : stock !== "" ? Number(stock) : null,
                 min_stock: minStock !== "" ? Number(minStock) : 1,
                 is_active: isActive,
-                promo_quantity: hasPromo && !isBundle ? numPromoQty : null,
+                promo_quantity: hasPromo && !isBundle ? effectivePromoQty : null,
                 promo_price: hasPromo && !isBundle ? numPromoPrice : null,
                 is_bundle: isBundle,
                 bundle_items: isBundle
@@ -472,37 +508,21 @@ function ProductModal({
                     : [],
             };
 
-            let saved;
-            try {
-                saved = isEditing
-                    ? await updateProduct(product.id, data)
-                    : await createProduct(data);
-            } catch (saveError) {
-                const nameErrMsg = saveError.response?.data?.name?.[0] || "";
-                if (!isEditing && nameErrMsg.toLowerCase().includes("ya existe")) {
-                    const allProds = await getProducts();
-                    const existing = allProds.find(
-                        (p) => p.name.trim().toLowerCase() === data.name.toLowerCase()
-                    );
-                    if (existing) {
-                        saved = await updateProduct(existing.id, data);
-                        toast.success(`Producto "${existing.name}" actualizado.`);
-                        onSuccess(saved);
-                        onClose();
-                        return;
-                    }
-                }
-                throw saveError;
-            }
+            const saved = isEditing
+                ? await updateProduct(product.id, data)
+                : await createProduct(data);
 
             toast.success(isEditing ? "Producto actualizado." : "Producto creado.");
             onSuccess(saved);
             onClose();
         } catch (error) {
             console.error(error);
+            const data = error.response?.data;
             const msg =
-                error.response?.data?.name?.[0] ||
-                error.response?.data?.barcode?.[0] ||
+                (Array.isArray(data?.name) ? data.name[0] : data?.name) ||
+                (Array.isArray(data?.barcode) ? data.barcode[0] : data?.barcode) ||
+                (Array.isArray(data?.non_field_errors) ? data.non_field_errors[0] : data?.non_field_errors) ||
+                data?.detail ||
                 "No se pudo guardar el producto.";
             toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
         } finally {
@@ -895,8 +915,8 @@ function ProductModal({
                             </div>
                         )}
 
-                        {/* QUANTITY PROMO SECTION (PACK / 3x2) */}
-                        {!isBundle && unitType === "unit" && (
+                        {/* QUANTITY / WEIGHT PROMO SECTION */}
+                        {!isBundle && (
                             <div className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)]/30 p-3.5 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -906,11 +926,13 @@ function ProductModal({
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
                                             </svg>
                                             <p className="text-xs font-bold text-[var(--text-primary)]">
-                                                Promoción por Cantidad (Pack / 2x / 3x)
+                                                {isWeightProduct ? "Promoción por Peso / Oferta" : "Promoción por Cantidad (Pack / 2x / 3x)"}
                                             </p>
                                         </div>
                                         <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                                            Aplica un precio especial cuando el cliente lleva varias unidades
+                                            {isWeightProduct
+                                                ? "Aplica un precio especial al llevar cierta cantidad de peso (ej. 1 kg o 500g)"
+                                                : "Aplica un precio especial cuando el cliente lleva varias unidades"}
                                         </p>
                                     </div>
 
@@ -935,16 +957,59 @@ function ProductModal({
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
-                                                    Llevando (unidades)
+                                                    {isWeightProduct ? "Llevando (peso)" : "Llevando (unidades)"}
                                                 </label>
-                                                <input
-                                                    type="number"
-                                                    min="2"
-                                                    value={promoQuantity}
-                                                    onChange={(e) => setPromoQuantity(e.target.value)}
-                                                    placeholder="3"
-                                                    className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
-                                                />
+                                                {unitType === "kg" ? (
+                                                    <div className="flex gap-1.5">
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            min="0.01"
+                                                            value={promoQuantity}
+                                                            onChange={(e) => setPromoQuantity(e.target.value)}
+                                                            placeholder={promoWeightUnit === "kg" ? "1" : "500"}
+                                                            className="h-9 flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                        />
+                                                        <div className="relative w-24">
+                                                            <select
+                                                                value={promoWeightUnit}
+                                                                onChange={(e) => setPromoWeightUnit(e.target.value)}
+                                                                className="h-9 w-full appearance-none rounded-md border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                            >
+                                                                <option value="kg">kg</option>
+                                                                <option value="g">gramos</option>
+                                                            </select>
+                                                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+                                                                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                                    <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                                                                </svg>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : unitType === "100g" ? (
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={promoQuantity}
+                                                            onChange={(e) => setPromoQuantity(e.target.value)}
+                                                            placeholder="250"
+                                                            className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 pr-8 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                        />
+                                                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
+                                                            g
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <input
+                                                        type="number"
+                                                        min="2"
+                                                        value={promoQuantity}
+                                                        onChange={(e) => setPromoQuantity(e.target.value)}
+                                                        placeholder="3"
+                                                        className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                    />
+                                                )}
                                             </div>
 
                                             <div>
@@ -966,11 +1031,21 @@ function ProductModal({
                                         </div>
 
                                         {/* PROMO LIVE SAVINGS */}
-                                        {numPromoQty >= 2 && numPromoPrice > 0 && numSale > 0 && (
+                                        {isPromoValid && (
                                             <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 text-xs space-y-1">
                                                 <div className="flex justify-between text-[11px]">
-                                                    <span className="text-[var(--text-secondary)]">Precio unitario en promo:</span>
-                                                    <span className="font-bold text-[var(--primary)]">{formatCurrency(promoUnitCost)} c/u</span>
+                                                    <span className="text-[var(--text-secondary)]">
+                                                        {isWeightProduct ? "Precio equivalente en promo:" : "Precio unitario en promo:"}
+                                                    </span>
+                                                    <span className="font-bold text-[var(--primary)]">
+                                                        {isWeightProduct ? (
+                                                            unitType === "kg"
+                                                                ? `${formatCurrency((numPromoPrice / (effectivePromoGrams || 1)) * 1000)} / kg`
+                                                                : `${formatCurrency((numPromoPrice / (effectivePromoGrams || 1)) * 100)} / 100g`
+                                                        ) : (
+                                                            `${formatCurrency(numPromoPrice / (effectivePromoQty || 1))} c/u`
+                                                        )}
+                                                    </span>
                                                 </div>
                                                 {promoSavings > 0 && (
                                                     <div className="flex justify-between text-[11px] font-semibold text-[var(--success)]">

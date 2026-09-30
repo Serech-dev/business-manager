@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import toast from "react-hot-toast";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency, formatPromoLabel } from "../../utils/formatCurrency";
 import { getProducts, getCategories } from "../../services/business";
 import { filterAndRankProducts } from "../../utils/productSearch";
 import { useBarcodeScanner } from "../../hooks/useBarcodeScanner";
@@ -228,7 +228,7 @@ export function SimplePriceChecker({ onNavigateToPos }) {
                         </p>
                         {activeProduct.promo_quantity && Number(activeProduct.promo_price) > 0 && (
                             <p className="text-xs text-emerald-400 font-bold mt-1.5">
-                                Promo: {activeProduct.promo_quantity}x {formatCurrency(activeProduct.promo_price)}
+                                Promo: {formatPromoLabel(activeProduct)}
                             </p>
                         )}
                     </div>

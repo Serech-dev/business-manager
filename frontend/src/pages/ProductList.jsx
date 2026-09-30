@@ -9,7 +9,7 @@ import {
     bulkDeleteProducts,
     importStarterCatalog,
 } from "../services/business";
-import { formatCurrency } from "../utils/formatCurrency";
+import { formatCurrency, formatPromoLabel } from "../utils/formatCurrency";
 import { formatStockQty, formatUnitType } from "../utils/formatStock";
 import { filterAndRankProducts } from "../utils/productSearch";
 import { playBeepSuccess, playBeepWarning } from "../utils/audio";
@@ -1190,7 +1190,7 @@ function ProductList() {
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
                                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
                                                             </svg>
-                                                            <span>Promo {p.promo_quantity}x {formatCurrency(p.promo_price)}</span>
+                                                            <span>Promo {formatPromoLabel(p)}</span>
                                                         </span>
                                                     )}
                                                     {p.unit_type === "kg" && (
@@ -1310,7 +1310,7 @@ function ProductList() {
                                                 </div>
                                                 {p.has_quantity_promo && (
                                                     <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                                        {p.promo_quantity} x {formatCurrency(p.promo_price)}
+                                                        {formatPromoLabel(p)}
                                                     </div>
                                                 )}
                                             </td>

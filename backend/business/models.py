@@ -600,9 +600,10 @@ class Product(models.Model):
 
     @property
     def has_quantity_promo(self):
+        min_qty = 1 if self.unit_type in ["kg", "100g"] else 2
         return bool(
             self.promo_quantity
-            and self.promo_quantity >= 2
+            and self.promo_quantity >= min_qty
             and self.promo_price
             and self.promo_price > Decimal("0.00")
         )

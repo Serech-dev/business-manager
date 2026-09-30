@@ -30,22 +30,22 @@ export default function SystemAnnouncementBanner() {
     // Dynamic styling according to modern structured sharp rules
     const theme = isMaintenance
         ? {
-              container: "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-100",
-              badge: "bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-500/30",
-              iconBg: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30",
+              container: "border-amber-500/40 bg-amber-500/10 text-[var(--text-primary)]",
+              badge: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40",
+              iconBg: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40",
               button: "bg-amber-600 hover:bg-amber-700 text-white",
           }
         : isUpdate
         ? {
-              container: "border-indigo-500/40 bg-indigo-500/10 text-indigo-950 dark:text-indigo-100",
-              badge: "bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border-indigo-500/30",
-              iconBg: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/30",
+              container: "border-indigo-500/40 bg-indigo-500/10 text-[var(--text-primary)]",
+              badge: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/40",
+              iconBg: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-500/40",
               button: "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white",
           }
         : {
-              container: "border-sky-500/40 bg-sky-500/10 text-sky-950 dark:text-sky-100",
-              badge: "bg-sky-500/20 text-sky-800 dark:text-sky-300 border-sky-500/30",
-              iconBg: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30",
+              container: "border-sky-500/40 bg-sky-500/10 text-[var(--text-primary)]",
+              badge: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/40",
+              iconBg: "bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/40",
               button: "bg-sky-600 hover:bg-sky-700 text-white",
           };
 
@@ -115,12 +115,12 @@ export default function SystemAnnouncementBanner() {
                                     {type_display || (isMaintenance ? "Mantenimiento" : isUpdate ? "Actualización" : "Aviso")}
                                 </span>
 
-                                <h4 className="text-xs sm:text-sm font-bold truncate">
+                                <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate">
                                     {title}
                                 </h4>
 
                                 {eta_minutes && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium opacity-80">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-secondary)]">
                                         <svg
                                             className="h-3 w-3"
                                             fill="none"
@@ -139,7 +139,7 @@ export default function SystemAnnouncementBanner() {
                                 )}
                             </div>
 
-                            <p className="text-xs leading-relaxed opacity-90 break-words whitespace-pre-line">
+                            <p className="text-xs leading-relaxed text-[var(--text-primary)] font-medium break-words whitespace-pre-line">
                                 {message}
                             </p>
                         </div>

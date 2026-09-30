@@ -66,10 +66,6 @@ function TransactionAmounts({
     }, [defaultBank, amounts, onAmountsChange]);
 
     function handleSelectSingleMethod(method) {
-        if (method === "debt" && !hasClient) {
-            onRequireClient?.();
-        }
-
         let defaultAmount = amounts[0]?.amount || "";
         if (targetTotal > 0) {
             if (method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
@@ -96,10 +92,6 @@ function TransactionAmounts({
     }
 
     function updateAmount(index, field, value) {
-        if (field === "method" && value === "debt" && !hasClient) {
-            onRequireClient?.();
-        }
-
         let updated = amounts.map((item, itemIndex) => {
             if (itemIndex !== index) return item;
 
