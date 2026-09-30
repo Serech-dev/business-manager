@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
-import { formatCurrency, roundUpTo50, formatPromoLabel } from "../../utils/formatCurrency";
+import { formatCurrency, roundUpTo50 } from "../../utils/formatCurrency";
 import MoneyInput from "../MoneyInput";
 import { filterAndRankProducts } from "../../utils/productSearch";
 import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
@@ -19,39 +19,10 @@ export function calculateItemPricing(product, quantity, customUnitPrice = null, 
 
     if (isWeight) {
         const factor = product.unit_type === "kg" ? 1000 : 100;
-        const g = grams || 0;
-        const regularTotal = roundUpTo50((g / factor) * regularUnitPrice);
-
-        const promoQtyGrams = parseInt(product.promo_quantity, 10);
-        const promoPrc = Number(product.promo_price);
-        const hasPromoConfig = Boolean(
-            !product.is_bundle &&
-            promoQtyGrams > 0 &&
-            promoPrc > 0 &&
-            (customUnitPrice === null || customUnitPrice === Number(product.sale_price))
-        );
-
-        if (hasPromoConfig && g >= promoQtyGrams) {
-            const bundles = Math.floor(g / promoQtyGrams);
-            const remainderGrams = g % promoQtyGrams;
-            const subtotal = roundUpTo50((bundles * promoPrc) + ((remainderGrams / factor) * regularUnitPrice));
-            const promoSavings = Math.max(0, regularTotal - subtotal);
-            const weightLabel = promoQtyGrams >= 1000 && promoQtyGrams % 1000 === 0
-                ? `${promoQtyGrams / 1000} kg`
-                : `${promoQtyGrams}g`;
-
-            return {
-                unitPrice: regularUnitPrice,
-                subtotal,
-                hasPromoApplied: true,
-                promoSavings,
-                promoText: `Promo ${weightLabel} x ${formatCurrency(promoPrc)}`,
-            };
-        }
-
+        const subtotal = roundUpTo50(((grams || 0) / factor) * regularUnitPrice);
         return {
             unitPrice: regularUnitPrice,
-            subtotal: regularTotal,
+            subtotal,
             hasPromoApplied: false,
             promoSavings: 0,
             promoText: null,
@@ -386,23 +357,13 @@ function SaleProductSelector({
             sale_price: salePrice,
         };
 
-        const pricing = calculateItemPricing(
-            updatedProduct,
-            1,
-            salePrice,
-            finalGrams
-        );
-
         const newItem = {
             product: updatedProduct,
             unitType: activeProductForWeight.unit_type,
             quantity: 1,
             grams: finalGrams,
             unitPrice: salePrice,
-            subtotal: pricing.subtotal,
-            hasPromoApplied: pricing.hasPromoApplied,
-            promoSavings: pricing.promoSavings,
-            promoText: pricing.promoText,
+            subtotal: finalSubtotal,
         };
 
         if (editingItemIndex !== null && editingItemIndex >= 0) {
@@ -534,6 +495,21 @@ function SaleProductSelector({
     }
 
     // Weight live calculations
+    const liveCalculatedSubtotal = useMemo(() => {
+        if (!activeProductForWeight) return 0;
+        const salePrice = Number(weightModalPrice) || Number(activeProductForWeight.sale_price) || 0;
+        if (weightInputMode === "weight") {
+            const g = Number(weightGrams) || 0;
+            if (activeProductForWeight.unit_type === "kg") {
+                return roundUpTo50((g / 1000) * salePrice);
+            } else {
+                return roundUpTo50((g / 100) * salePrice);
+            }
+        } else {
+            return roundUpTo50(Number(targetMoney) || 0);
+        }
+    }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney, weightModalPrice]);
+
     const liveCalculatedGrams = useMemo(() => {
         if (!activeProductForWeight) return 0;
         const salePrice = Number(weightModalPrice) || Number(activeProductForWeight.sale_price) || 0;
@@ -549,19 +525,6 @@ function SaleProductSelector({
             }
         }
     }, [activeProductForWeight, weightInputMode, weightGrams, targetMoney, weightModalPrice]);
-
-    const liveCalculatedPricing = useMemo(() => {
-        if (!activeProductForWeight) return { subtotal: 0, promoSavings: 0, hasPromoApplied: false, promoText: null };
-        const salePrice = Number(weightModalPrice) || Number(activeProductForWeight.sale_price) || 0;
-        return calculateItemPricing(
-            { ...activeProductForWeight, sale_price: salePrice },
-            1,
-            salePrice,
-            liveCalculatedGrams
-        );
-    }, [activeProductForWeight, weightModalPrice, liveCalculatedGrams]);
-
-    const liveCalculatedSubtotal = liveCalculatedPricing.subtotal;
 
     const totalCartSum = useMemo(() => {
         return items.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
@@ -663,15 +626,13 @@ function SaleProductSelector({
                                                                     <span>{p.bundle_items?.length === 1 ? "Oferta" : "Combo"}</span>
                                                                 </span>
                                                             )}
-                                                            {p.promo_quantity && Number(p.promo_price) > 0 && !p.is_bundle && (
-                                                                (p.unit_type === "kg" || p.unit_type === "100g" ? Number(p.promo_quantity) > 0 : Number(p.promo_quantity) >= 2) && (
-                                                                    <span className="inline-flex items-center gap-1 shrink-0 rounded-sm bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                                                        <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
-                                                                        </svg>
-                                                                        <span>{formatPromoLabel(p)}</span>
-                                                                    </span>
-                                                                )
+                                                            {p.promo_quantity && Number(p.promo_quantity) >= 2 && Number(p.promo_price) > 0 && !p.is_bundle && (
+                                                                <span className="inline-flex items-center gap-1 shrink-0 rounded-sm bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386l5.242-3.145c.826-.486 1.05-1.542.486-2.292L11.159 3.659A2.25 2.25 0 0 0 9.568 3Z" />
+                                                                    </svg>
+                                                                    <span>{p.promo_quantity}x {formatCurrency(p.promo_price)}</span>
+                                                                </span>
                                                             )}
                                                             {isKg && (
                                                                 <span className="shrink-0 rounded-sm bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
@@ -1057,11 +1018,6 @@ function SaleProductSelector({
                                 <span className="text-base font-extrabold text-[var(--success)] tabular-nums">
                                     {formatCurrency(liveCalculatedSubtotal)}
                                 </span>
-                                {liveCalculatedPricing.hasPromoApplied && (
-                                    <span className="block text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                        {liveCalculatedPricing.promoText} (-{formatCurrency(liveCalculatedPricing.promoSavings)})
-                                    </span>
-                                )}
                             </div>
                         </div>
 

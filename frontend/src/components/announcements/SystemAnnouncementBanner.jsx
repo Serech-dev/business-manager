@@ -27,33 +27,45 @@ export default function SystemAnnouncementBanner() {
     const isMaintenance = announcement_type === "maintenance";
     const isUpdate = announcement_type === "update";
 
-    // Dynamic styling according to modern structured sharp rules
+    // Dynamic high-contrast styling according to modern structured sharp rules
     const theme = isMaintenance
         ? {
-              container: "border-amber-500/40 bg-amber-500/10 text-[var(--text-primary)]",
-              badge: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40",
-              iconBg: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40",
-              button: "bg-amber-600 hover:bg-amber-700 text-white",
+              container: "border-b-2 border-amber-500 bg-amber-50 text-amber-950 dark:bg-amber-950/90 dark:border-amber-500/60 dark:text-amber-100 shadow-xs",
+              badge: "bg-amber-200 text-amber-950 border-amber-300 dark:bg-amber-500/30 dark:text-amber-200 dark:border-amber-500/40 font-bold",
+              iconBg: "bg-amber-200 text-amber-950 border-amber-300 dark:bg-amber-500/30 dark:text-amber-200 dark:border-amber-500/40",
+              title: "text-amber-950 dark:text-white font-extrabold",
+              message: "text-amber-950 dark:text-amber-100 font-medium",
+              eta: "text-amber-900 dark:text-amber-200 font-semibold",
+              button: "bg-amber-600 hover:bg-amber-700 text-white font-bold",
+              dismiss: "text-amber-950 hover:bg-amber-200/80 dark:text-amber-200 dark:hover:bg-amber-900/50",
           }
         : isUpdate
         ? {
-              container: "border-indigo-500/40 bg-indigo-500/10 text-[var(--text-primary)]",
-              badge: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/40",
-              iconBg: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-500/40",
-              button: "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white",
+              container: "border-b-2 border-indigo-500 bg-indigo-50 text-indigo-950 dark:bg-indigo-950/90 dark:border-indigo-500/60 dark:text-indigo-100 shadow-xs",
+              badge: "bg-indigo-200 text-indigo-950 border-indigo-300 dark:bg-indigo-500/30 dark:text-indigo-200 dark:border-indigo-500/40 font-bold",
+              iconBg: "bg-indigo-200 text-indigo-950 border-indigo-300 dark:bg-indigo-500/30 dark:text-indigo-200 dark:border-indigo-500/40",
+              title: "text-indigo-950 dark:text-white font-extrabold",
+              message: "text-indigo-950 dark:text-indigo-100 font-medium",
+              eta: "text-indigo-900 dark:text-indigo-200 font-semibold",
+              button: "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold shadow-xs",
+              dismiss: "text-indigo-950 hover:bg-indigo-200/80 dark:text-indigo-200 dark:hover:bg-indigo-900/50",
           }
         : {
-              container: "border-sky-500/40 bg-sky-500/10 text-[var(--text-primary)]",
-              badge: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/40",
-              iconBg: "bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/40",
-              button: "bg-sky-600 hover:bg-sky-700 text-white",
+              container: "border-b-2 border-sky-500 bg-sky-50 text-slate-900 dark:bg-slate-900/90 dark:border-sky-500/60 dark:text-slate-100 shadow-xs",
+              badge: "bg-sky-200 text-sky-950 border-sky-300 dark:bg-sky-500/30 dark:text-sky-200 dark:border-sky-500/40 font-bold",
+              iconBg: "bg-sky-200 text-sky-950 border-sky-300 dark:bg-sky-500/30 dark:text-sky-200 dark:border-sky-500/40",
+              title: "text-slate-950 dark:text-white font-extrabold",
+              message: "text-slate-900 dark:text-slate-100 font-medium",
+              eta: "text-slate-800 dark:text-slate-200 font-semibold",
+              button: "bg-sky-600 hover:bg-sky-700 text-white font-bold",
+              dismiss: "text-slate-900 hover:bg-slate-200/80 dark:text-slate-200 dark:hover:bg-slate-800/50",
           };
 
     return (
         <aside
             role="alert"
             aria-live="polite"
-            className={`border-b transition-all duration-200 ${theme.container}`}
+            className={`transition-all duration-200 ${theme.container}`}
         >
             <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -110,17 +122,17 @@ export default function SystemAnnouncementBanner() {
                         <div className="space-y-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span
-                                    className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${theme.badge}`}
+                                    className={`rounded-sm px-1.5 py-0.5 text-[10px] uppercase tracking-wider border ${theme.badge}`}
                                 >
                                     {type_display || (isMaintenance ? "Mantenimiento" : isUpdate ? "Actualización" : "Aviso")}
                                 </span>
 
-                                <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate">
+                                <h4 className={`text-xs sm:text-sm ${theme.title} truncate`}>
                                     {title}
                                 </h4>
 
                                 {eta_minutes && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                                    <span className={`inline-flex items-center gap-1 text-[11px] ${theme.eta}`}>
                                         <svg
                                             className="h-3 w-3"
                                             fill="none"
@@ -139,7 +151,7 @@ export default function SystemAnnouncementBanner() {
                                 )}
                             </div>
 
-                            <p className="text-xs leading-relaxed text-[var(--text-primary)] font-medium break-words whitespace-pre-line">
+                            <p className={`text-xs leading-relaxed break-words whitespace-pre-line ${theme.message}`}>
                                 {message}
                             </p>
                         </div>
@@ -152,7 +164,7 @@ export default function SystemAnnouncementBanner() {
                                 type="button"
                                 onClick={forceAppReload}
                                 disabled={isReloading}
-                                className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-bold shadow-xs transition disabled:opacity-50 ${theme.button}`}
+                                className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs shadow-xs transition disabled:opacity-50 cursor-pointer ${theme.button}`}
                             >
                                 <svg
                                     className={`h-3.5 w-3.5 ${isReloading ? "animate-spin" : ""}`}
@@ -179,7 +191,7 @@ export default function SystemAnnouncementBanner() {
                             <button
                                 type="button"
                                 onClick={dismissAnnouncement}
-                                className="rounded-md p-1.5 opacity-70 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition"
+                                className={`rounded-md p-1.5 transition cursor-pointer ${theme.dismiss}`}
                                 title="Ocultar aviso"
                             >
                                 <svg

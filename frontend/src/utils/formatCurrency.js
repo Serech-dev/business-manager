@@ -19,21 +19,3 @@ export function roundUpTo50(value) {
     if (num <= 0) return 0;
     return Math.ceil(num / 50) * 50;
 }
-
-/**
- * Formats a promotional threshold and price nicely for display across the UI.
- * Handles both unit quantities (e.g. "3x $5.000") and weighed items (e.g. "1 kg x $8.500" or "500g x $4.500").
- *
- * @param {object} product
- * @returns {string}
- */
-export function formatPromoLabel(product) {
-    if (!product || !product.promo_quantity || !product.promo_price) return "";
-    const isWeight = product.unit_type === "kg" || product.unit_type === "100g";
-    if (isWeight) {
-        const grams = Number(product.promo_quantity);
-        const weightLabel = grams >= 1000 && grams % 1000 === 0 ? `${grams / 1000} kg` : `${grams}g`;
-        return `${weightLabel} x ${formatCurrency(product.promo_price)}`;
-    }
-    return `${product.promo_quantity}x ${formatCurrency(product.promo_price)}`;
-}

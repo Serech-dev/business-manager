@@ -66,6 +66,10 @@ function TransactionAmounts({
     }, [defaultBank, amounts, onAmountsChange]);
 
     function handleSelectSingleMethod(method) {
+        if (method === "debt" && !hasClient) {
+            onRequireClient?.();
+        }
+
         let defaultAmount = amounts[0]?.amount || "";
         if (targetTotal > 0) {
             if (method === "debt" && settings.debt_surcharge_enabled && !ignoreDebtSurcharge) {
@@ -92,6 +96,10 @@ function TransactionAmounts({
     }
 
     function updateAmount(index, field, value) {
+        if (field === "method" && value === "debt" && !hasClient) {
+            onRequireClient?.();
+        }
+
         let updated = amounts.map((item, itemIndex) => {
             if (itemIndex !== index) return item;
 
@@ -513,14 +521,14 @@ function TransactionAmounts({
 
                         {amounts[0]?.method === "debt" && !hasClient && (
                             <div className="flex items-center justify-between rounded-md bg-[var(--warning)]/10 p-2.5 text-xs font-medium text-[var(--warning)]">
-                                <span>Para registrar a cuenta, asigná un cliente en la sección de arriba.</span>
+                                <span>Para registrar a cuenta, asigná un cliente en la sección de abajo.</span>
                                 {onRequireClient && (
                                     <button
                                         type="button"
                                         onClick={onRequireClient}
                                         className="ml-2 shrink-0 font-bold underline hover:opacity-80 cursor-pointer"
                                     >
-                                        Seleccionar cliente ↑
+                                        Seleccionar cliente ↓
                                     </button>
                                 )}
                             </div>

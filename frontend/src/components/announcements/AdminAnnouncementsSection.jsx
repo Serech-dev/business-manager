@@ -108,7 +108,7 @@ export default function AdminAnnouncementsSection() {
             } else if (presetKey === "update") {
                 payload = {
                     title: "Nueva versión disponible",
-                    message: "¡Hemos actualizado el sistema con nuevas mejoras! Hacé clic en 'Actualizar Ahora' o presioná Ctrl + F5 para cargar la última versión.",
+                    message: "¡Actualizamos el sistema con nuevas mejoras! Hacé clic en 'Actualizar Ahora' o presioná Ctrl + F5 para cargar la última versión.",
                     announcement_type: "update",
                     is_active: true,
                     show_reload_button: true,

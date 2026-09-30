@@ -352,10 +352,16 @@ function ProductModal({
     function handleSelectProductForBundle(prod) {
         if (!prod) return;
 
+        const isKg = prod.unit_type === "kg";
+        const is100g = prod.unit_type === "100g";
+        const defaultQty = isKg ? 0.25 : 1;
+
         const existingIdx = bundleItems.findIndex((it) => String(it.product) === String(prod.id));
         if (existingIdx >= 0) {
             const updated = [...bundleItems];
-            updated[existingIdx].quantity = (Number(updated[existingIdx].quantity) || 1) + 1;
+            const currentQty = Number(updated[existingIdx].quantity) || 0;
+            const step = isKg ? 0.05 : is100g ? 0.5 : 1;
+            updated[existingIdx].quantity = Math.round((currentQty + step) * 100) / 100;
             setBundleItems(updated);
         } else {
             setBundleItems((prev) => [
@@ -367,7 +373,7 @@ function ProductModal({
                     product_sale_price: Number(prod.sale_price) || 0,
                     product_cost_price: Number(prod.cost_price) || 0,
                     product_stock: prod.stock !== null && prod.stock !== undefined ? Number(prod.stock) : null,
-                    quantity: 1,
+                    quantity: defaultQty,
                 },
             ]);
         }
@@ -429,7 +435,11 @@ function ProductModal({
     function handleUpdateBundleItemQty(idx, delta) {
         const item = bundleItems[idx];
         if (!item) return;
-        const newQty = (Number(item.quantity) || 1) + delta;
+        const isKg = item.product_unit_type === "kg";
+        const is100g = item.product_unit_type === "100g";
+        const step = isKg ? 0.05 : is100g ? 0.5 : 1;
+        const currentQty = Number(item.quantity) || 0;
+        const newQty = Math.round((currentQty + delta * step) * 100) / 100;
         if (newQty <= 0) {
             handleRemoveBundleItem(idx);
             return;
@@ -440,11 +450,18 @@ function ProductModal({
     }
 
     function handleDirectBundleItemQty(idx, value) {
-        const parsed = parseInt(value, 10);
+        const parsed = parseFloat(value);
         if (isNaN(parsed) || parsed <= 0) return;
         const updated = [...bundleItems];
         if (!updated[idx]) return;
-        updated[idx] = { ...updated[idx], quantity: parsed };
+        updated[idx] = { ...updated[idx], quantity: Number(parsed.toFixed(2)) };
+        setBundleItems(updated);
+    }
+
+    function handleSetBundleItemPreset(idx, qty) {
+        const updated = [...bundleItems];
+        if (!updated[idx]) return;
+        updated[idx] = { ...updated[idx], quantity: qty };
         setBundleItems(updated);
     }
 
@@ -488,7 +505,7 @@ function ProductModal({
         try {
             const data = {
                 name: name.trim(),
-                unit_type: isBundle ? "unit" : unitType,
+                unit_type: unitType,
                 sale_price: Number(salePrice),
                 cost_price: isBundle ? bundleCostSum : costPrice ? Number(costPrice) : 0,
                 category: categoryId ? Number(categoryId) : null,
@@ -615,54 +632,52 @@ function ProductModal({
                             />
                         </div>
 
-                        {/* UNIT TYPE (ONLY FOR STANDARD PRODUCT) */}
-                        {!isBundle && (
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
-                                    Tipo de venta / Unidad
-                                </label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setUnitType("unit")}
-                                        className={`flex flex-col items-center justify-center gap-0.5 rounded-md border p-2 text-center text-xs font-semibold transition ${
-                                            unitType === "unit"
-                                                ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                                                : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)]"
-                                        }`}
-                                    >
-                                        <span>Por Unidad</span>
-                                        <span className="text-[10px] font-normal opacity-70">x unidad (u.)</span>
-                                    </button>
+                        {/* UNIT TYPE */}
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
+                                {isBundle ? "Tipo de venta del Combo / Oferta" : "Tipo de venta / Unidad"}
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setUnitType("unit")}
+                                    className={`flex flex-col items-center justify-center gap-0.5 rounded-md border p-2 text-center text-xs font-semibold transition ${
+                                        unitType === "unit"
+                                            ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                                            : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)]"
+                                    }`}
+                                >
+                                    <span>Por Unidad</span>
+                                    <span className="text-[10px] font-normal opacity-70">x unidad (u.)</span>
+                                </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setUnitType("kg")}
-                                        className={`flex flex-col items-center justify-center gap-0.5 rounded-md border p-2 text-center text-xs font-semibold transition ${
-                                            unitType === "kg"
-                                                ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                                                : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)]"
-                                        }`}
-                                    >
-                                        <span>Por Kilo</span>
-                                        <span className="text-[10px] font-normal opacity-70">$/kg (al peso)</span>
-                                    </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUnitType("kg")}
+                                    className={`flex flex-col items-center justify-center gap-0.5 rounded-md border p-2 text-center text-xs font-semibold transition ${
+                                        unitType === "kg"
+                                            ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                                            : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)]"
+                                    }`}
+                                >
+                                    <span>Por Kilo</span>
+                                    <span className="text-[10px] font-normal opacity-70">$/kg (al peso)</span>
+                                </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setUnitType("100g")}
-                                        className={`flex flex-col items-center justify-center gap-0.5 rounded-md border p-2 text-center text-xs font-semibold transition ${
-                                            unitType === "100g"
-                                                ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                                                : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)]"
-                                        }`}
-                                    >
-                                        <span>Por 100g</span>
-                                        <span className="text-[10px] font-normal opacity-70">$/100g (fracción)</span>
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setUnitType("100g")}
+                                    className={`flex flex-col items-center justify-center gap-0.5 rounded-md border p-2 text-center text-xs font-semibold transition ${
+                                        unitType === "100g"
+                                            ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                                            : "border-[var(--border)] bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--surface-accent)]"
+                                    }`}
+                                >
+                                    <span>Por 100g</span>
+                                    <span className="text-[10px] font-normal opacity-70">$/100g (fracción)</span>
+                                </button>
                             </div>
-                        )}
+                        </div>
 
                         {/* COMBO CONSTITUENT ITEMS BUILDER (ONLY WHEN IS_BUNDLE) */}
                         {isBundle && (
@@ -750,6 +765,11 @@ function ProductModal({
                                                                 <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
                                                                     {p.category_name && <span>{p.category_name}</span>}
                                                                     {p.barcode && <span className="font-mono">{p.barcode}</span>}
+                                                                    {(p.unit_type === "kg" || p.unit_type === "100g") && (
+                                                                        <span className="rounded-sm bg-[var(--primary)]/15 px-1 py-0.2 font-semibold text-[var(--primary)]">
+                                                                            {p.unit_type === "kg" ? "Al peso ($/kg)" : "Al peso ($/100g)"}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="text-right shrink-0">
@@ -772,65 +792,136 @@ function ProductModal({
                                         Escribí en el buscador para sumar los productos que componen esta oferta.
                                     </div>
                                 ) : (
-                                    <div className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)] bg-[var(--background)] max-h-48 overflow-y-auto">
-                                        {bundleItems.map((it, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-2.5 text-xs">
-                                                <div className="min-w-0 pr-2">
-                                                    <div className="font-bold text-[var(--text-primary)] truncate">
-                                                        {it.product_name}
+                                    <div className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)] bg-[var(--background)] max-h-56 overflow-y-auto">
+                                        {bundleItems.map((it, idx) => {
+                                            const isKg = it.product_unit_type === "kg";
+                                            const is100g = it.product_unit_type === "100g";
+                                            const unitBadge = isKg ? "kg" : is100g ? "x100g" : "u.";
+
+                                            return (
+                                                <div key={idx} className="p-2.5 text-xs space-y-1.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="min-w-0 pr-2">
+                                                            <div className="font-bold text-[var(--text-primary)] truncate">
+                                                                {it.product_name}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
+                                                                <span>
+                                                                    {formatCurrency(it.product_sale_price)} {isKg ? "/ kg" : is100g ? "/ 100g" : "c/u"}
+                                                                </span>
+                                                                {it.product_stock !== null && it.product_stock !== undefined && (
+                                                                    <span>
+                                                                        Stock: {it.product_stock} {isKg ? "kg" : is100g ? "x100g" : "u."}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            {/* STEPPER */}
+                                                            <div className="flex items-center rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleUpdateBundleItemQty(idx, -1)}
+                                                                    className="h-7 w-7 flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition rounded-l-md"
+                                                                    title={isKg ? "Restar 50g" : is100g ? "Restar 50g" : "Restar 1"}
+                                                                >
+                                                                    -
+                                                                </button>
+                                                                <div className="flex items-center px-1">
+                                                                    <input
+                                                                        type="number"
+                                                                        step="any"
+                                                                        min="0.01"
+                                                                        value={it.quantity}
+                                                                        onChange={(e) => handleDirectBundleItemQty(idx, e.target.value)}
+                                                                        className="w-12 sm:w-14 text-center font-bold text-xs tabular-nums text-[var(--text-primary)] bg-transparent outline-none"
+                                                                    />
+                                                                    <span className="text-[10px] font-bold text-[var(--text-secondary)] pr-1 select-none">
+                                                                        {unitBadge}
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleUpdateBundleItemQty(idx, 1)}
+                                                                    className="h-7 w-7 flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition rounded-r-md"
+                                                                    title={isKg ? "Sumar 50g" : is100g ? "Sumar 50g" : "Sumar 1"}
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
+
+                                                            <span className="w-20 sm:w-24 text-right font-bold text-xs text-[var(--text-primary)] tabular-nums">
+                                                                {formatCurrency((it.product_sale_price || 0) * (it.quantity || 1))}
+                                                            </span>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveBundleItem(idx)}
+                                                                className="rounded-md p-1 text-[var(--text-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] transition"
+                                                                title="Eliminar producto"
+                                                            >
+                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
-                                                        <span>{formatCurrency(it.product_sale_price)} c/u</span>
-                                                        {it.product_stock !== null && it.product_stock !== undefined && (
-                                                            <span>Stock: {it.product_stock} u.</span>
-                                                        )}
-                                                    </div>
+
+                                                    {/* QUICK WEIGHT PRESETS FOR WEIGHED ITEMS */}
+                                                    {isKg && (
+                                                        <div className="flex items-center gap-1 pt-0.5 flex-wrap">
+                                                            <span className="text-[10px] text-[var(--text-secondary)] mr-0.5 font-medium">Fijar peso:</span>
+                                                            {[
+                                                                { label: "150g", val: 0.15 },
+                                                                { label: "250g", val: 0.25 },
+                                                                { label: "300g", val: 0.3 },
+                                                                { label: "500g", val: 0.5 },
+                                                                { label: "1 kg", val: 1 },
+                                                            ].map((p) => (
+                                                                <button
+                                                                    key={p.label}
+                                                                    type="button"
+                                                                    onClick={() => handleSetBundleItemPreset(idx, p.val)}
+                                                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                                                                        Math.abs((it.quantity || 0) - p.val) < 0.001
+                                                                            ? "bg-[var(--primary)] text-white"
+                                                                            : "bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]"
+                                                                    }`}
+                                                                >
+                                                                    {p.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {is100g && (
+                                                        <div className="flex items-center gap-1 pt-0.5 flex-wrap">
+                                                            <span className="text-[10px] text-[var(--text-secondary)] mr-0.5 font-medium">Fijar porción:</span>
+                                                            {[
+                                                                { label: "100g", val: 1 },
+                                                                { label: "200g", val: 2 },
+                                                                { label: "250g", val: 2.5 },
+                                                                { label: "300g", val: 3 },
+                                                                { label: "500g", val: 5 },
+                                                            ].map((p) => (
+                                                                <button
+                                                                    key={p.label}
+                                                                    type="button"
+                                                                    onClick={() => handleSetBundleItemPreset(idx, p.val)}
+                                                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                                                                        Math.abs((it.quantity || 0) - p.val) < 0.001
+                                                                            ? "bg-[var(--primary)] text-white"
+                                                                            : "bg-[var(--surface-accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]"
+                                                                    }`}
+                                                                >
+                                                                    {p.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-
-                                                <div className="flex items-center gap-2.5 shrink-0">
-                                                    {/* STEPPER */}
-                                                    <div className="flex items-center rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleUpdateBundleItemQty(idx, -1)}
-                                                            className="h-7 w-7 flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition rounded-l-md"
-                                                            title="Restar 1"
-                                                        >
-                                                            -
-                                                        </button>
-                                                        <input
-                                                            type="text"
-                                                            value={it.quantity}
-                                                            onChange={(e) => handleDirectBundleItemQty(idx, e.target.value)}
-                                                            className="w-8 text-center font-bold text-xs tabular-nums text-[var(--text-primary)] bg-transparent outline-none"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleUpdateBundleItemQty(idx, 1)}
-                                                            className="h-7 w-7 flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition rounded-r-md"
-                                                            title="Sumar 1"
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-
-                                                    <span className="w-18 text-right font-bold text-xs text-[var(--text-primary)] tabular-nums">
-                                                        {formatCurrency((it.product_sale_price || 0) * (it.quantity || 1))}
-                                                    </span>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveBundleItem(idx)}
-                                                        className="rounded-md p-1 text-[var(--text-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] transition"
-                                                        title="Eliminar producto"
-                                                    >
-                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
 
@@ -854,9 +945,18 @@ function ProductModal({
                         <div className="grid gap-3 sm:grid-cols-2">
                             {/* SALE PRICE */}
                             <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
-                                    {isBundle ? "Precio del Combo ($)" : `Precio de Venta ${unitLabelSuffix}`} <span className="text-[var(--danger)]">*</span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1 min-h-[1.25rem]">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] truncate">
+                                        {isBundle
+                                            ? unitType === "kg"
+                                                ? "Precio Combo (x kg)"
+                                                : unitType === "100g"
+                                                    ? "Precio Combo (x 100g)"
+                                                    : "Precio del Combo"
+                                            : `Precio Venta ${unitLabelSuffix}`}{" "}
+                                        <span className="text-[var(--danger)]">*</span>
+                                    </label>
+                                </div>
                                 <div className="relative">
                                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
                                         $
@@ -867,16 +967,19 @@ function ProductModal({
                                         value={salePrice}
                                         onChange={(e) => setSalePrice(e.target.value)}
                                         placeholder="0"
-                                        className="h-10 w-full rounded-md border-2 border-[var(--primary)]/60 bg-[var(--background)] pl-7 pr-3 text-sm font-extrabold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                        className="h-10 w-full rounded-md border border-[var(--primary)]/70 bg-[var(--background)] pl-7 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
                                     />
                                 </div>
                             </div>
 
                             {/* COST PRICE */}
                             <div>
-                                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
-                                    {isBundle ? "Costo total de componentes" : `Precio Costo ${unitLabelSuffix}`} <span className="text-[10px] text-[var(--text-secondary)]/70">(Opcional)</span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1 min-h-[1.25rem]">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] truncate">
+                                        {isBundle ? "Costo Componentes" : `Precio Costo ${unitLabelSuffix}`}
+                                    </label>
+                                    <span className="text-[10px] text-[var(--text-secondary)]/70 shrink-0">(Opcional)</span>
+                                </div>
                                 <div className="relative">
                                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
                                         $
@@ -886,7 +989,7 @@ function ProductModal({
                                         onChange={(e) => setCostPrice(e.target.value)}
                                         disabled={isBundle}
                                         placeholder="0"
-                                        className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-7 pr-3 text-xs font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] disabled:opacity-60"
+                                        className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] pl-7 pr-3 text-sm font-bold tabular-nums text-[var(--text-primary)] outline-none focus:border-[var(--primary)] disabled:opacity-60"
                                     />
                                 </div>
                             </div>
@@ -956,9 +1059,11 @@ function ProductModal({
                                     <div className="space-y-2.5 pt-1">
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1">
-                                                    {isWeightProduct ? "Llevando (peso)" : "Llevando (unidades)"}
-                                                </label>
+                                                <div className="flex items-center justify-between mb-1 min-h-[1.25rem]">
+                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] truncate">
+                                                        {isWeightProduct ? "Llevando (peso)" : "Llevando (unidades)"}
+                                                    </label>
+                                                </div>
                                                 {unitType === "kg" ? (
                                                     <div className="flex gap-1.5">
                                                         <input
@@ -1013,9 +1118,11 @@ function ProductModal({
                                             </div>
 
                                             <div>
-                                                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--success)] mb-1">
-                                                    Precio total de la promo ($)
-                                                </label>
+                                                <div className="flex items-center justify-between mb-1 min-h-[1.25rem]">
+                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--success)] truncate">
+                                                        Precio total promo ($)
+                                                    </label>
+                                                </div>
                                                 <div className="relative">
                                                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-secondary)]">
                                                         $
@@ -1024,7 +1131,7 @@ function ProductModal({
                                                         value={promoPrice}
                                                         onChange={(e) => setPromoPrice(e.target.value)}
                                                         placeholder="0"
-                                                        className="h-9 w-full rounded-md border-2 border-[var(--primary)]/60 bg-[var(--background)] pl-7 pr-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)]"
+                                                        className="h-9 w-full rounded-md border border-[var(--primary)]/70 bg-[var(--background)] pl-7 pr-3 text-xs font-bold text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
                                                     />
                                                 </div>
                                             </div>

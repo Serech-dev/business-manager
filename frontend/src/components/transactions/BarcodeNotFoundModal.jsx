@@ -257,13 +257,7 @@ function BarcodeNotFoundModal({
             onClose();
         } catch (error) {
             console.error("Error creating product from barcode setup:", error);
-            const data = error.response?.data;
-            const msg =
-                (Array.isArray(data?.name) ? data.name[0] : data?.name) ||
-                (Array.isArray(data?.barcode) ? data.barcode[0] : data?.barcode) ||
-                (Array.isArray(data?.non_field_errors) ? data.non_field_errors[0] : data?.non_field_errors) ||
-                data?.detail ||
-                "No se pudo guardar el producto.";
+            const msg = error.response?.data?.name?.[0] || error.response?.data?.barcode?.[0] || error.response?.data?.detail || "No se pudo guardar el producto.";
             toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
         } finally {
             setIsSaving(false);

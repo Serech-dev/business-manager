@@ -195,7 +195,7 @@ function NewTransaction() {
 
     function handleScrollToClient() {
         if (clientSectionRef.current) {
-            clientSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+            clientSectionRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
             const input = clientSectionRef.current.querySelector("input");
             input?.focus();
         }
@@ -295,6 +295,8 @@ function NewTransaction() {
     }
 
     const hasPaymentOperation = operations.some((op) => op.type === "payment");
+    const hasDebtMethod = transactionAmounts.some((a) => a.method === "debt");
+    const isClientRequired = hasPaymentOperation || hasDebtMethod;
 
     function handleSelectClient(selected) {
         setClient(selected);
@@ -1129,41 +1131,6 @@ function NewTransaction() {
                     <span>Agregar otra operación a esta venta</span>
                 </button>
 
-                {/* CLIENT & NOTES (SLEEK INLINE 2-COLUMN TOOLBAR) */}
-                <div ref={clientSectionRef} className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                        <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                                    Cliente {hasPaymentOperation && <span className="text-[var(--danger)]">* (Requerido)</span>}
-                                </label>
-                            </div>
-                            <TransactionClient
-                                selectedClient={client}
-                                onSelectClient={handleSelectClient}
-                                required={hasPaymentOperation}
-                            />
-                        </div>
-
-                        <div>
-                            <label
-                                htmlFor="tx-description"
-                                className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
-                            >
-                                Nota o detalle general (opcional)
-                            </label>
-                            <input
-                                id="tx-description"
-                                type="text"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Ej: Descuento aplicado, pedido especial, etc."
-                                className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
-                            />
-                        </div>
-                    </div>
-                </div>
-
                 {/* DELIVERY / PEDIDOS A DOMICILIO */}
                 {settings?.delivery_enabled && (
                     <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs space-y-3">
@@ -1300,6 +1267,53 @@ function NewTransaction() {
                         receivedCash={receivedCash}
                         onReceivedCashChange={setReceivedCash}
                     />
+                </div>
+
+                {/* CLIENT & NOTES (SLEEK INLINE 2-COLUMN TOOLBAR) */}
+                <div
+                    ref={clientSectionRef}
+                    className={`rounded-md border transition-colors duration-200 p-4 shadow-xs ${
+                        isClientRequired && !client
+                            ? "border-[var(--primary)]/50 bg-[var(--primary)]/5"
+                            : "border-[var(--border)] bg-[var(--surface)]"
+                    }`}
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
+                                    <span>Cliente</span>
+                                    {isClientRequired && (
+                                        <span className="text-[var(--primary)] font-semibold text-[11px] normal-case">
+                                            {hasDebtMethod ? "* Requerido para fiado" : "* Requerido"}
+                                        </span>
+                                    )}
+                                </label>
+                            </div>
+                            <TransactionClient
+                                selectedClient={client}
+                                onSelectClient={handleSelectClient}
+                                required={isClientRequired}
+                            />
+                        </div>
+
+                        <div>
+                            <label
+                                htmlFor="tx-description"
+                                className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
+                            >
+                                Nota o detalle general (opcional)
+                            </label>
+                            <input
+                                id="tx-description"
+                                type="text"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Ej: Descuento aplicado, pedido especial, etc."
+                                className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* BOTTOM CHECKOUT BAR (STICKY) */}
