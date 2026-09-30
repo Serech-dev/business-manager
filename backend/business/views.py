@@ -1,7 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction as db_transaction
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Q, Sum, Count, F, Prefetch
 from django.utils import timezone
 from rest_framework import exceptions, generics, status
 from accounts.permissions import HasActiveSubscription, RequiresFeature
@@ -10,8 +10,8 @@ from rest_framework.views import APIView
 
 from .models import (BankAccount, Category, Client, MasterCatalogProduct, Product,
                      Provider, Register, StockMovement, StockNote,
-                     StoreSettings, Transaction, TransactionOperationAmount,
-                     TransactionOperationItem)
+                     StoreSettings, Transaction, TransactionOperation,
+                     TransactionOperationAmount, TransactionOperationItem)
 from .serializers import (BankAccountSerializer, CategorySerializer, ClientSerializer,
                           MasterCatalogProductSerializer, ProductSerializer,
                           ProviderSerializer, RegisterListSerializer,
@@ -1121,6 +1121,88 @@ class StockAlertsSummaryView(APIView):
             "total_alerts": low_stock_count + out_of_stock_count,
             "total_inventory_cost": total_inventory_cost,
             "pending_notes_count": pending_notes,
+        })
+
+
+class OverdueDebtsAlertView(APIView):
+    """
+    Returns a summary and list of clients who have outstanding unpaid debts
+    that have exceeded the overdue threshold (default 7 days) without recent payments.
+    """
+    permission_classes = [HasActiveSubscription]
+
+    def get(self, request):
+        user = request.user
+        days_param = request.query_params.get("days", "7")
+        try:
+            overdue_threshold_days = max(1, int(days_param))
+        except (ValueError, TypeError):
+            overdue_threshold_days = 7
+
+        now = timezone.now()
+
+        clients = (
+            Client.objects.filter(user=user)
+            .prefetch_related(
+                Prefetch(
+                    "transactions",
+                    queryset=Transaction.objects.order_by("created_at").prefetch_related("operations__amounts"),
+                )
+            )
+        )
+
+        overdue_clients = []
+        total_overdue = Decimal("0")
+
+        for client in clients:
+            balance = client.initial_debt or Decimal("0")
+            cycle_start = client.created_at if balance > Decimal("0") else None
+            last_payment_date = None
+
+            for tx in client.transactions.all():
+                tx_time = tx.created_at
+                for op in tx.operations.all():
+                    if op.type == TransactionOperation.Type.PAYMENT:
+                        pmt_total = sum(a.amount for a in op.amounts.all())
+                        balance -= pmt_total
+                        if balance > Decimal("0"):
+                            last_payment_date = tx_time
+                        else:
+                            cycle_start = None
+                            last_payment_date = None
+                    else:
+                        debt_addition = sum(
+                            a.amount for a in op.amounts.all()
+                            if a.method == TransactionOperationAmount.Method.DEBT
+                        )
+                        if debt_addition > Decimal("0"):
+                            if balance <= Decimal("0"):
+                                cycle_start = tx_time
+                                last_payment_date = None
+                            balance += debt_addition
+
+            if balance > Decimal("0"):
+                ref_date = last_payment_date or cycle_start or client.created_at
+                days_inactive = (now - ref_date).days
+                if days_inactive >= overdue_threshold_days:
+                    total_overdue += balance
+                    overdue_clients.append({
+                        "id": client.id,
+                        "name": client.name,
+                        "phone": client.phone or "",
+                        "debt": balance,
+                        "days_overdue": days_inactive,
+                        "last_activity_date": ref_date.isoformat(),
+                    })
+
+        # Sort: most days overdue first, then largest debt amount
+        overdue_clients.sort(key=lambda c: (-c["days_overdue"], -c["debt"]))
+
+        return Response({
+            "count": len(overdue_clients),
+            "total_overdue_debt": total_overdue,
+            "threshold_days": overdue_threshold_days,
+            "clients": overdue_clients,
         })
 
 

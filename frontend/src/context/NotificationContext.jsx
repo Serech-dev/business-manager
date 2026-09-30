@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import { getStockAlertsSummary, getCurrentRegister } from "../services/business";
+import { getStockAlertsSummary, getCurrentRegister, getOverdueDebtsSummary } from "../services/business";
 import { useSubscription } from "./SubscriptionContext";
+import { formatCurrency } from "../utils/formatCurrency";
 
 const NotificationContext = createContext(null);
 
@@ -20,6 +21,7 @@ export function NotificationProvider({ children }) {
 
     const [stockSummary, setStockSummary] = useState(null);
     const [currentRegister, setCurrentRegister] = useState(null);
+    const [debtSummary, setDebtSummary] = useState(null);
     const [dismissedIds, setDismissedIds] = useState(() => {
         try {
             const saved = localStorage.getItem(DISMISSED_STORAGE_KEY);
@@ -46,9 +48,10 @@ export function NotificationProvider({ children }) {
         if (!token) return;
 
         try {
-            const [stockRes, regRes] = await Promise.allSettled([
+            const [stockRes, regRes, debtRes] = await Promise.allSettled([
                 getStockAlertsSummary(),
                 getCurrentRegister(),
+                getOverdueDebtsSummary(),
             ]);
 
             if (stockRes.status === "fulfilled" && stockRes.value) {
@@ -56,6 +59,9 @@ export function NotificationProvider({ children }) {
             }
             if (regRes.status === "fulfilled") {
                 setCurrentRegister(regRes.value);
+            }
+            if (debtRes.status === "fulfilled" && debtRes.value) {
+                setDebtSummary(debtRes.value);
             }
         } catch (error) {
             console.warn("Notification polling error:", error);
@@ -197,6 +203,79 @@ export function NotificationProvider({ children }) {
             }
         } catch (e) {
             console.error("Date parse error in register notification:", e);
+        }
+    }
+
+    // 4. UNCONFIRMED TRANSFERS (Transferencias sin acreditar hace 1 hora o más en la caja actual)
+    if (currentRegister && Array.isArray(currentRegister.pending_transfers)) {
+        currentRegister.pending_transfers.forEach((transfer) => {
+            if (!transfer.created_at) return;
+            const createdAt = new Date(transfer.created_at);
+            if (isNaN(createdAt.getTime())) return;
+
+            const elapsedMinutes = Math.floor((Date.now() - createdAt.getTime()) / (60 * 1000));
+            // Trigger after 1 hour (60 minutes)
+            if (elapsedMinutes >= 60) {
+                const hours = Math.floor(elapsedMinutes / 60);
+                const timeText = hours === 1 ? "hace 1 hora" : `hace ${hours} horas`;
+                const clientText = transfer.client_name ? `de ${transfer.client_name}` : `Operación #${transfer.transaction_id}`;
+                const amountFormatted = formatCurrency(transfer.amount);
+
+                rawNotifications.push({
+                    id: `transfer_unconfirmed_${transfer.amount_id}`,
+                    category: "transfer",
+                    severity: elapsedMinutes >= 120 ? "critical" : "warning",
+                    title: "Transferencia sin acreditar",
+                    message: `Transferencia de ${amountFormatted} (${clientText}) lleva ${timeText} sin confirmarse.`,
+                    actionLabel: "Ver venta",
+                    actionRoute: `/?highlight=${transfer.transaction_id}`,
+                    transferId: transfer.amount_id,
+                    transactionId: transfer.transaction_id,
+                });
+            }
+        });
+    }
+
+    // 5. OVERDUE CUSTOMER DEBTS (Clientes con fiado pendiente hace 7 días o más sin pagos)
+    if (debtSummary && debtSummary.count > 0 && Array.isArray(debtSummary.clients)) {
+        if (debtSummary.count <= 3) {
+            debtSummary.clients.forEach((c) => {
+                const daysText = c.days_overdue === 1 ? "1 día" : `${c.days_overdue} días`;
+                rawNotifications.push({
+                    id: `debt_overdue_${c.id}`,
+                    category: "debt",
+                    severity: c.days_overdue >= 30 ? "critical" : "warning",
+                    title: `Fiado pendiente: ${c.name}`,
+                    message: `Adeuda ${formatCurrency(c.debt)} hace ${daysText} sin registrar pagos.`,
+                    actionLabel: "Ver cuenta",
+                    actionRoute: `/clients/${c.id}`,
+                });
+            });
+        } else {
+            // Consolidated summary alert
+            rawNotifications.push({
+                id: `debt_overdue_summary_${debtSummary.count}`,
+                category: "debt",
+                severity: "warning",
+                title: "Fiados pendientes de cobro",
+                message: `Hay ${debtSummary.count} clientes con saldo deudor hace más de 7 días sin registrar pagos (Total: ${formatCurrency(debtSummary.total_overdue_debt)}).`,
+                actionLabel: "Ver clientes",
+                actionRoute: "/clients?filter=debt",
+            });
+
+            // Plus top 2 individual overdue clients
+            debtSummary.clients.slice(0, 2).forEach((c) => {
+                const daysText = c.days_overdue === 1 ? "1 día" : `${c.days_overdue} días`;
+                rawNotifications.push({
+                    id: `debt_overdue_${c.id}`,
+                    category: "debt",
+                    severity: c.days_overdue >= 30 ? "critical" : "warning",
+                    title: `Fiado pendiente: ${c.name}`,
+                    message: `Adeuda ${formatCurrency(c.debt)} hace ${daysText} sin registrar pagos.`,
+                    actionLabel: "Ver cuenta",
+                    actionRoute: `/clients/${c.id}`,
+                });
+            });
         }
     }
 

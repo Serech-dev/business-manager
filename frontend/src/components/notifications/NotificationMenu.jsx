@@ -86,7 +86,7 @@ export function NotificationMenu({ align = "right" }) {
 
             {/* NOTIFICATIONS DROPDOWN POPOVER */}
             {isOpen && (
-                <div className={`absolute ${align === "left" ? "left-0" : "right-0"} top-full z-50 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden animate-fadeIn`}>
+                <div className={`absolute ${align === "left" ? "left-0" : "right-0"} top-full z-50 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-2xl overflow-hidden animate-fadeIn`}>
                     {/* HEADER */}
                     <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 bg-[var(--surface-accent)]">
                         <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export function NotificationMenu({ align = "right" }) {
                                     ¡Estás al día!
                                 </p>
                                 <p className="text-[11px] text-[var(--text-secondary)]">
-                                    No tenés alertas pendientes de stock, licencia o caja.
+                                    No tenés alertas pendientes de stock, transferencias, fiados o caja.
                                 </p>
                             </div>
                         ) : (
@@ -164,6 +164,16 @@ export function NotificationMenu({ align = "right" }) {
                                             {notif.category === "register" && (
                                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.114 60.114 0 0 0 18.75 0m0 0V6a.75.75 0 0 0-.75-.75h-.75m0 0V4.5m0 0h.75M3 4.5h.75m0 0a60.07 60.07 0 0 1 15.797-2.101c.727-.198 1.453.342 1.453 1.096V4.5" />
+                                                </svg>
+                                            )}
+                                            {notif.category === "transfer" && (
+                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                                                </svg>
+                                            )}
+                                            {notif.category === "debt" && (
+                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
                                                 </svg>
                                             )}
                                         </div>

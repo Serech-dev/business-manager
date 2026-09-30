@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
@@ -11,12 +11,21 @@ import { useStoreSettings } from "../context/StoreSettingsContext";
 
 function ClientList() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { getClientDebtLimit } = useStoreSettings();
 
     const [clients, setClients] = useState([]);
     const [search, setSearch] = useState("");
-    const [debtFilter, setDebtFilter] = useState("all"); // 'all' | 'with_debt'
+    const [debtFilter, setDebtFilter] = useState(() =>
+        searchParams.get("filter") === "debt" ? "with_debt" : "all"
+    ); // 'all' | 'with_debt'
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (searchParams.get("filter") === "debt") {
+            setDebtFilter("with_debt");
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         async function loadClients() {

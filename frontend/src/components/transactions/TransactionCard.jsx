@@ -73,6 +73,7 @@ function TransactionCard({
     transaction,
     onDelete,
     onTransactionUpdate,
+    isHighlighted = false,
 }) {
     const { requireOwnerAccess } = useDeviceSecurity();
     const [updatingAmountId, setUpdatingAmountId] = useState(null);
@@ -152,18 +153,22 @@ function TransactionCard({
     );
 
     return (
-        <article className="
-            overflow-hidden
-            rounded-lg
-            border
-            border-[var(--border)]
-            bg-[var(--surface)]
-            shadow-xs
-            transition-all
-            duration-200
-            hover:border-[var(--primary)]/35
-            hover:shadow-sm
-        ">
+        <article
+            id={`transaction-${transaction.id}`}
+            className={`
+                overflow-hidden
+                rounded-md
+                border
+                bg-[var(--surface)]
+                transition-all
+                duration-300
+                ${
+                    isHighlighted
+                        ? "border-[var(--primary)] ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--background)] shadow-lg"
+                        : "border-[var(--border)] shadow-xs hover:border-[var(--primary)]/35 hover:shadow-sm"
+                }
+            `}
+        >
             {/* HEADER */}
             <div className="
                 flex

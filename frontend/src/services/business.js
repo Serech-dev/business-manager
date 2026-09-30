@@ -415,6 +415,11 @@ export async function getStockAlertsSummary() {
     return response.data;
 }
 
+export async function getOverdueDebtsSummary(days = 7) {
+    const response = await api.get(`business/debts/overdue/?days=${days}`);
+    return response.data;
+}
+
 export async function getStoreSettings() {
     const response = await api.get("business/settings/");
     return response.data;

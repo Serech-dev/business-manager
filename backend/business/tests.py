@@ -1,6 +1,8 @@
+from datetime import timedelta
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -1191,6 +1193,133 @@ class DeliveryOrderTests(TestCase):
         self.assertEqual(patch_res.status_code, status.HTTP_200_OK, patch_res.data)
         self.assertEqual(patch_res.data["delivery_status"], "delivered")
         self.assertEqual(patch_res.data["delivery_status_display"], "Entregado")
+
+
+class OverdueDebtsAlertTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="kioscouser_debts",
+            email="debts@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("10000.00"),
+        )
+
+    def test_overdue_debts_alert_calculation(self):
+        now = timezone.now()
+
+        # 1. Client overdue with initial debt from 10 days ago, no payments
+        client_overdue = Client.objects.create(
+            user=self.user,
+            name="Juan Carlos Mora",
+            phone="11223344",
+            initial_debt=Decimal("5000.00"),
+        )
+        Client.objects.filter(pk=client_overdue.pk).update(created_at=now - timedelta(days=10))
+
+        # 2. Client with fresh debt created 2 days ago (not overdue)
+        client_fresh = Client.objects.create(
+            user=self.user,
+            name="Maria Reciente",
+            initial_debt=Decimal("3000.00"),
+        )
+        Client.objects.filter(pk=client_fresh.pk).update(created_at=now - timedelta(days=2))
+
+        # 3. Client who had old debt but made a payment 2 days ago (not overdue)
+        client_active = Client.objects.create(
+            user=self.user,
+            name="Pedro Pagador",
+            initial_debt=Decimal("8000.00"),
+        )
+        Client.objects.filter(pk=client_active.pk).update(created_at=now - timedelta(days=20))
+        tx_payment = Transaction.objects.create(
+            user=self.user,
+            register=self.register,
+            client=client_active,
+        )
+        Transaction.objects.filter(pk=tx_payment.pk).update(created_at=now - timedelta(days=2))
+        op_payment = TransactionOperation.objects.create(
+            transaction=tx_payment,
+            type=TransactionOperation.Type.PAYMENT,
+        )
+        TransactionOperationAmount.objects.create(
+            operation=op_payment,
+            method=TransactionOperationAmount.Method.CASH,
+            amount=Decimal("2000.00"),
+            received=True,
+        )
+
+        # 4. Client who made a payment 12 days ago and still owes debt (overdue)
+        client_old_payment = Client.objects.create(
+            user=self.user,
+            name="Sofia PagoViejo",
+            initial_debt=Decimal("6000.00"),
+        )
+        Client.objects.filter(pk=client_old_payment.pk).update(created_at=now - timedelta(days=25))
+        tx_old_payment = Transaction.objects.create(
+            user=self.user,
+            register=self.register,
+            client=client_old_payment,
+        )
+        Transaction.objects.filter(pk=tx_old_payment.pk).update(created_at=now - timedelta(days=12))
+        op_old_payment = TransactionOperation.objects.create(
+            transaction=tx_old_payment,
+            type=TransactionOperation.Type.PAYMENT,
+        )
+        TransactionOperationAmount.objects.create(
+            operation=op_old_payment,
+            method=TransactionOperationAmount.Method.CASH,
+            amount=Decimal("1000.00"),
+            received=True,
+        )
+
+        # 5. Client with 0 balance (not overdue)
+        client_zero = Client.objects.create(
+            user=self.user,
+            name="Carlos Al Dia",
+            initial_debt=Decimal("0.00"),
+        )
+        Client.objects.filter(pk=client_zero.pk).update(created_at=now - timedelta(days=30))
+
+        # Query overdue debts endpoint
+        response = self.client.get("/api/business/debts/overdue/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        data = response.data
+
+        self.assertEqual(data["count"], 2)
+        self.assertEqual(data["threshold_days"], 7)
+        self.assertEqual(Decimal(str(data["total_overdue_debt"])), Decimal("10000.00")) # 5000 + (6000-1000)
+
+        client_ids = [c["id"] for c in data["clients"]]
+        self.assertIn(client_overdue.id, client_ids)
+        self.assertIn(client_old_payment.id, client_ids)
+        self.assertNotIn(client_fresh.id, client_ids)
+        self.assertNotIn(client_active.id, client_ids)
+        self.assertNotIn(client_zero.id, client_ids)
+
+        # Check client details
+        c_mora = next(c for c in data["clients"] if c["id"] == client_overdue.id)
+        self.assertEqual(Decimal(str(c_mora["debt"])), Decimal("5000.00"))
+        self.assertGreaterEqual(c_mora["days_overdue"], 9)
+        self.assertEqual(c_mora["name"], "Juan Carlos Mora")
+        self.assertEqual(c_mora["phone"], "11223344")
+
+        c_sofia = next(c for c in data["clients"] if c["id"] == client_old_payment.id)
+        self.assertEqual(Decimal(str(c_sofia["debt"])), Decimal("5000.00"))
+        self.assertGreaterEqual(c_sofia["days_overdue"], 11)
+
+        # Test custom threshold ?days=14
+        res_14 = self.client.get("/api/business/debts/overdue/?days=14")
+        self.assertEqual(res_14.status_code, status.HTTP_200_OK)
+        # Neither 10 days nor 12 days exceeds 14 days
+        self.assertEqual(res_14.data["count"], 0)
+
 
 
 

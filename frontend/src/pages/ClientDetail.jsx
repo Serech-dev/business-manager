@@ -19,12 +19,14 @@ import ClientPaymentModal from "../components/clients/ClientPaymentModal";
 import TransactionItemsDetail from "../components/transactions/TransactionItemsDetail";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useStoreSettings } from "../context/StoreSettingsContext";
+import { useNotifications } from "../context/NotificationContext";
 
 
 function ClientDetail({ isNewClient = false }) {
     const { id } = useParams();
     const navigate = useNavigate();
     const { settings, getClientDebtLimit } = useStoreSettings();
+    const { refreshNotifications } = useNotifications();
 
     const {
         isKioskDevice,
@@ -1097,7 +1099,10 @@ function ClientDetail({ isNewClient = false }) {
                     onClose={() => setIsPaymentModalOpen(false)}
                     client={client}
                     currentDebt={debtTotal}
-                    onSuccess={loadClient}
+                    onSuccess={() => {
+                        loadClient();
+                        if (refreshNotifications) refreshNotifications();
+                    }}
                 />
             )}
 

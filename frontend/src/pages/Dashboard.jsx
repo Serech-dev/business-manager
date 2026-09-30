@@ -1,7 +1,6 @@
 import toast from "react-hot-toast";
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
 
 import {
     reopenLastRegister,
@@ -17,11 +16,17 @@ import OpenRegisterModal from "../components/registers/OpenRegisterModal";
 import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useNotifications } from "../context/NotificationContext";
 
 function Dashboard() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { requireOwnerAccess, isKioskDevice, isUnlocked } = useDeviceSecurity();
+    const { refreshNotifications } = useNotifications();
     const isOwner = !isKioskDevice || isUnlocked;
+
+    const highlightId = searchParams.get("highlight");
+    const [highlightedTxId, setHighlightedTxId] = useState(null);
 
     const [transactions, setTransactions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +51,9 @@ function Dashboard() {
         try {
             const currentRegister = await getCurrentRegister();
             setRegister(currentRegister);
+            if (refreshNotifications) {
+                refreshNotifications();
+            }
         } catch (error) {
             console.error("Error refreshing register on transaction update:", error);
         }
@@ -74,6 +82,40 @@ function Dashboard() {
     useEffect(() => {
         loadDashboard();
     }, []);
+
+    // Scroll to and highlight a specific transaction if requested (e.g. from notification)
+    useEffect(() => {
+        if (highlightId && transactions.length > 0 && !isLoading) {
+            const targetId = parseInt(highlightId, 10);
+            const exists = transactions.some((t) => t.id === targetId);
+            if (exists) {
+                setHighlightedTxId(targetId);
+                const scrollTimer = setTimeout(() => {
+                    const el = document.getElementById(`transaction-${targetId}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                }, 150);
+
+                const clearTimer = setTimeout(() => {
+                    setHighlightedTxId(null);
+                    setSearchParams(
+                        (prev) => {
+                            const next = new URLSearchParams(prev);
+                            next.delete("highlight");
+                            return next;
+                        },
+                        { replace: true }
+                    );
+                }, 4000);
+
+                return () => {
+                    clearTimeout(scrollTimer);
+                    clearTimeout(clearTimer);
+                };
+            }
+        }
+    }, [highlightId, transactions, isLoading, setSearchParams]);
 
     function handleOpenRegisterSuccess(newRegister) {
         setRegister(newRegister);
@@ -469,6 +511,7 @@ function Dashboard() {
                                         <TransactionCard
                                             key={transaction.id}
                                             transaction={transaction}
+                                            isHighlighted={highlightedTxId === transaction.id}
                                             onDelete={(id) => {
                                                 requireOwnerAccess(() => {
                                                     setTransactionToDelete(id);

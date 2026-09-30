@@ -8,6 +8,7 @@ from .views import (AnalyticsView, BankAccountDetailView, BankAccountListCreateV
                      CurrentRegisterView, CurrentTransactionListView,
                      ImportStarterCatalogView, MasterCatalogLookupView,
                      MasterCatalogSearchView, OpenRegisterView,
+                     OverdueDebtsAlertView,
                      ProductDetailView, ProductListCreateView,
                      ProviderDetailView, ProviderListCreateView,
                      RegisterDetailView, RegisterListView,
@@ -111,6 +112,12 @@ urlpatterns = [
         "clients/<int:pk>/",
         ClientDetailView.as_view(),
         name="client-detail",
+    ),
+
+    path(
+        "debts/overdue/",
+        OverdueDebtsAlertView.as_view(),
+        name="overdue-debts-alert",
     ),
     
     path(

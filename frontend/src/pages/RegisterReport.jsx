@@ -21,6 +21,7 @@ import TransactionItemsDetail from "../components/transactions/TransactionItemsD
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatStockQty, formatUnitType } from "../utils/formatStock";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useNotifications } from "../context/NotificationContext";
 
 function formatDate(value) {
     if (!value) return "-";
@@ -43,6 +44,7 @@ function RegisterReport() {
     const navigate = useNavigate();
     const { id } = useParams();
     const { requireOwnerAccess } = useDeviceSecurity();
+    const { refreshNotifications } = useNotifications();
 
     const [register, setRegister] = useState(null);
     const [currentRegister, setCurrentRegister] = useState(null);
@@ -94,6 +96,7 @@ function RegisterReport() {
             setTransferToVoid(null);
             setTransferToDebt(null);
             await loadRegister();
+            if (refreshNotifications) refreshNotifications();
         } catch (error) {
             console.error(error);
             toast.error(
