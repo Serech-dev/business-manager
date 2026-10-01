@@ -15,6 +15,8 @@ import ReportsAnalytics from "./pages/ReportsAnalytics";
 import ProductList from "./pages/ProductList";
 import StockManagement from "./pages/StockManagement";
 import AdminPanel from "./pages/AdminPanel";
+import EmployeeList from "./pages/EmployeeList";
+import EmployeeDetail from "./pages/EmployeeDetail";
 
 import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,14 +25,33 @@ import SubscriptionModal from "./components/subscription/SubscriptionModal";
 import SubscriptionExpiredOverlay from "./components/subscription/SubscriptionExpiredOverlay";
 import StoreSettingsModal from "./components/settings/StoreSettingsModal";
 import FirstTimeSetupModal from "./components/settings/FirstTimeSetupModal";
+import ShiftHandoverModal from "./components/shifts/ShiftHandoverModal";
 
 import { DeviceSecurityProvider } from "./context/DeviceSecurityContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { SubscriptionProvider, useSubscription } from "./context/SubscriptionContext";
 import { StoreSettingsProvider, useStoreSettings } from "./context/StoreSettingsContext";
+import { ShiftProvider, useShift } from "./context/ShiftContext";
 import { DeviceModeProvider } from "./hooks/useDeviceMode";
 import { NotificationProvider } from "./context/NotificationContext";
 import { AnnouncementProvider } from "./context/AnnouncementContext";
+
+
+function ShiftModalContainer() {
+    const { isHandoverModalOpen, closeHandoverModal, activeShift, refreshActiveShift } = useShift();
+
+    return (
+        <ShiftHandoverModal
+            isOpen={isHandoverModalOpen}
+            onClose={closeHandoverModal}
+            currentShift={activeShift}
+            onSuccess={() => {
+                refreshActiveShift();
+                closeHandoverModal();
+            }}
+        />
+    );
+}
 
 
 function SubscriptionModalContainer() {
@@ -71,6 +92,7 @@ function App() {
                         <NotificationProvider>
                             <AnnouncementProvider>
                                 <OnboardingProvider>
+                                    <ShiftProvider>
                             <Toaster
                                 position="top-center"
                                 gutter={8}
@@ -123,6 +145,7 @@ function App() {
                         <BrowserRouter>
                             <SubscriptionModalContainer />
                             <StoreSettingsModalContainer />
+                            <ShiftModalContainer />
                             <Routes>
                             {/* PUBLIC */}
                             <Route
@@ -193,6 +216,14 @@ function App() {
                                         element={<ProviderDetail />}
                                     />
                                     <Route
+                                        path="/employees"
+                                        element={<EmployeeList />}
+                                    />
+                                    <Route
+                                        path="/employees/:id"
+                                        element={<EmployeeDetail />}
+                                    />
+                                    <Route
                                         path="/products"
                                         element={<ProductList />}
                                     />
@@ -204,6 +235,7 @@ function App() {
                             </Route>
                         </Routes>
                     </BrowserRouter>
+                                    </ShiftProvider>
                                 </OnboardingProvider>
                             </AnnouncementProvider>
                         </NotificationProvider>

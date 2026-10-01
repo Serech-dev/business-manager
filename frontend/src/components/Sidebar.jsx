@@ -16,6 +16,7 @@ import OpenRegisterModal from "./registers/OpenRegisterModal";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useStoreSettings } from "../context/StoreSettingsContext";
+import { useShift } from "../context/ShiftContext";
 
 
 function Sidebar({
@@ -26,6 +27,7 @@ function Sidebar({
     const location = useLocation();
 
     const { settings, openSettingsModal } = useStoreSettings();
+    const { activeShift, openHandoverModal } = useShift();
 
     const {
         isSuperuser,
@@ -528,6 +530,49 @@ function Sidebar({
                 <button
                     type="button"
                     onClick={() => {
+                        requireOwnerAccess(() => navigate("/employees"));
+                    }}
+                    className={`
+                        flex
+                        w-full
+                        items-center
+                        justify-between
+                        rounded-lg
+                        border-l-2
+                        px-4
+                        py-2.5
+                        text-left
+                        text-sm
+                        transition
+                        ${
+                            isActive("/employees")
+                                ? `
+                                    border-[var(--primary)]
+                                    bg-[var(--surface-accent)]
+                                    font-semibold
+                                    text-[var(--text-primary)]
+                                `
+                                : `
+                                    border-transparent
+                                    font-medium
+                                    text-[var(--text-secondary)]
+                                    hover:bg-[var(--surface-accent)]
+                                    hover:text-[var(--text-primary)]
+                                `
+                        }
+                    `}
+                >
+                    <span>Personal & Turnos</span>
+                    {isKioskDevice && !isUnlocked && (
+                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                            PIN
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => {
                         requireOwnerAccess(() => openSettingsModal());
                     }}
                     data-tour="sidebar-store-settings"
@@ -674,6 +719,26 @@ function Sidebar({
                         </span>
                     </div>
 
+                    {register && register.is_open && (
+                        <div className="mt-2.5 pt-2 border-t border-[var(--border)] space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                                <span className="text-[var(--text-secondary)]">Cajero:</span>
+                                <span className="font-bold text-[var(--text-primary)] truncate max-w-[110px]" title={activeShift?.employee_name}>
+                                    {activeShift?.employee_name || "Sin turno"}
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={openHandoverModal}
+                                className="w-full rounded-md border border-[var(--border)] bg-[var(--surface-accent)] py-1.5 px-2 text-[11px] font-bold text-[var(--text-primary)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                                </svg>
+                                <span>Cambio de turno</span>
+                            </button>
+                        </div>
+                    )}
 
                     {register && register.is_open ? (
                         <button

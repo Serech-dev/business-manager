@@ -8,14 +8,16 @@ from accounts.permissions import HasActiveSubscription, RequiresFeature
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import (BankAccount, Category, Client, MasterCatalogProduct, Product,
-                     Provider, Register, StockMovement, StockNote,
+from .models import (BankAccount, Category, Client, Employee, EmployeeAttendance,
+                     EmployeeMovement, MasterCatalogProduct, Product,
+                     Provider, Register, RegisterShift, StockMovement, StockNote,
                      StoreSettings, Transaction, TransactionOperation,
                      TransactionOperationAmount, TransactionOperationItem)
 from .serializers import (BankAccountSerializer, CategorySerializer, ClientSerializer,
-                          MasterCatalogProductSerializer, ProductSerializer,
-                          ProviderSerializer, RegisterListSerializer,
-                          RegisterSerializer, StockAdjustmentSerializer,
+                          EmployeeAttendanceSerializer, EmployeeMovementSerializer,
+                          EmployeeSerializer, MasterCatalogProductSerializer, ProductSerializer,
+                          ProviderSerializer, RegisterListSerializer, RegisterSerializer,
+                          RegisterShiftSerializer, StockAdjustmentSerializer,
                           StockBatchRestockSerializer, StockMovementSerializer,
                           StockNoteSerializer, StoreSettingsSerializer,
                           TransactionAmountReceivedSerializer,
@@ -403,6 +405,13 @@ class OpenRegisterView(APIView):
             user=request.user,
             initial_cash=initial_cash,
             initial_bank=initial_bank,
+        )
+
+        # Automatically open initial shift with the register's initial cash
+        RegisterShift.objects.create(
+            register=register,
+            employee=None,
+            initial_cash=initial_cash,
         )
 
         return Response(
@@ -1389,6 +1398,403 @@ class MasterCatalogSearchView(APIView):
         )[:30]
 
         return Response(MasterCatalogProductSerializer(results, many=True).data)
+
+
+class EmployeeListCreateView(generics.ListCreateAPIView):
+    serializer_class = EmployeeSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        queryset = Employee.objects.filter(user=self.request.user)
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(Q(name__icontains=search) | Q(phone__icontains=search))
+        active = self.request.query_params.get("active")
+        if active == "1" or active == "true":
+            queryset = queryset.filter(is_active=True)
+        elif active == "0" or active == "false":
+            queryset = queryset.filter(is_active=False)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = EmployeeSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        return Employee.objects.filter(user=self.request.user)
+
+
+class EmployeeSummaryView(APIView):
+    permission_classes = [HasActiveSubscription]
+
+    def get(self, request, employee_id=None, pk=None):
+        target_id = employee_id or pk
+        try:
+            employee = Employee.objects.get(pk=target_id, user=request.user)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Unsettled movements
+        unsettled_movements = employee.movements.filter(is_settled=False)
+        advances = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.ADVANCE), Decimal("0"))
+        consumptions = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.CONSUMPTION), Decimal("0"))
+        deductions = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.DEDUCTION), Decimal("0"))
+        bonuses = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.BONUS), Decimal("0"))
+
+        # Unsettled Attendances for active payroll cycle
+        attendances = employee.attendances.filter(is_settled=False)
+        present_count = attendances.filter(status=EmployeeAttendance.Status.PRESENT).count()
+        absent_count = attendances.filter(status=EmployeeAttendance.Status.ABSENT).count()
+        late_count = attendances.filter(status=EmployeeAttendance.Status.LATE).count()
+        justified_count = attendances.filter(status=EmployeeAttendance.Status.JUSTIFIED).count()
+        total_hours = sum((a.hours_worked or Decimal("0") for a in attendances.filter(status__in=[EmployeeAttendance.Status.PRESENT, EmployeeAttendance.Status.LATE])), Decimal("0"))
+
+        # Estimated Gross Salary calculation based on salary_type
+        base = employee.base_salary
+        if employee.salary_type == Employee.SalaryType.MONTHLY:
+            gross = base
+        elif employee.salary_type == Employee.SalaryType.DAILY:
+            gross = base * Decimal(str(present_count + late_count))
+        elif employee.salary_type == Employee.SalaryType.HOURLY:
+            gross = base * total_hours
+        else:  # FIXED
+            gross = base
+
+        net_estimated = gross + bonuses - advances - consumptions - deductions
+
+        shifts_count = employee.shifts.count()
+
+        return Response({
+            "employee": EmployeeSerializer(employee).data,
+            "shifts_count": shifts_count,
+            "days_present": present_count,
+            "base_earnings": gross,
+            "bonuses_total": bonuses,
+            "consumptions_total": consumptions,
+            "advances_total": advances,
+            "deductions_total": deductions,
+            "net_payable": net_estimated,
+            "attendances_summary": {
+                "present_count": present_count,
+                "absent_count": absent_count,
+                "late_count": late_count,
+                "justified_count": justified_count,
+                "total_hours": total_hours,
+            },
+            "movements_summary": {
+                "advances": advances,
+                "consumptions": consumptions,
+                "deductions": deductions,
+                "bonuses": bonuses,
+                "total_deductions": advances + consumptions + deductions,
+            },
+            "payroll_estimate": {
+                "gross_salary": gross,
+                "net_salary": net_estimated,
+            }
+        })
+
+
+class CurrentRegisterShiftView(APIView):
+    permission_classes = [HasActiveSubscription]
+
+    def get(self, request):
+        open_register = Register.objects.filter(user=request.user, closed_at__isnull=True).first()
+        if not open_register:
+            return Response({"active_shift": None, "register_open": False})
+
+        active_shift = RegisterShift.objects.filter(register=open_register, closed_at__isnull=True).first()
+        if not active_shift:
+            active_shift = RegisterShift.objects.create(
+                register=open_register,
+                employee=None,
+                initial_cash=open_register.initial_cash,
+            )
+
+        # Attach any orphan transactions in this open register to the active shift
+        Transaction.objects.filter(register=open_register, shift__isnull=True).update(shift=active_shift)
+
+        return Response({
+            "active_shift": RegisterShiftSerializer(active_shift).data,
+            "register_open": True,
+            "register_id": open_register.id,
+        })
+
+
+class ShiftHandoverView(APIView):
+    permission_classes = [HasActiveSubscription]
+
+    @db_transaction.atomic
+    def post(self, request):
+        open_register = Register.objects.filter(user=request.user, closed_at__isnull=True).first()
+        if not open_register:
+            return Response({"detail": "No hay una caja abierta actualmente."}, status=status.HTTP_400_BAD_REQUEST)
+
+        active_shift = RegisterShift.objects.filter(register=open_register, closed_at__isnull=True).first()
+        declared_cash_raw = request.data.get("declared_cash")
+        if active_shift and declared_cash_raw is None:
+            return Response({"declared_cash": "El monto declarado es requerido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        declared_cash = Decimal(str(declared_cash_raw)) if declared_cash_raw is not None else Decimal("0.00")
+        notes = request.data.get("notes", "").strip()
+        next_employee_id = request.data.get("next_employee_id")
+        next_initial_cash_raw = request.data.get("next_initial_cash")
+        next_initial_cash = Decimal(str(next_initial_cash_raw)) if next_initial_cash_raw is not None else declared_cash
+
+        closed_shift_data = None
+
+        if active_shift:
+            # Ensure all current transactions for this register are linked to active_shift before closing
+            Transaction.objects.filter(register=open_register, shift__isnull=True).update(shift=active_shift)
+            expected_cash = RegisterShiftSerializer().get_expected_cash(active_shift)
+            active_shift.closed_at = timezone.now()
+            active_shift.declared_cash = declared_cash
+            active_shift.expected_cash = expected_cash
+            active_shift.difference = declared_cash - expected_cash
+            if notes:
+                active_shift.notes = (active_shift.notes + "\n" + notes).strip() if active_shift.notes else notes
+            active_shift.save()
+            closed_shift_data = RegisterShiftSerializer(active_shift).data
+
+        next_employee = None
+        if next_employee_id:
+            try:
+                next_employee = Employee.objects.get(id=next_employee_id, user=request.user, is_active=True)
+            except Employee.DoesNotExist:
+                return Response({"next_employee_id": "El siguiente empleado no existe o no está activo."}, status=status.HTTP_400_BAD_REQUEST)
+
+        next_shift = RegisterShift.objects.create(
+            register=open_register,
+            employee=next_employee,
+            initial_cash=next_initial_cash,
+        )
+        next_shift_data = RegisterShiftSerializer(next_shift).data
+
+        return Response({
+            "closed_shift": closed_shift_data,
+            "next_shift": next_shift_data,
+            "active_shift": next_shift_data,
+        })
+
+
+class RegisterShiftsListView(generics.ListAPIView):
+    serializer_class = RegisterShiftSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        queryset = RegisterShift.objects.filter(register__user=self.request.user)
+        register_id = self.request.query_params.get("register_id")
+        if register_id:
+            queryset = queryset.filter(register_id=register_id)
+        employee_id = self.request.query_params.get("employee_id")
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        return queryset.order_by("-opened_at")
+
+
+class EmployeeMovementListCreateView(generics.ListCreateAPIView):
+    serializer_class = EmployeeMovementSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        queryset = EmployeeMovement.objects.filter(employee__user=self.request.user)
+        employee_id = self.kwargs.get("employee_id") or self.request.query_params.get("employee_id")
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        is_settled = self.request.query_params.get("is_settled")
+        if is_settled == "1" or is_settled == "true":
+            queryset = queryset.filter(is_settled=True)
+        elif is_settled == "0" or is_settled == "false":
+            queryset = queryset.filter(is_settled=False)
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        employee_id = self.kwargs.get("employee_id")
+        if employee_id and "employee" not in data:
+            data["employee"] = employee_id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        employee = serializer.validated_data.get("employee")
+        if not employee and "employee_id" in self.kwargs:
+            try:
+                employee = Employee.objects.get(id=self.kwargs["employee_id"], user=self.request.user)
+            except Employee.DoesNotExist:
+                raise exceptions.NotFound("Empleado no encontrado.")
+            serializer.save(employee=employee)
+            return
+        if not employee or employee.user != self.request.user:
+            raise exceptions.PermissionDenied("No tienes permiso para registrar movimientos para este empleado.")
+        serializer.save()
+
+
+class EmployeeAttendanceListCreateView(generics.ListCreateAPIView):
+    serializer_class = EmployeeAttendanceSerializer
+    permission_classes = [HasActiveSubscription]
+
+    def get_queryset(self):
+        queryset = EmployeeAttendance.objects.filter(employee__user=self.request.user)
+        employee_id = self.kwargs.get("employee_id") or self.request.query_params.get("employee_id")
+        if employee_id:
+            queryset = queryset.filter(employee_id=employee_id)
+        month = self.request.query_params.get("month")
+        if month:
+            parts = month.split("-")
+            if len(parts) == 2:
+                queryset = queryset.filter(date__year=int(parts[0]), date__month=int(parts[1]))
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        employee_id = self.kwargs.get("employee_id")
+        if employee_id and "employee" not in data:
+            data["employee"] = employee_id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        employee = serializer.validated_data.get("employee")
+        if not employee and "employee_id" in self.kwargs:
+            try:
+                employee = Employee.objects.get(id=self.kwargs["employee_id"], user=self.request.user)
+            except Employee.DoesNotExist:
+                raise exceptions.NotFound("Empleado no encontrado.")
+            serializer.save(employee=employee)
+            return
+        if not employee or employee.user != self.request.user:
+            raise exceptions.PermissionDenied("No tienes permiso para registrar asistencia para este empleado.")
+        serializer.save()
+
+
+class EmployeeSalarySettlementView(APIView):
+    permission_classes = [HasActiveSubscription]
+
+    @db_transaction.atomic
+    def post(self, request, employee_id=None, pk=None):
+        target_id = employee_id or pk
+        try:
+            employee = Employee.objects.get(pk=target_id, user=request.user)
+        except Employee.DoesNotExist:
+            return Response({"detail": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 1. Unsettled movements
+        unsettled_movements = employee.movements.filter(is_settled=False)
+        advances = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.ADVANCE), Decimal("0"))
+        consumptions = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.CONSUMPTION), Decimal("0"))
+        deductions = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.DEDUCTION), Decimal("0"))
+        bonuses = sum((m.amount for m in unsettled_movements if m.type == EmployeeMovement.Type.BONUS), Decimal("0"))
+
+        # 2. Unsettled attendances
+        unsettled_attendances = employee.attendances.filter(is_settled=False)
+        present_count = unsettled_attendances.filter(status=EmployeeAttendance.Status.PRESENT).count()
+        late_count = unsettled_attendances.filter(status=EmployeeAttendance.Status.LATE).count()
+        total_hours = sum((a.hours_worked or Decimal("0") for a in unsettled_attendances.filter(status__in=[EmployeeAttendance.Status.PRESENT, EmployeeAttendance.Status.LATE])), Decimal("0"))
+
+        # Gross calculation
+        base = employee.base_salary
+        if employee.salary_type == Employee.SalaryType.MONTHLY:
+            gross = base
+        elif employee.salary_type == Employee.SalaryType.DAILY:
+            gross = base * Decimal(str(present_count + late_count))
+        elif employee.salary_type == Employee.SalaryType.HOURLY:
+            gross = base * total_hours
+        else:
+            gross = base
+
+        calculated_net = gross + bonuses - advances - consumptions - deductions
+
+        # Payment options from request
+        payment_method = request.data.get("payment_method", "cash")
+        pay_from_register = request.data.get("pay_from_register", True)
+        custom_amount_raw = request.data.get("amount")
+        notes = request.data.get("notes", "").strip()
+        period_label = request.data.get("period_label", "").strip()
+
+        if custom_amount_raw is not None:
+            try:
+                payout_amount = Decimal(str(custom_amount_raw))
+            except Exception:
+                payout_amount = calculated_net
+        else:
+            payout_amount = calculated_net
+
+        # 3. Create cash register expense transaction if pay_from_register is true and method is cash
+        tx = None
+        if pay_from_register and payment_method == "cash" and payout_amount > Decimal("0"):
+            open_register = Register.objects.filter(user=request.user, closed_at__isnull=True).first()
+            if open_register:
+                active_shift = RegisterShift.objects.filter(register=open_register, closed_at__isnull=True).first()
+                desc = f"Pago de sueldo - {employee.name}"
+                if period_label:
+                    desc += f" ({period_label})"
+                tx = Transaction.objects.create(
+                    user=request.user,
+                    register=open_register,
+                    shift=active_shift,
+                    employee=employee,
+                    description=desc[:255],
+                )
+                op = TransactionOperation.objects.create(
+                    transaction=tx,
+                    type=TransactionOperation.Type.EXPENSE,
+                )
+                TransactionOperationAmount.objects.create(
+                    operation=op,
+                    method=TransactionOperationAmount.Method.CASH,
+                    amount=payout_amount,
+                    received=False,
+                )
+
+        # 4. Mark all current movements and attendances as settled
+        unsettled_movements.update(is_settled=True)
+        unsettled_attendances.update(is_settled=True)
+
+        # 5. Create salary_payment movement
+        concept = "Liquidación de sueldo"
+        if period_label:
+            concept += f" - {period_label}"
+        if notes:
+            concept += f" ({notes})"
+
+        breakdown_note = f"Base: ${gross:.2f} | Bonos: +${bonuses:.2f} | Adelantos: -${advances:.2f} | Consumos: -${consumptions:.2f} | Descuentos: -${deductions:.2f}"
+        full_notes = f"{concept}. Detalle: {breakdown_note}"
+
+        payment_movement = EmployeeMovement.objects.create(
+            employee=employee,
+            transaction=tx,
+            type=EmployeeMovement.Type.SALARY_PAYMENT,
+            amount=payout_amount,
+            is_settled=True,
+            notes=full_notes[:255],
+        )
+
+        return Response({
+            "success": True,
+            "movement": EmployeeMovementSerializer(payment_movement).data,
+            "settled_details": {
+                "base_salary": gross,
+                "bonuses": bonuses,
+                "advances": advances,
+                "consumptions": consumptions,
+                "deductions": deductions,
+                "net_paid": payout_amount,
+                "period_label": period_label,
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
 
 
 

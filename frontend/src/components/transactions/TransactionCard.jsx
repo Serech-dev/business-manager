@@ -202,8 +202,13 @@ function TransactionCard({
                         )}
                         <span>#{transaction.id}</span>
                         {transaction.client && (
-                            <span className="font-medium text-[var(--text-primary)]">
+                            <span className="font-medium text-[var(--text-primary)] inline-flex items-center gap-1">
                                 · Cliente: {transaction.client.name}
+                                {transaction.client.is_employee && (
+                                    <span className="rounded bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                        Empleado{Number(transaction.client.employee_discount) > 0 ? ` (${Number(transaction.client.employee_discount)}%)` : ""}
+                                    </span>
+                                )}
                             </span>
                         )}
                         {operations.length > 1 && (

@@ -14,6 +14,7 @@ import {
     resolveTransfer,
     getClients,
     createClient,
+    getRegisterShifts,
 } from "../services/business";
 
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -48,6 +49,7 @@ function RegisterReport() {
 
     const [register, setRegister] = useState(null);
     const [currentRegister, setCurrentRegister] = useState(null);
+    const [shifts, setShifts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isReopening, setIsReopening] = useState(false);
 
@@ -66,12 +68,14 @@ function RegisterReport() {
 
     async function loadRegister() {
         try {
-            const [data, openReg] = await Promise.all([
+            const [data, openReg, shiftsData] = await Promise.all([
                 getClosedRegister(id),
                 getCurrentRegister(),
+                getRegisterShifts(id).catch(() => []),
             ]);
             setRegister(data);
             setCurrentRegister(openReg);
+            setShifts(shiftsData || []);
         } catch (error) {
             console.error(error);
             toast.error("No se pudo cargar el cierre.");
@@ -584,6 +588,7 @@ function RegisterReport() {
                             label: `Ventas y Movimientos (${register.transaction_count || 0})`,
                         },
                         { id: "cuentas", label: "Fiados y Proveedores" },
+                        { id: "turnos", label: `Turnos de Personal (${shifts.length})` },
                     ].map((tab) => {
                         const isActive = activeTab === tab.id;
                         return (
@@ -903,6 +908,106 @@ function RegisterReport() {
                                 })
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* TAB 4: TURNOS DE PERSONAL */}
+                {activeTab === "turnos" && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                Registro de Turnos de Caja
+                            </h3>
+                            <span className="text-xs text-[var(--text-secondary)]">
+                                {shifts.length} {shifts.length === 1 ? "turno registrado" : "turnos registrados"}
+                            </span>
+                        </div>
+
+                        {shifts.length === 0 ? (
+                            <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-8 text-center text-xs text-[var(--text-secondary)]">
+                                No se registraron cambios de turno durante esta sesión de caja.
+                            </div>
+                        ) : (
+                            <div className="grid gap-3">
+                                {shifts.map((s) => {
+                                    const diff = Number(s.difference);
+                                    return (
+                                        <div
+                                            key={s.id}
+                                            className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3 shadow-2xs"
+                                        >
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[var(--border)] pb-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-[var(--primary)]/10 text-[10px] font-bold text-[var(--primary)]">
+                                                        #{s.id}
+                                                    </span>
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                                                            {s.employee_name}
+                                                        </h4>
+                                                        <span className="text-[11px] text-[var(--text-secondary)]">
+                                                            Inicio: {formatDate(s.opened_at)}
+                                                            {s.closed_at ? ` · Cierre: ${formatDate(s.closed_at)}` : " · En curso"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    {s.closed_at ? (
+                                                        diff === 0 ? (
+                                                            <span className="rounded-sm bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                Caja Exacta
+                                                            </span>
+                                                        ) : diff > 0 ? (
+                                                            <span className="rounded-sm bg-blue-500/10 px-2 py-0.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                Sobrante: +{formatCurrency(diff)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="rounded-sm bg-rose-500/10 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                                                Faltante: −{formatCurrency(Math.abs(diff))}
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        <span className="rounded-sm bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                            Turno Abierto
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                                <div className="rounded-sm bg-[var(--surface-accent)]/50 p-2 border border-[var(--border)]">
+                                                    <span className="text-[10px] text-[var(--text-secondary)] block">Fondo inicial:</span>
+                                                    <span className="font-bold text-[var(--text-primary)]">{formatCurrency(s.initial_cash)}</span>
+                                                </div>
+                                                <div className="rounded-sm bg-[var(--surface-accent)]/50 p-2 border border-[var(--border)]">
+                                                    <span className="text-[10px] text-[var(--text-secondary)] block">Efectivo calculado:</span>
+                                                    <span className="font-bold text-[var(--text-primary)]">{formatCurrency(s.expected_cash ?? 0)}</span>
+                                                </div>
+                                                <div className="rounded-sm bg-[var(--surface-accent)]/50 p-2 border border-[var(--border)]">
+                                                    <span className="text-[10px] text-[var(--text-secondary)] block">Efectivo declarado:</span>
+                                                    <span className="font-bold text-[var(--text-primary)]">
+                                                        {s.declared_cash != null ? formatCurrency(s.declared_cash) : "-"}
+                                                    </span>
+                                                </div>
+                                                <div className="rounded-sm bg-[var(--surface-accent)]/50 p-2 border border-[var(--border)]">
+                                                    <span className="text-[10px] text-[var(--text-secondary)] block">Diferencia:</span>
+                                                    <span className={`font-bold tabular-nums ${diff < 0 ? "text-[var(--danger)]" : diff > 0 ? "text-blue-500" : "text-[var(--success)]"}`}>
+                                                        {s.closed_at ? `${diff > 0 ? "+" : ""}${formatCurrency(diff)}` : "-"}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {s.notes && (
+                                                <div className="rounded-sm bg-[var(--surface-muted)] p-2 text-xs text-[var(--text-secondary)]">
+                                                    <strong className="text-[var(--text-primary)]">Observaciones:</strong> {s.notes}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

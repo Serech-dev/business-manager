@@ -118,6 +118,9 @@ function ReceiptTicket({
                 {clientName && (
                     <div className="text-left text-[10px] pt-0.5">
                         <span className="font-semibold">Cliente:</span> {clientName}
+                        {(transaction.client?.is_employee || transaction.client_detail?.is_employee) && (
+                            <span className="font-semibold"> (Personal)</span>
+                        )}
                     </div>
                 )}
                 {transaction.is_delivery && (

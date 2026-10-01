@@ -196,7 +196,7 @@ export function NotificationProvider({ children }) {
                     category: "register",
                     severity: "warning",
                     title: "Caja de jornada anterior sin cerrar",
-                    message: `La caja actual fue abierta el ${formattedDate}. Recordá realizar el arqueo y cierre diario antes de iniciar el nuevo turno.`,
+                    message: `La caja actual fue abierta el ${formattedDate}. Recordá hacer el conteo y cierre de caja antes de iniciar el nuevo turno.`,
                     actionLabel: "Ir a Caja",
                     actionRoute: "/registers",
                 });

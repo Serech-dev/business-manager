@@ -1,19 +1,24 @@
 from decimal import Decimal
 
 from django.db import IntegrityError, transaction as db_transaction
-from django.db.models import F
+from django.db.models import F, Sum
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import (BankAccount, BundleItem, Category, Client, MasterCatalogProduct, Product,
-                     Provider, Register, StockMovement, StockNote,
-                     StoreSettings, Transaction, TransactionOperation,
+from .models import (BankAccount, BundleItem, Category, Client, Employee,
+                     EmployeeAttendance, EmployeeMovement,
+                     MasterCatalogProduct, Product, Provider, Register,
+                     RegisterShift, StockMovement, StockNote, StoreSettings,
+                     Transaction, TransactionOperation,
                      TransactionOperationAmount, TransactionOperationItem)
 
 
 class ClientSerializer(serializers.ModelSerializer):
     debt = serializers.SerializerMethodField()
-
     effective_debt_limit = serializers.SerializerMethodField()
+    is_employee = serializers.BooleanField(read_only=True)
+    employee_id = serializers.IntegerField(source="employee.id", read_only=True, allow_null=True)
+    employee_discount = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
 
     class Meta:
         model = Client
@@ -26,6 +31,9 @@ class ClientSerializer(serializers.ModelSerializer):
             "initial_debt",
             "debt_limit",
             "effective_debt_limit",
+            "is_employee",
+            "employee_id",
+            "employee_discount",
             "created_at",
             "debt",
         ]
@@ -35,6 +43,9 @@ class ClientSerializer(serializers.ModelSerializer):
             "created_at",
             "debt",
             "effective_debt_limit",
+            "is_employee",
+            "employee_id",
+            "employee_discount",
         ]
 
     def get_effective_debt_limit(self, obj):
@@ -498,6 +509,10 @@ class TransactionSerializer(
         source="get_delivery_status_display",
         read_only=True,
     )
+    employee_name = serializers.CharField(
+        source="employee.name",
+        read_only=True,
+    )
 
     class Meta:
         model = Transaction
@@ -506,6 +521,9 @@ class TransactionSerializer(
             "id",
             "register",
             "client",
+            "employee",
+            "employee_name",
+            "shift",
             "created_at",
             "description",
             "operations",
@@ -522,6 +540,7 @@ class TransactionSerializer(
             "id",
             "register",
             "created_at",
+            "employee_name",
         ]
 
     def validate(self, attrs):
@@ -616,6 +635,22 @@ class TransactionSerializer(
                     "No hay una caja abierta."
             })
 
+        # Auto-link to currently open shift if not explicitly provided
+        if "shift" not in validated_data or not validated_data.get("shift"):
+            open_shift = RegisterShift.objects.filter(
+                register=register,
+                closed_at__isnull=True,
+            ).first()
+            if not open_shift:
+                open_shift = RegisterShift.objects.create(
+                    register=register,
+                    employee=validated_data.get("employee"),
+                    initial_cash=register.initial_cash,
+                )
+            validated_data["shift"] = open_shift
+            if ("employee" not in validated_data or not validated_data.get("employee")) and open_shift.employee_id:
+                validated_data["employee"] = open_shift.employee
+
         transaction = Transaction.objects.create(
             user=self.context["request"].user,
             register=register,
@@ -659,6 +694,22 @@ class TransactionSerializer(
                         TransactionOperationAmount.Method.CARD,
                     ] and not amount.get("bank_account"):
                         amount["bank_account"] = default_bank
+
+                    # If this amount is an employee consumption, log it to EmployeeMovement
+                    target_emp = (
+                        getattr(transaction.client, "employee", None)
+                        if transaction.client_id
+                        else None
+                    ) or transaction.employee
+
+                    if amount.get("method") == TransactionOperationAmount.Method.EMPLOYEE and target_emp:
+                        EmployeeMovement.objects.create(
+                            employee=target_emp,
+                            type=EmployeeMovement.Type.CONSUMPTION,
+                            amount=Decimal(str(amount.get("amount", 0))),
+                            transaction=transaction,
+                            notes=f"Consumo interno en venta #{transaction.id}",
+                        )
 
                 TransactionOperationAmount.objects.bulk_create([
                     TransactionOperationAmount(
@@ -796,6 +847,9 @@ class TransactionSerializer(
                 "id": instance.client.id,
                 "name": instance.client.name,
                 "phone": instance.client.phone,
+                "is_employee": instance.client.is_employee,
+                "employee_id": instance.client.employee_id,
+                "employee_discount": instance.client.employee_discount,
             }
             for op_rep, op in zip(
                 representation.get("operations", []),
@@ -877,7 +931,10 @@ class RegisterListSerializer(serializers.ModelSerializer):
         return obj._cached_tx_list
 
     def _is_money_movement(self, amount):
-        if amount.method == TransactionOperationAmount.Method.DEBT:
+        if amount.method in (
+            TransactionOperationAmount.Method.DEBT,
+            TransactionOperationAmount.Method.EMPLOYEE,
+        ):
             return False
         if amount.method == TransactionOperationAmount.Method.TRANSFER and not amount.received:
             return False
@@ -1135,10 +1192,10 @@ class RegisterSerializer(
         the register.
         """
 
-        # Fiado is debt, not money.
-        if (
-            amount.method
-            == TransactionOperationAmount.Method.DEBT
+        # Fiado and employee consumption are not money movements in register.
+        if amount.method in (
+            TransactionOperationAmount.Method.DEBT,
+            TransactionOperationAmount.Method.EMPLOYEE,
         ):
             return False
 
@@ -2366,5 +2423,183 @@ class MasterCatalogProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    salary_type_display = serializers.CharField(source="get_salary_type_display", read_only=True)
+    unsettled_consumption_total = serializers.SerializerMethodField()
+    unsettled_advance_total = serializers.SerializerMethodField()
+    shifts_count_this_month = serializers.SerializerMethodField()
+    absent_count_this_month = serializers.SerializerMethodField()
+    late_count_this_month = serializers.SerializerMethodField()
+    client_id = serializers.IntegerField(source="client_profile.id", read_only=True, allow_null=True)
+    client_name = serializers.CharField(source="client_profile.name", read_only=True, allow_null=True)
+
+    class Meta:
+        model = Employee
+        fields = [
+            "id",
+            "name",
+            "role",
+            "phone",
+            "email",
+            "salary_type",
+            "salary_type_display",
+            "base_salary",
+            "discount_percentage",
+            "is_active",
+            "notes",
+            "client_id",
+            "client_name",
+            "created_at",
+            "unsettled_consumption_total",
+            "unsettled_advance_total",
+            "shifts_count_this_month",
+            "absent_count_this_month",
+            "late_count_this_month",
+        ]
+        read_only_fields = ["id", "created_at", "salary_type_display", "client_id", "client_name"]
+
+    def get_unsettled_consumption_total(self, obj):
+        total = obj.movements.filter(
+            type=EmployeeMovement.Type.CONSUMPTION,
+            is_settled=False,
+        ).aggregate(total=Sum("amount"))["total"]
+        return total or Decimal("0.00")
+
+    def get_unsettled_advance_total(self, obj):
+        total = obj.movements.filter(
+            type=EmployeeMovement.Type.ADVANCE,
+            is_settled=False,
+        ).aggregate(total=Sum("amount"))["total"]
+        return total or Decimal("0.00")
+
+    def get_shifts_count_this_month(self, obj):
+        now = timezone.now()
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return obj.shifts.filter(opened_at__gte=start_of_month).count()
+
+    def get_absent_count_this_month(self, obj):
+        now = timezone.now()
+        start_of_month = now.date().replace(day=1)
+        return obj.attendances.filter(
+            status=EmployeeAttendance.Status.ABSENT,
+            date__gte=start_of_month,
+        ).count()
+
+    def get_late_count_this_month(self, obj):
+        now = timezone.now()
+        start_of_month = now.date().replace(day=1)
+        return obj.attendances.filter(
+            status=EmployeeAttendance.Status.LATE,
+            date__gte=start_of_month,
+        ).count()
+
+
+class RegisterShiftSerializer(serializers.ModelSerializer):
+    employee_name = serializers.SerializerMethodField()
+    is_open = serializers.BooleanField(read_only=True)
+    transaction_count = serializers.SerializerMethodField()
+    total_sales = serializers.SerializerMethodField()
+    cash_sales = serializers.SerializerMethodField()
+    expected_cash = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RegisterShift
+        fields = [
+            "id",
+            "register",
+            "employee",
+            "employee_name",
+            "opened_at",
+            "closed_at",
+            "initial_cash",
+            "declared_cash",
+            "expected_cash",
+            "difference",
+            "notes",
+            "is_open",
+            "transaction_count",
+            "total_sales",
+            "cash_sales",
+        ]
+        read_only_fields = ["id", "opened_at", "is_open"]
+
+    def get_employee_name(self, obj):
+        return obj.employee.name if obj.employee else "General (Sin asignar)"
+
+    def get_transaction_count(self, obj):
+        return obj.transactions.count()
+
+    def get_total_sales(self, obj):
+        total = Decimal("0.00")
+        for tx in obj.transactions.prefetch_related("operations__amounts").all():
+            for op in tx.operations.all():
+                if op.type == TransactionOperation.Type.SALE:
+                    total += sum(
+                        a.amount
+                        for a in op.amounts.all()
+                        if a.method != TransactionOperationAmount.Method.EMPLOYEE
+                    )
+        return total
+
+    def get_cash_sales(self, obj):
+        total = Decimal("0.00")
+        for tx in obj.transactions.prefetch_related("operations__amounts").all():
+            for op in tx.operations.all():
+                for a in op.amounts.all():
+                    if a.method == TransactionOperationAmount.Method.CASH:
+                        if op.type in [TransactionOperation.Type.SALE, TransactionOperation.Type.PAYMENT]:
+                            total += a.amount
+                        elif op.type in [TransactionOperation.Type.EXPENSE, TransactionOperation.Type.LOSS, TransactionOperation.Type.PROVIDER_PAYMENT]:
+                            total -= a.amount
+        return total
+
+    def get_expected_cash(self, obj):
+        if obj.expected_cash is not None:
+            return obj.expected_cash
+        return obj.initial_cash + self.get_cash_sales(obj)
+
+
+class EmployeeMovementSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source="employee.name", read_only=True)
+    type_display = serializers.CharField(source="get_type_display", read_only=True)
+
+    class Meta:
+        model = EmployeeMovement
+        fields = [
+            "id",
+            "employee",
+            "employee_name",
+            "type",
+            "type_display",
+            "amount",
+            "transaction",
+            "is_settled",
+            "date",
+            "notes",
+        ]
+        read_only_fields = ["id", "employee_name", "type_display"]
+
+
+class EmployeeAttendanceSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source="employee.name", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = EmployeeAttendance
+        fields = [
+            "id",
+            "employee",
+            "employee_name",
+            "date",
+            "status",
+            "status_display",
+            "hours_worked",
+            "notes",
+            "is_settled",
+        ]
+        read_only_fields = ["id", "employee_name", "status_display"]
+
 
 

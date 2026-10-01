@@ -142,6 +142,7 @@ export function getMethodLabel(method) {
         transfer: "Transferencia",
         card: "Tarjeta",
         debt: "Fiado",
+        employee: "Descontar del sueldo",
     };
 
     return labels[method] || method;
@@ -464,6 +465,96 @@ export async function updateBankAccount(id, data) {
 export async function deleteBankAccount(id) {
     await api.delete(`business/bank-accounts/${id}/`);
 }
+
+// EMPLOYEES & SHIFTS
+export async function getEmployees(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const response = await api.get(`business/employees/${query ? `?${query}` : ""}`);
+    return response.data;
+}
+
+export async function createEmployee(data) {
+    const response = await api.post("business/employees/", data);
+    return response.data;
+}
+
+export async function updateEmployee(id, data) {
+    const response = await api.patch(`business/employees/${id}/`, data);
+    return response.data;
+}
+
+export async function deleteEmployee(id) {
+    await api.delete(`business/employees/${id}/`);
+}
+
+export async function getEmployeeSummary(id) {
+    const response = await api.get(`business/employees/${id}/summary/`);
+    return response.data;
+}
+
+export async function getCurrentShift() {
+    const response = await api.get("business/shifts/current/");
+    return response.data;
+}
+
+export async function handoverShift(data) {
+    const response = await api.post("business/shifts/handover/", data);
+    return response.data;
+}
+
+export async function getRegisterShifts(paramsOrRegisterId = {}) {
+    if (typeof paramsOrRegisterId === "number" || typeof paramsOrRegisterId === "string") {
+        const response = await api.get(`business/shifts/?register_id=${paramsOrRegisterId}`);
+        return response.data;
+    }
+    const query = new URLSearchParams(paramsOrRegisterId).toString();
+    const response = await api.get(`business/shifts/${query ? `?${query}` : ""}`);
+    return response.data;
+}
+
+export async function getEmployeeMovements(employeeIdOrParams = {}) {
+    if (typeof employeeIdOrParams === "number" || typeof employeeIdOrParams === "string") {
+        const response = await api.get(`business/employees/${employeeIdOrParams}/movements/`);
+        return response.data;
+    }
+    const query = new URLSearchParams(employeeIdOrParams).toString();
+    const response = await api.get(`business/employees/movements/${query ? `?${query}` : ""}`);
+    return response.data;
+}
+
+export async function createEmployeeMovement(employeeIdOrData, maybeData) {
+    if (maybeData !== undefined) {
+        const response = await api.post(`business/employees/${employeeIdOrData}/movements/`, maybeData);
+        return response.data;
+    }
+    const response = await api.post("business/employees/movements/", employeeIdOrData);
+    return response.data;
+}
+
+export async function getEmployeeAttendance(employeeIdOrParams = {}) {
+    if (typeof employeeIdOrParams === "number" || typeof employeeIdOrParams === "string") {
+        const response = await api.get(`business/employees/${employeeIdOrParams}/attendance/`);
+        return response.data;
+    }
+    const query = new URLSearchParams(employeeIdOrParams).toString();
+    const response = await api.get(`business/employees/attendance/${query ? `?${query}` : ""}`);
+    return response.data;
+}
+
+export async function createEmployeeAttendance(employeeIdOrData, maybeData) {
+    if (maybeData !== undefined) {
+        const response = await api.post(`business/employees/${employeeIdOrData}/attendance/`, maybeData);
+        return response.data;
+    }
+    const response = await api.post("business/employees/attendance/", employeeIdOrData);
+    return response.data;
+}
+
+export async function settleEmployeeSalary(employeeId, data) {
+    const response = await api.post(`business/employees/${employeeId}/settle/`, data);
+    return response.data;
+}
+
 
 
 

@@ -62,6 +62,7 @@ export function SimplePos({ register, onOpenRegister }) {
     const [clientSearchQuery, setClientSearchQuery] = useState("");
     const [newClientName, setNewClientName] = useState("");
     const [isCreatingClient, setIsCreatingClient] = useState(false);
+    const [isEmployeeSale, setIsEmployeeSale] = useState(false);
 
     // Quick Service Dialogs State
     const [activeServiceSheet, setActiveServiceSheet] = useState(null); // 'varios' | 'sube' | 'phone' | 'exchange' | 'payment' | 'weight' | 'editPrice'
@@ -142,9 +143,45 @@ export function SimplePos({ register, onOpenRegister }) {
     }, [ticketItems, paymentMethod]);
 
     // Financial Calculation of the Entire Ticket
+    const employeeDiscountAmount = useMemo(() => {
+        if (!selectedClient?.is_employee) return 0;
+        const discountPct =
+            selectedClient.employee_discount !== undefined && selectedClient.employee_discount !== null
+                ? Number(selectedClient.employee_discount)
+                : 0;
+        if (discountPct <= 0) return 0;
+        let saleSubtotal = 0;
+        for (const item of ticketItems) {
+            if (item.type === "product" || item.type === "manual") {
+                saleSubtotal += (Number(item.subtotal) || 0);
+            }
+        }
+        return (saleSubtotal * discountPct) / 100;
+    }, [ticketItems, selectedClient]);
+
     const grandTotal = useMemo(() => {
-        return roundUpTo50(ticketItems.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0));
-    }, [ticketItems]);
+        let saleSubtotal = 0;
+        let otherSubtotal = 0;
+        for (const item of ticketItems) {
+            const sub = Number(item.subtotal) || 0;
+            if (item.type === "product" || item.type === "manual") {
+                saleSubtotal += sub;
+            } else {
+                otherSubtotal += sub;
+            }
+        }
+        if (selectedClient?.is_employee && saleSubtotal > 0) {
+            const discountPct =
+                selectedClient.employee_discount !== undefined && selectedClient.employee_discount !== null
+                    ? Number(selectedClient.employee_discount)
+                    : 0;
+            if (discountPct > 0) {
+                const discountAmt = (saleSubtotal * discountPct) / 100;
+                saleSubtotal = Math.max(0, saleSubtotal - discountAmt);
+            }
+        }
+        return roundUpTo50(saleSubtotal + otherSubtotal);
+    }, [ticketItems, selectedClient]);
 
     const effectiveCheckoutTotal = useMemo(() => {
         if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
@@ -545,6 +582,7 @@ export function SimplePos({ register, onOpenRegister }) {
     const clearTicket = () => {
         setTicketItems([]);
         setSelectedClient(null);
+        setIsEmployeeSale(false);
         setReceivedCash("");
         setIgnoreDebtSurcharge(false);
         setIsCheckoutOpen(false);
@@ -598,14 +636,18 @@ export function SimplePos({ register, onOpenRegister }) {
 
     // Filter Clients for Client Selector
     const filteredClients = useMemo(() => {
-        if (!clientSearchQuery.trim()) return clients;
+        let list = clients;
+        if (isEmployeeSale) {
+            list = list.filter((c) => c.is_employee);
+        }
+        if (!clientSearchQuery.trim()) return list;
         const q = clientSearchQuery.toLowerCase();
-        return clients.filter(
+        return list.filter(
             (c) =>
                 c.name.toLowerCase().includes(q) ||
                 (c.phone && c.phone.includes(q))
         );
-    }, [clients, clientSearchQuery]);
+    }, [clients, clientSearchQuery, isEmployeeSale]);
 
     // Handle Quick Client Creation
     const handleCreateClientQuick = async (e) => {
@@ -673,8 +715,19 @@ export function SimplePos({ register, onOpenRegister }) {
                     };
                 });
 
-                const saleTotal =
-                    roundUpTo50(resolvedItems.reduce((s, i) => s + i.subtotal, 0) + manualTotal);
+                const saleRawTotal =
+                    resolvedItems.reduce((s, i) => s + i.subtotal, 0) + manualTotal;
+                let saleTotal = roundUpTo50(saleRawTotal);
+                if (selectedClient?.is_employee) {
+                    const discountPct =
+                        selectedClient.employee_discount !== undefined && selectedClient.employee_discount !== null
+                            ? Number(selectedClient.employee_discount)
+                            : 0;
+                    if (discountPct > 0) {
+                        const discountAmt = (saleRawTotal * discountPct) / 100;
+                        saleTotal = roundUpTo50(Math.max(0, saleRawTotal - discountAmt));
+                    }
+                }
 
                 let finalSaleAmount = saleTotal;
                 if (paymentMethod === "card" && settings?.card_surcharge_enabled) {
@@ -832,6 +885,12 @@ export function SimplePos({ register, onOpenRegister }) {
             return;
         }
 
+        if ((isEmployeeSale || paymentMethod === "employee") && (!selectedClient || !selectedClient.is_employee)) {
+            toast.error("Para registrar un consumo de empleado tenés que seleccionar un empleado.");
+            setIsClientModalOpen(true);
+            return;
+        }
+
         const hasPaymentItem = ticketItems.some((i) => i.type === "payment");
         if ((paymentMethod === "debt" || hasPaymentItem) && !selectedClient) {
             toast.error("Seleccioná un cliente para registrar la operación a cuenta.");
@@ -873,26 +932,43 @@ export function SimplePos({ register, onOpenRegister }) {
                     <button
                         type="button"
                         onClick={() => setIsClientModalOpen(true)}
-                        className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 bg-[var(--surface-accent)]/80 hover:bg-[var(--surface-accent)] border border-[var(--border)] rounded-xl text-left transition-colors"
+                        className={`flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 border rounded-xl text-left transition-colors ${
+                            isEmployeeSale
+                                ? "bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/40"
+                                : "bg-[var(--surface-accent)]/80 hover:bg-[var(--surface-accent)] border-[var(--border)]"
+                        }`}
                     >
-                        <div className="w-6 h-6 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                            isEmployeeSale
+                                ? "bg-purple-500/20 text-purple-400"
+                                : "bg-[var(--primary)]/10 text-[var(--primary)]"
+                        }`}>
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
                         <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="text-xs font-bold text-[var(--text-primary)] truncate">
-                                    {selectedClient ? selectedClient.name : "Consumidor Final"}
+                                    {selectedClient ? selectedClient.name : isEmployeeSale ? "Seleccionar Empleado" : "Consumidor Final"}
                                 </span>
-                                {selectedClient && selectedClient.current_debt > 0 && (
+                                {selectedClient?.is_employee && (
+                                    <span className="rounded bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.2 text-[9px] font-bold text-purple-600 dark:text-purple-400">
+                                        Empleado{Number(selectedClient.employee_discount) > 0 ? ` · ${Number(selectedClient.employee_discount)}% desc.` : ""}
+                                    </span>
+                                )}
+                                {selectedClient && (Number(selectedClient.debt) > 0 || Number(selectedClient.current_debt) > 0) && (
                                     <span className="text-[10px] text-rose-400 font-bold font-mono">
-                                        (Debe {formatCurrency(selectedClient.current_debt)})
+                                        (Debe {formatCurrency(selectedClient.debt || selectedClient.current_debt)})
                                     </span>
                                 )}
                             </div>
                             <span className="text-[10px] text-[var(--text-secondary)] block truncate">
-                                {selectedClient ? "Tocar para cambiar" : "Tocar para asignar cliente (A cuenta)"}
+                                {selectedClient
+                                    ? "Tocar para cambiar"
+                                    : isEmployeeSale
+                                        ? "Obligatorio para consumo personal"
+                                        : "Tocar para asignar cliente (A cuenta)"}
                             </span>
                         </div>
                     </button>
@@ -915,6 +991,36 @@ export function SimplePos({ register, onOpenRegister }) {
 
                 {/* Quick Services Ribbon (Pills with soft styling) */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 pb-0.5">
+                    {/* Consumo Empleado */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const next = !isEmployeeSale;
+                            setIsEmployeeSale(next);
+                            if (next) {
+                                if (selectedClient && !selectedClient.is_employee) {
+                                    setSelectedClient(null);
+                                }
+                                setPaymentMethod("employee");
+                                setIsClientModalOpen(true);
+                            } else {
+                                if (paymentMethod === "employee") {
+                                    setPaymentMethod("cash");
+                                }
+                            }
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors shrink-0 ${
+                            isEmployeeSale
+                                ? "bg-purple-600 text-white border border-purple-600 shadow-xs"
+                                : "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20"
+                        }`}
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Consumo Empleado</span>
+                    </button>
+
                     {/* + Varios */}
                     <button
                         type="button"
@@ -1065,13 +1171,18 @@ export function SimplePos({ register, onOpenRegister }) {
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-xs overflow-hidden">
                     {/* Ticket Header */}
                     <div className="px-3.5 py-2.5 bg-[var(--surface-accent)]/50 border-b border-[var(--border)] flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                                 Ticket de Venta ({totalItemCount})
                             </span>
                             {totalSavings > 0 && (
                                 <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20">
                                     Ahorro: -{formatCurrency(totalSavings)}
+                                </span>
+                            )}
+                            {employeeDiscountAmount > 0 && (
+                                <span className="px-2 py-0.5 bg-purple-500/15 text-purple-600 dark:text-purple-400 text-[10px] font-bold rounded-lg border border-purple-500/20">
+                                    Desc. empleado ({Number(selectedClient?.employee_discount)}%): -{formatCurrency(employeeDiscountAmount)}
                                 </span>
                             )}
                         </div>
@@ -1397,9 +1508,21 @@ export function SimplePos({ register, onOpenRegister }) {
                         {/* Drawer Header */}
                         <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border)]">
                             <div>
-                                <h3 className="font-bold text-sm text-[var(--text-primary)]">Confirmar y Cobrar</h3>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="font-bold text-sm text-[var(--text-primary)]">Confirmar y Cobrar</h3>
+                                    {selectedClient?.is_employee && (
+                                        <span className="rounded bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                            Empleado{Number(selectedClient.employee_discount) > 0 ? ` · ${Number(selectedClient.employee_discount)}% desc.` : ""}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-xs text-[var(--text-secondary)]">
                                     Total a pagar: <strong className="text-[var(--primary)] font-mono">{formatCurrency(effectiveCheckoutTotal)}</strong>
+                                    {employeeDiscountAmount > 0 && (
+                                        <span className="ml-1 text-purple-600 dark:text-purple-400 font-semibold">
+                                            (Ahorro: -{formatCurrency(employeeDiscountAmount)})
+                                        </span>
+                                    )}
                                 </p>
                             </div>
                             <button
@@ -1422,10 +1545,13 @@ export function SimplePos({ register, onOpenRegister }) {
                                 </label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
+                                        ...(selectedClient?.is_employee || isEmployeeSale
+                                            ? [{ id: "employee", label: "Descontar del sueldo" }]
+                                            : []),
                                         { id: "cash", label: "Efectivo" },
                                         { id: "mp", label: "Mercado Pago / Transf." },
                                         { id: "card", label: "Tarjeta Débito / Crédito" },
-                                        ...(!ticketItems.some((i) => i.type === "payment")
+                                        ...(!ticketItems.some((i) => i.type === "payment") && !selectedClient?.is_employee && !isEmployeeSale
                                             ? [{ id: "debt", label: "Fiado" }]
                                             : []),
                                     ].map((m) => (
@@ -1444,6 +1570,18 @@ export function SimplePos({ register, onOpenRegister }) {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Employee deduction informative message */}
+                            {paymentMethod === "employee" && (
+                                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-2xl flex items-start gap-2 text-xs text-purple-700 dark:text-purple-300">
+                                    <svg className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                    </svg>
+                                    <span className="leading-relaxed">
+                                        Se registrará como consumo interno y se descontará en la liquidación de sueldo. <strong>No ingresa dinero en caja.</strong>
+                                    </span>
+                                </div>
+                            )}
 
                             {/* Bank Account Selector for MP/Transfer & Card */}
                             {(paymentMethod === "mp" || paymentMethod === "card") && bankAccounts.length > 1 && (
@@ -2261,7 +2399,7 @@ export function SimplePos({ register, onOpenRegister }) {
                     <div className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-scaleUp">
                         <div className="p-3.5 border-b border-[var(--border)] flex items-center justify-between">
                             <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-primary)]">
-                                Asignar Cliente
+                                {isEmployeeSale ? "Consumo de Empleado" : "Asignar Cliente"}
                             </h4>
                             <button
                                 type="button"
@@ -2272,6 +2410,46 @@ export function SimplePos({ register, onOpenRegister }) {
                             </button>
                         </div>
 
+                        {/* Segmented Filter: All Clients vs Employees Only */}
+                        <div className="flex border-b border-[var(--border)] bg-[var(--surface-accent)]/30 p-1.5 gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsEmployeeSale(false);
+                                    if (paymentMethod === "employee") {
+                                        setPaymentMethod("cash");
+                                    }
+                                }}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-colors cursor-pointer ${
+                                    !isEmployeeSale
+                                        ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-xs"
+                                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                }`}
+                            >
+                                Todos los clientes
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsEmployeeSale(true);
+                                    if (selectedClient && !selectedClient.is_employee) {
+                                        setSelectedClient(null);
+                                    }
+                                    setPaymentMethod("employee");
+                                }}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    isEmployeeSale
+                                        ? "bg-purple-600 text-white shadow-xs"
+                                        : "text-[var(--text-secondary)] hover:text-purple-400"
+                                }`}
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                <span>Solo Empleados</span>
+                            </button>
+                        </div>
+
                         {/* Search Input */}
                         <div className="p-3 border-b border-[var(--border)]">
                             <input
@@ -2279,71 +2457,102 @@ export function SimplePos({ register, onOpenRegister }) {
                                 autoFocus
                                 value={clientSearchQuery}
                                 onChange={(e) => setClientSearchQuery(e.target.value)}
-                                placeholder="Buscar por nombre o teléfono..."
+                                placeholder={isEmployeeSale ? "Buscar empleado..." : "Buscar por nombre o teléfono..."}
                                 className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)]"
                             />
                         </div>
 
-                        {/* Quick Create New Client Input */}
-                        <div className="px-3 py-2 bg-[var(--surface-accent)]/50 border-b border-[var(--border)]">
-                            <form onSubmit={handleCreateClientQuick} className="flex gap-1.5">
-                                <input
-                                    type="text"
-                                    value={newClientName}
-                                    onChange={(e) => setNewClientName(e.target.value)}
-                                    placeholder="+ Nuevo cliente rápido..."
-                                    className="flex-1 px-2.5 py-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)]"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={isCreatingClient || !newClientName.trim()}
-                                    className="px-3 py-1.5 bg-[var(--primary)] text-white text-xs font-bold rounded-lg disabled:opacity-50"
-                                >
-                                    Crear
-                                </button>
-                            </form>
-                        </div>
+                        {/* Quick Create New Client Input (only for standard clients) */}
+                        {!isEmployeeSale ? (
+                            <div className="px-3 py-2 bg-[var(--surface-accent)]/50 border-b border-[var(--border)]">
+                                <form onSubmit={handleCreateClientQuick} className="flex gap-1.5">
+                                    <input
+                                        type="text"
+                                        value={newClientName}
+                                        onChange={(e) => setNewClientName(e.target.value)}
+                                        placeholder="Nuevo cliente rápido..."
+                                        className="flex-1 px-2.5 py-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)]"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={isCreatingClient || !newClientName.trim()}
+                                        className="px-3 py-1.5 bg-[var(--primary)] text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                                    >
+                                        Crear
+                                    </button>
+                                </form>
+                            </div>
+                        ) : (
+                            <div className="px-3.5 py-2 bg-purple-500/10 border-b border-purple-500/20 text-[11px] text-purple-600 dark:text-purple-300 font-medium">
+                                Seleccioná el empleado para registrar el consumo personal y aplicar su descuento de empleado.
+                            </div>
+                        )}
 
                         {/* Clients List */}
                         <div className="flex-1 overflow-y-auto p-2 divide-y divide-[var(--border)]/50">
-                            {/* Consumidor Final */}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setSelectedClient(null);
-                                    setIsClientModalOpen(false);
-                                }}
-                                className="w-full p-2.5 text-left text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-xl flex items-center justify-between"
-                            >
-                                <span>Consumidor Final (Sin asignar)</span>
-                                {!selectedClient && (
-                                    <span className="text-[10px] text-[var(--primary)] font-bold">Seleccionado</span>
-                                )}
-                            </button>
-
-                            {filteredClients.map((c) => (
+                            {/* Consumidor Final (only when not in employee sale mode) */}
+                            {!isEmployeeSale && (
                                 <button
-                                    key={c.id}
                                     type="button"
                                     onClick={() => {
-                                        setSelectedClient(c);
+                                        setSelectedClient(null);
                                         setIsClientModalOpen(false);
                                     }}
-                                    className="w-full p-2.5 text-left flex items-center justify-between hover:bg-[var(--surface-accent)] rounded-xl transition-colors"
+                                    className="w-full p-2.5 text-left text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-xl flex items-center justify-between"
                                 >
-                                    <div>
-                                        <p className="text-xs font-bold text-[var(--text-primary)]">{c.name}</p>
-                                        <p className="text-[10px] text-[var(--text-secondary)]">{c.phone || "Sin teléfono"}</p>
-                                    </div>
-                                    <span
-                                        className={`text-xs font-bold font-mono ${
-                                            (c.current_debt || 0) > 0 ? "text-rose-400" : "text-[var(--text-secondary)]"
-                                        }`}
-                                    >
-                                        {(c.current_debt || 0) > 0 ? `Debe ${formatCurrency(c.current_debt)}` : "$0"}
-                                    </span>
+                                    <span>Consumidor Final (Sin asignar)</span>
+                                    {!selectedClient && (
+                                        <span className="text-[10px] text-[var(--primary)] font-bold">Seleccionado</span>
+                                    )}
                                 </button>
-                            ))}
+                            )}
+
+                            {filteredClients.length === 0 ? (
+                                <div className="p-6 text-center text-xs text-[var(--text-secondary)]">
+                                    {isEmployeeSale
+                                        ? "No se encontraron empleados registrados. Se pueden dar de alta desde la sección Empleados."
+                                        : "No se encontraron clientes."}
+                                </div>
+                            ) : (
+                                filteredClients.map((c) => (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedClient(c);
+                                            if (c.is_employee) {
+                                                setIsEmployeeSale(true);
+                                                setPaymentMethod("employee");
+                                            } else {
+                                                if (paymentMethod === "employee") {
+                                                    setPaymentMethod("cash");
+                                                }
+                                            }
+                                            setIsClientModalOpen(false);
+                                        }}
+                                        className="w-full p-2.5 text-left flex items-center justify-between hover:bg-[var(--surface-accent)] rounded-xl transition-colors cursor-pointer"
+                                    >
+                                        <div>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <p className="text-xs font-bold text-[var(--text-primary)]">{c.name}</p>
+                                                {c.is_employee && (
+                                                    <span className="rounded bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.2 text-[9px] font-bold text-purple-600 dark:text-purple-400">
+                                                        Empleado{Number(c.employee_discount) > 0 ? ` (${Number(c.employee_discount)}%)` : ""}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-[var(--text-secondary)]">{c.phone || "Sin teléfono"}</p>
+                                        </div>
+                                        <span
+                                            className={`text-xs font-bold font-mono ${
+                                                (c.current_debt || 0) > 0 ? "text-rose-400" : "text-[var(--text-secondary)]"
+                                            }`}
+                                        >
+                                            {(c.current_debt || 0) > 0 ? `Debe ${formatCurrency(c.current_debt)}` : "$0"}
+                                        </span>
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

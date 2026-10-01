@@ -25,6 +25,7 @@ import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useStoreSettings } from "../context/StoreSettingsContext";
 import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
+import { useShift } from "../context/ShiftContext";
 
 const NEW_SALE_TOUR_STEPS = [
     {
@@ -191,6 +192,7 @@ function NewTransaction() {
     const [categories, setCategories] = useState([]);
     const [providers, setProviders] = useState([]);
     const [client, setClient] = useState(null);
+    const [isEmployeeSale, setIsEmployeeSale] = useState(false);
     const clientSectionRef = useRef(null);
 
     function handleScrollToClient() {
@@ -235,6 +237,7 @@ function NewTransaction() {
     const [targetOperationIndex, setTargetOperationIndex] = useState(0);
 
     const { isPremium, hasFeature } = useSubscriptionTier();
+    const { activeShift, openHandoverModal } = useShift();
 
     useEffect(() => {
         async function loadCatalog() {
@@ -296,10 +299,19 @@ function NewTransaction() {
 
     const hasPaymentOperation = operations.some((op) => op.type === "payment");
     const hasDebtMethod = transactionAmounts.some((a) => a.method === "debt");
-    const isClientRequired = hasPaymentOperation || hasDebtMethod;
+    const isClientRequired = hasPaymentOperation || hasDebtMethod || isEmployeeSale;
 
     function handleSelectClient(selected) {
         setClient(selected);
+        if (selected?.is_employee) {
+            setIsEmployeeSale(true);
+            setTransactionAmounts((prev) => {
+                if (prev.length === 1 && (prev[0].method === "cash" || prev[0].method === "debt")) {
+                    return [{ ...prev[0], method: "employee" }];
+                }
+                return prev;
+            });
+        }
         if (selected && Number(selected.debt) > 0) {
             setOperations((prev) =>
                 prev.map((op) => {
@@ -388,7 +400,17 @@ function NewTransaction() {
                     0
                 );
                 const manualTotal = Number(op.manualAmount) || 0;
-                return roundUpTo50(itemsTotal + manualTotal);
+                const rawTotal = itemsTotal + manualTotal;
+                if (client?.is_employee) {
+                    const discountPct = client.employee_discount !== undefined && client.employee_discount !== null
+                        ? Number(client.employee_discount)
+                        : 0;
+                    if (discountPct > 0) {
+                        const discountAmount = (rawTotal * discountPct) / 100;
+                        return roundUpTo50(Math.max(0, rawTotal - discountAmount));
+                    }
+                }
+                return roundUpTo50(rawTotal);
             }
             if (op.type === "sube") {
                 return calculateSubeFee(op.rechargeAmount || 0).totalToCharge;
@@ -407,7 +429,7 @@ function NewTransaction() {
             }
             return 0;
         },
-        [calculateSubeFee, calculatePhoneFee, calculateExchangeFee]
+        [client, calculateSubeFee, calculatePhoneFee, calculateExchangeFee]
     );
 
     function handleToggleDelivery(enabled) {
@@ -513,6 +535,27 @@ function NewTransaction() {
             .reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
     }, [transactionAmounts]);
 
+    const totalEmployeeDiscountSavings = useMemo(() => {
+        if (!client?.is_employee) return 0;
+        const discountPct = client.employee_discount !== undefined && client.employee_discount !== null
+            ? Number(client.employee_discount)
+            : 0;
+        if (discountPct <= 0) return 0;
+        let totalSavings = 0;
+        for (const op of operations) {
+            if (op.type === "sale") {
+                const itemsTotal = (op.items || []).reduce(
+                    (s, it) => s + (Number(it.subtotal) || 0),
+                    0
+                );
+                const manualTotal = Number(op.manualAmount) || 0;
+                const rawTotal = itemsTotal + manualTotal;
+                totalSavings += (rawTotal * discountPct) / 100;
+            }
+        }
+        return totalSavings;
+    }, [client, operations]);
+
     const executeSubmit = useCallback(async (allowOverLimit = false) => {
         setIsSubmitting(true);
 
@@ -585,7 +628,20 @@ function NewTransaction() {
                         0
                     );
                     const manualTotal = Number(op.manualAmount) || 0;
-                    opTarget = roundUpTo50(itemsTotal + manualTotal);
+                    const rawTotal = itemsTotal + manualTotal;
+                    if (client?.is_employee) {
+                        const discountPct = client.employee_discount !== undefined && client.employee_discount !== null
+                            ? Number(client.employee_discount)
+                            : 0;
+                        if (discountPct > 0) {
+                            const discountAmount = (rawTotal * discountPct) / 100;
+                            opTarget = roundUpTo50(Math.max(0, rawTotal - discountAmount));
+                        } else {
+                            opTarget = roundUpTo50(rawTotal);
+                        }
+                    } else {
+                        opTarget = roundUpTo50(rawTotal);
+                    }
                 } else if (op.type === "sube") {
                     opTarget = calculateSubeFee(op.rechargeAmount || 0).totalToCharge;
                 } else if (op.type === "phone") {
@@ -676,10 +732,14 @@ function NewTransaction() {
                 }
             }
 
+            const effectiveEmployee = activeShift?.employee || undefined;
+
             const payload = {
                 client: clientId,
                 description: finalDescription,
                 operations: resolvedOperations,
+                ...(effectiveEmployee ? { employee: effectiveEmployee } : {}),
+                ...(activeShift ? { shift: activeShift.id } : {}),
                 ...(allowOverLimit ? { allow_over_limit: true } : {}),
                 is_delivery: isDelivery,
                 delivery_fee: isDelivery ? (Number(deliveryFee) || 0) : 0,
@@ -741,6 +801,7 @@ function NewTransaction() {
         receivedCash,
         totalCashDue,
         transactionAmounts,
+        activeShift,
     ]);
 
     const handleSubmit = useCallback(async (event) => {
@@ -758,6 +819,13 @@ function NewTransaction() {
         }
 
         const hasDebtAmount = validAmounts.some((a) => a.method === "debt");
+        const hasEmployeeAmount = validAmounts.some((a) => a.method === "employee");
+
+        if ((isEmployeeSale || hasEmployeeAmount) && (!client || !client.is_employee)) {
+            toast.error("Para registrar un consumo de empleado tenés que seleccionar un empleado.");
+            handleScrollToClient();
+            return;
+        }
 
         if ((hasPaymentOperation || hasDebtAmount) && !client) {
             toast.error(
@@ -843,6 +911,7 @@ function NewTransaction() {
         operations,
         requireOwnerAccess,
         transactionAmounts,
+        isEmployeeSale,
     ]);
 
     // Global shortcut Ctrl+Enter or F9 to submit sale from anywhere
@@ -863,6 +932,7 @@ function NewTransaction() {
     function handleResetForm() {
         setOperations([createNewOperation()]);
         setClient(null);
+        setIsEmployeeSale(false);
         setIgnoreDebtSurcharge(false);
         setDescription("");
         setReceivedCash("");
@@ -890,13 +960,29 @@ function NewTransaction() {
                     </div>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() => navigate("/")}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
-                >
-                    Volver a Caja
-                </button>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs">
+                        <span className="text-[var(--text-secondary)]">Cajero:</span>
+                        <span className="font-bold text-[var(--text-primary)]">
+                            {activeShift?.employee_name || "Sin turno"}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={openHandoverModal}
+                            className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition cursor-pointer"
+                        >
+                            Cambiar
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => navigate("/")}
+                        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-accent)] hover:text-[var(--text-primary)]"
+                    >
+                        Volver a Caja
+                    </button>
+                </div>
             </header>
 
             <div className="space-y-6">
@@ -927,7 +1013,12 @@ function NewTransaction() {
                                         </h3>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                        {op.type === "sale" && client?.is_employee && Number(client.employee_discount) > 0 && (
+                                            <span className="rounded-sm bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[11px] font-bold text-purple-600 dark:text-purple-400">
+                                                Desc. Empleado ({Number(client.employee_discount)}%)
+                                            </span>
+                                        )}
                                         <span className="text-xs font-bold text-[var(--text-primary)] tabular-nums">
                                             Subtotal: {formatCurrency(opSubtotal)}
                                         </span>
@@ -1251,6 +1342,11 @@ function NewTransaction() {
                             <span className="text-base sm:text-lg font-black text-[var(--text-primary)] tabular-nums">
                                 {formatCurrency(grandTargetTotal)}
                             </span>
+                            {totalEmployeeDiscountSavings > 0 && (
+                                <span className="block text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                    Desc. empleado: -{formatCurrency(totalEmployeeDiscountSavings)}
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -1266,26 +1362,109 @@ function NewTransaction() {
                         onRequireClient={handleScrollToClient}
                         receivedCash={receivedCash}
                         onReceivedCashChange={setReceivedCash}
+                        isEmployeeSale={isEmployeeSale}
                     />
                 </div>
 
-                {/* CLIENT & NOTES (SLEEK INLINE 2-COLUMN TOOLBAR) */}
+                {/* CLIENT & NOTES */}
                 <div
                     ref={clientSectionRef}
                     className={`rounded-md border transition-colors duration-200 p-4 shadow-xs ${
-                        isClientRequired && !client
+                        isEmployeeSale
+                            ? "border-purple-500/40 bg-purple-500/[0.03]"
+                            : isClientRequired && !client
                             ? "border-[var(--primary)]/50 bg-[var(--primary)]/5"
                             : "border-[var(--border)] bg-[var(--surface)]"
                     }`}
                 >
+                    {/* TOP HEADER: Prominent Mode & Employee Toggle */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-3 border-b border-[var(--border)]">
+                        <div className="flex items-center gap-2.5">
+                            <div
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition ${
+                                    isEmployeeSale
+                                        ? "border-purple-500/40 bg-purple-500/15 text-purple-600 dark:text-purple-400"
+                                        : "border-[var(--border)] bg-[var(--surface-accent)]/60 text-[var(--text-secondary)]"
+                                }`}
+                            >
+                                <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                        {isEmployeeSale ? "Venta a Empleado (Consumo Interno)" : "Cliente y Datos de Venta"}
+                                    </h3>
+                                    {isEmployeeSale && (
+                                        <span className="rounded-sm bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                            {client?.employee_discount !== undefined && client?.employee_discount !== null && Number(client.employee_discount) > 0
+                                                ? `${Number(client.employee_discount)}% desc. personal`
+                                                : "Desc. personal"}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                    {isEmployeeSale
+                                        ? (client?.employee_discount !== undefined && client?.employee_discount !== null && Number(client.employee_discount) > 0
+                                            ? `Descuento del ${Number(client.employee_discount)}% fijado en la ficha de ${client.name}`
+                                            : "Seleccioná el empleado para aplicar el descuento fijado en su ficha")
+                                        : "Asigná un cliente para compras a cuenta (fiado) o dejalo libre para consumidor final"}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Prominent Employee Sale Toggle Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const next = !isEmployeeSale;
+                                setIsEmployeeSale(next);
+                                if (next) {
+                                    if (client && !client.is_employee) {
+                                        setClient(null);
+                                    }
+                                    setTransactionAmounts((prev) => {
+                                        if (prev.length === 1 && (prev[0].method === "cash" || prev[0].method === "debt")) {
+                                            return [{ ...prev[0], method: "employee" }];
+                                        }
+                                        return prev;
+                                    });
+                                } else {
+                                    setTransactionAmounts((prev) => {
+                                        if (prev.length === 1 && prev[0].method === "employee") {
+                                            return [{ ...prev[0], method: "cash" }];
+                                        }
+                                        return prev;
+                                    });
+                                }
+                            }}
+                            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-md border text-xs font-bold transition cursor-pointer shadow-xs shrink-0 ${
+                                isEmployeeSale
+                                    ? "bg-purple-600 text-white border-purple-600 ring-2 ring-purple-500/25"
+                                    : "bg-[var(--surface-accent)] hover:bg-[var(--surface-accent)]/80 text-[var(--text-primary)] border-[var(--border)] hover:border-purple-500/50"
+                            }`}
+                        >
+                            <span className={`inline-block h-2 w-2 rounded-full transition-colors ${
+                                isEmployeeSale ? "bg-white animate-pulse" : "bg-[var(--text-secondary)]/40"
+                            }`} />
+                            <span>{isEmployeeSale ? "Consumo Empleado: Activado" : "Activar Consumo Empleado"}</span>
+                        </button>
+                    </div>
+
+                    {/* TWO COLUMNS: Perfectly aligned headers and inputs */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                        <div>
-                            <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex flex-col">
+                            <div className="h-5 flex items-center justify-between mb-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
-                                    <span>Cliente</span>
+                                    <span>{isEmployeeSale ? "Empleado" : "Cliente"}</span>
                                     {isClientRequired && (
                                         <span className="text-[var(--primary)] font-semibold text-[11px] normal-case">
-                                            {hasDebtMethod ? "* Requerido para fiado" : "* Requerido"}
+                                            {isEmployeeSale
+                                                ? "* Seleccioná un empleado"
+                                                : hasDebtMethod
+                                                    ? "* Requerido para fiado"
+                                                    : "* Requerido"}
                                         </span>
                                     )}
                                 </label>
@@ -1294,23 +1473,26 @@ function NewTransaction() {
                                 selectedClient={client}
                                 onSelectClient={handleSelectClient}
                                 required={isClientRequired}
+                                employeeOnly={isEmployeeSale}
                             />
                         </div>
 
-                        <div>
-                            <label
-                                htmlFor="tx-description"
-                                className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-1.5"
-                            >
-                                Nota o detalle general (opcional)
-                            </label>
+                        <div className="flex flex-col">
+                            <div className="h-5 flex items-center mb-1.5">
+                                <label
+                                    htmlFor="tx-description"
+                                    className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]"
+                                >
+                                    Nota o detalle general (opcional)
+                                </label>
+                            </div>
                             <input
                                 id="tx-description"
                                 type="text"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Ej: Descuento aplicado, pedido especial, etc."
-                                className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                                className="h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs sm:text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                             />
                         </div>
                     </div>
@@ -1319,9 +1501,16 @@ function NewTransaction() {
                 {/* BOTTOM CHECKOUT BAR (STICKY) */}
                 <div data-tour="sale-submit-bar" className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:px-5 sm:py-3.5 shadow-xl sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-baseline justify-between gap-3 sm:block">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                            Total a cobrar
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                Total a cobrar
+                            </p>
+                            {totalEmployeeDiscountSavings > 0 && (
+                                <span className="rounded-sm bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                    {Number(client?.employee_discount)}% desc. personal
+                                </span>
+                            )}
+                        </div>
                         <p className="text-2xl font-black tabular-nums text-[var(--text-primary)] sm:mt-0.5">
                             {formatCurrency(grandTotal)}
                         </p>

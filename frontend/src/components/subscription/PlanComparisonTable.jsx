@@ -11,7 +11,7 @@ const COMPARISON_GROUPS = [
                 premium: true,
             },
             {
-                name: "Caja Diaria & Arqueos",
+                name: "Caja Diaria & Control de Turnos",
                 description: "Apertura y cierre de turno, registro de egresos, cálculo de vuelto y control de efectivo.",
                 basic: true,
                 premium: true,

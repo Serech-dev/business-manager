@@ -17,19 +17,23 @@ function TransactionAmounts({
     ignoreDebtSurcharge = false,
     onToggleIgnoreDebtSurcharge,
     isExchange = false,
+    isEmployeeSale = false,
 }) {
     const { settings, calculateDebtSurcharge, calculateCardSurcharge, getClientDebtLimit } = useStoreSettings();
     const isSingleMethod = amounts.length === 1;
+    const isEmployee = Boolean(client?.is_employee || isEmployeeSale);
 
     const [bankAccounts, setBankAccounts] = useState([]);
 
     useEffect(() => {
         let isMounted = true;
         getBankAccounts(true)
-            .then((data) => {
-                if (isMounted) setBankAccounts(data || []);
+            .then((bankData) => {
+                if (isMounted) {
+                    setBankAccounts(bankData || []);
+                }
             })
-            .catch((err) => console.error("Error loading bank accounts in TransactionAmounts:", err));
+            .catch(() => []);
         return () => {
             isMounted = false;
         };
@@ -44,6 +48,16 @@ function TransactionAmounts({
             onAmountsChange?.(sanitized);
         }
     }, [disableDebt, isExchange, amounts, onAmountsChange]);
+
+    // Ensure employee method is sanitized to cash when not an employee sale
+    useEffect(() => {
+        if (!isEmployee && amounts && amounts.some((a) => a.method === "employee")) {
+            const sanitized = amounts.map((a) =>
+                a.method === "employee" ? { ...a, method: "cash" } : a
+            );
+            onAmountsChange?.(sanitized);
+        }
+    }, [isEmployee, amounts, onAmountsChange]);
 
     const defaultBank = useMemo(() => {
         return bankAccounts.find((b) => b.is_default) || bankAccounts[0] || null;
@@ -317,6 +331,13 @@ function TransactionAmounts({
             { id: "card", label: "Tarjeta por Efectivo" },
             ...(!disableDebt ? [{ id: "debt", label: "Fiado" }] : []),
         ]
+        : isEmployee
+        ? [
+            { id: "employee", label: "Descontar del sueldo" },
+            { id: "cash", label: "Efectivo" },
+            { id: "transfer", label: "Transferencia" },
+            { id: "card", label: "Tarjeta" },
+        ]
         : [
             { id: "cash", label: "Efectivo" },
             { id: "transfer", label: "Transferencia" },
@@ -504,6 +525,7 @@ function TransactionAmounts({
                             </div>
                         )}
 
+
                         {/* LIMIT BREACH WARNING */}
                         {isLimitBreached && (
                             <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-600 dark:text-rose-400 space-y-1">
@@ -516,6 +538,17 @@ function TransactionAmounts({
                                 <p className="text-[11px] leading-relaxed">
                                     Deuda actual ({formatCurrency(clientDebt)}) + este fiado ({formatCurrency(debtAmountInOp)}) = <strong>{formatCurrency(projectedDebt)}</strong>. Supera el límite de <strong>{formatCurrency(effectiveLimit)}</strong>.
                                 </p>
+                            </div>
+                        )}
+
+                        {amounts[0]?.method === "employee" && (
+                            <div className="rounded-md border border-purple-500/30 bg-purple-500/10 p-2.5 text-xs text-purple-700 dark:text-purple-300 flex items-start gap-2">
+                                <svg className="h-4 w-4 shrink-0 text-purple-600 dark:text-purple-400 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                </svg>
+                                <span className="leading-relaxed">
+                                    Se registrará como consumo interno del empleado y se descontará en la liquidación de sueldo. <strong>No ingresa dinero a la caja física.</strong>
+                                </span>
                             </div>
                         )}
 
@@ -540,7 +573,7 @@ function TransactionAmounts({
                         {amounts.map((item, index) => (
                             <div key={index} className="space-y-1.5">
                                 <div className="flex items-center gap-2">
-                                    <div className="relative w-40 sm:w-44 shrink-0">
+                                    <div className="relative w-44 sm:w-48 shrink-0">
                                         <select
                                             value={item.method}
                                             onChange={(e) =>
@@ -553,6 +586,13 @@ function TransactionAmounts({
                                                     <option value="transfer">Transf. por Efectivo</option>
                                                     <option value="cash">Efectivo por Transf.</option>
                                                     <option value="card">Tarjeta por Efectivo</option>
+                                                </>
+                                            ) : isEmployee ? (
+                                                <>
+                                                    <option value="employee">Descontar del sueldo</option>
+                                                    <option value="cash">Efectivo</option>
+                                                    <option value="transfer">Transferencia</option>
+                                                    <option value="card">Tarjeta</option>
                                                 </>
                                             ) : (
                                                 <>

@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
+from django.utils import timezone
 
 
 def round_up_to_50(val):
@@ -49,6 +50,15 @@ class Client(models.Model):
         help_text="Límite personalizado de fiado ($). Si es nulo, se utiliza el límite general del comercio.",
     )
 
+    employee = models.OneToOneField(
+        "Employee",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="client_profile",
+        help_text="Perfil de empleado asociado para compras con descuento de personal",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -64,6 +74,16 @@ class Client(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_employee(self):
+        return bool(self.employee_id and self.employee.is_active)
+
+    @property
+    def employee_discount(self):
+        if self.employee_id and self.employee:
+            return self.employee.discount_percentage if self.employee.discount_percentage is not None else Decimal("0.00")
+        return Decimal("0.00")
 
     @property
     def effective_debt_limit(self):
@@ -223,6 +243,24 @@ class Transaction(models.Model):
         choices=DeliveryStatus.choices,
         default=DeliveryStatus.PENDING,
         blank=True,
+    )
+
+    employee = models.ForeignKey(
+        "Employee",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+        help_text="Empleado / Cajero que realizó la operación",
+    )
+
+    shift = models.ForeignKey(
+        "RegisterShift",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+        help_text="Turno de caja durante el cual se registró la operación",
     )
 
     def __str__(self):
@@ -428,6 +466,7 @@ class TransactionOperationAmount(models.Model):
         TRANSFER = "transfer", "Transferencia"
         CARD = "card", "Tarjeta"
         DEBT = "debt", "Fiado"
+        EMPLOYEE = "employee", "Consumo empleado"
 
     operation = models.ForeignKey(
         TransactionOperation,
@@ -1084,6 +1123,244 @@ class MasterCatalogProduct(models.Model):
 
     def __str__(self):
         return f"[{self.barcode}] {self.name} ({self.brand or 'Genérico'})"
+
+
+class Employee(models.Model):
+    class SalaryType(models.TextChoices):
+        MONTHLY = "monthly", "Mensual"
+        DAILY = "daily", "Por día (jornal)"
+        HOURLY = "hourly", "Por hora"
+        FIXED = "fixed", "Fijo / Por turno"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="employees",
+    )
+    name = models.CharField(max_length=150)
+    role = models.CharField(max_length=100, blank=True, default="")
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    salary_type = models.CharField(
+        max_length=20,
+        choices=SalaryType.choices,
+        default=SalaryType.MONTHLY,
+    )
+    base_salary = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Salario base pactado según la modalidad (mensual, jornal diario, etc.)",
+    )
+    discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("10.00"),
+        help_text="Porcentaje de descuento para compras del empleado en el local (ej. 10.00)",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Indica si el empleado está actualmente activo en el comercio",
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                "user",
+                name="unique_employee_name_per_user_ci",
+            )
+        ]
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def ensure_client_profile(self):
+        from .models import Client
+        client = Client.objects.filter(employee=self).first()
+        if client:
+            updates = []
+            if client.name != self.name:
+                client.name = self.name
+                updates.append("name")
+            if self.phone and client.phone != self.phone:
+                client.phone = self.phone
+                updates.append("phone")
+            if updates:
+                client.save(update_fields=updates)
+            return client
+
+        existing_client = Client.objects.filter(user=self.user, name__iexact=self.name).first()
+        if existing_client:
+            existing_client.employee = self
+            updates = ["employee"]
+            if not existing_client.phone and self.phone:
+                existing_client.phone = self.phone
+                updates.append("phone")
+            existing_client.save(update_fields=updates)
+            return existing_client
+
+        return Client.objects.create(
+            user=self.user,
+            name=self.name,
+            phone=self.phone,
+            employee=self,
+            notes=f"Empleado del comercio ({self.role or 'Personal general'})",
+        )
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.ensure_client_profile()
+
+
+class RegisterShift(models.Model):
+    register = models.ForeignKey(
+        Register,
+        on_delete=models.CASCADE,
+        related_name="shifts",
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="shifts",
+    )
+    opened_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    initial_cash = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Efectivo en caja al iniciar el turno",
+    )
+    declared_cash = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Efectivo contado y declarado por el cajero al entregar el turno",
+    )
+    expected_cash = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Efectivo teórico calculado según las operaciones del turno",
+    )
+    difference = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Diferencia de caja (declared_cash - expected_cash): positivo=sobrante, negativo=faltante",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Observaciones de entrega o novedades del turno",
+    )
+
+    class Meta:
+        ordering = ["-opened_at"]
+
+    @property
+    def is_open(self):
+        return self.closed_at is None
+
+    def __str__(self):
+        status = "Abierto" if self.is_open else "Cerrado"
+        emp_name = self.employee.name if self.employee_id and self.employee else "General"
+        return f"Turno #{self.id} - {emp_name} ({status})"
+
+
+class EmployeeMovement(models.Model):
+    class Type(models.TextChoices):
+        CONSUMPTION = "consumption", "Consumo interno"
+        ADVANCE = "advance", "Adelanto de sueldo"
+        BONUS = "bonus", "Premio / Adicional"
+        DEDUCTION = "deduction", "Descuento / Sanción"
+        SALARY_PAYMENT = "salary_payment", "Pago de sueldo"
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="movements",
+    )
+    transaction = models.ForeignKey(
+        Transaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="employee_movements",
+    )
+    type = models.CharField(
+        max_length=25,
+        choices=Type.choices,
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+    is_settled = models.BooleanField(
+        default=False,
+        help_text="Indica si este movimiento ya fue incluido en una liquidación de sueldo",
+    )
+    date = models.DateTimeField(default=timezone.now)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-date", "-id"]
+
+    def __str__(self):
+        return f"{self.get_type_display()} - {self.employee.name}: ${self.amount}"
+
+
+class EmployeeAttendance(models.Model):
+    class Status(models.TextChoices):
+        PRESENT = "present", "Presente"
+        ABSENT = "absent", "Ausente"
+        LATE = "late", "Llegada tarde"
+        JUSTIFIED = "justified", "Ausencia justificada"
+        DAY_OFF = "day_off", "Franco / Descanso"
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="attendances",
+    )
+    date = models.DateField(default=timezone.localdate)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PRESENT,
+    )
+    hours_worked = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("8.00"),
+        null=True,
+        blank=True,
+    )
+    notes = models.CharField(max_length=255, blank=True)
+    is_settled = models.BooleanField(
+        default=False,
+        help_text="Indica si esta jornada ya fue incluida en una liquidación de sueldo",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "date"],
+                name="unique_employee_attendance_per_date",
+            )
+        ]
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"{self.employee.name} - {self.date} ({self.get_status_display()})"
 
 
 

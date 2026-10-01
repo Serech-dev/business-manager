@@ -7,6 +7,7 @@ function TransactionClient({
     selectedClient,
     onSelectClient,
     required = false,
+    employeeOnly = false,
 }) {
     const { getClientDebtLimit } = useStoreSettings();
     const [clientSearch, setClientSearch] = useState("");
@@ -17,6 +18,28 @@ function TransactionClient({
     const containerRef = useRef(null);
     const prevSelectedClientRef = useRef(selectedClient);
 
+    const loadEmployeeClients = async (query = "") => {
+        setIsSearchingClients(true);
+        try {
+            const results = await getClients(query.trim());
+            const filtered = results.filter((c) => c.is_employee);
+            setClientResults(filtered);
+            setIsDropdownOpen(true);
+        } catch (error) {
+            console.error("Error buscando empleados:", error);
+            setClientResults([]);
+        } finally {
+            setIsSearchingClients(false);
+        }
+    };
+
+    // When employeeOnly is enabled, immediately fetch employees if no client is selected
+    useEffect(() => {
+        if (employeeOnly && !selectedClient) {
+            loadEmployeeClients(clientSearch);
+        }
+    }, [employeeOnly]);
+
     useEffect(() => {
         // If transitioning from selected client to null (e.g. form reset, new sale)
         if (prevSelectedClientRef.current && !selectedClient) {
@@ -24,6 +47,9 @@ function TransactionClient({
             setClientResults([]);
             setIsDropdownOpen(false);
             prevSelectedClientRef.current = null;
+            if (employeeOnly) {
+                loadEmployeeClients("");
+            }
             return;
         }
 
@@ -38,8 +64,12 @@ function TransactionClient({
 
         const trimmed = clientSearch.trim();
         if (!trimmed) {
-            setClientResults([]);
-            setIsDropdownOpen(false);
+            if (employeeOnly) {
+                loadEmployeeClients("");
+            } else {
+                setClientResults([]);
+                setIsDropdownOpen(false);
+            }
             return;
         }
 
@@ -47,7 +77,10 @@ function TransactionClient({
             setIsSearchingClients(true);
             try {
                 const results = await getClients(trimmed);
-                setClientResults(results);
+                const filtered = employeeOnly
+                    ? results.filter((c) => c.is_employee)
+                    : results;
+                setClientResults(filtered);
                 setIsDropdownOpen(true);
             } catch (error) {
                 console.error("Error buscando clientes:", error);
@@ -58,7 +91,7 @@ function TransactionClient({
         }, 200);
 
         return () => clearTimeout(timeout);
-    }, [clientSearch, selectedClient]);
+    }, [clientSearch, selectedClient, employeeOnly]);
 
     // Close dropdown on click outside
     useEffect(() => {
@@ -77,19 +110,32 @@ function TransactionClient({
         const remainingCredit = effectiveLimit !== null ? Math.max(0, effectiveLimit - Math.max(0, clientDebt)) : null;
 
         return (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/5 px-3 py-2 text-xs transition">
+            <div className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs transition ${
+                selectedClient.is_employee
+                    ? "border-purple-500/40 bg-purple-500/5"
+                    : "border-[var(--primary)]/40 bg-[var(--primary)]/5"
+            }`}>
                 <div className="flex items-center gap-2 min-w-0">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--primary)]/10 font-bold text-[var(--primary)]">
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md font-bold ${
+                        selectedClient.is_employee
+                            ? "bg-purple-500/15 text-purple-600 dark:text-purple-400"
+                            : "bg-[var(--primary)]/10 text-[var(--primary)]"
+                    }`}>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                         </svg>
                     </span>
 
                     <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-sm text-[var(--text-primary)] truncate">
                                 {selectedClient.name}
                             </span>
+                            {selectedClient.is_employee && (
+                                <span className="rounded bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                    Empleado{Number(selectedClient.employee_discount) > 0 ? ` · ${Number(selectedClient.employee_discount)}% desc.` : ""}
+                                </span>
+                            )}
                             {!selectedClient.id && (
                                 <span className="rounded bg-[var(--primary)]/15 px-1.5 py-0.2 text-[10px] font-bold text-[var(--primary)]">
                                     Nuevo
@@ -141,10 +187,12 @@ function TransactionClient({
                         setClientSearch("");
                         setClientResults([]);
                     }}
-                    className="shrink-0 rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] transition"
+                    className="shrink-0 rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] transition cursor-pointer"
                     title="Quitar cliente"
                 >
-                    ✕
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
         );
@@ -167,27 +215,41 @@ function TransactionClient({
                         if (!isDropdownOpen) setIsDropdownOpen(true);
                     }}
                     onFocus={() => {
-                        if (clientSearch.trim()) setIsDropdownOpen(true);
+                        if (employeeOnly) {
+                            loadEmployeeClients(clientSearch);
+                        } else if (clientSearch.trim()) {
+                            setIsDropdownOpen(true);
+                        }
                     }}
                     placeholder={
-                        required
+                        employeeOnly
+                            ? "Seleccionar o buscar empleado..."
+                            : required
                             ? "Cliente obligatorio para a cuenta..."
                             : "Asignar o buscar cliente (opcional)..."
                     }
-                    className={`h-11 w-full rounded-lg border bg-[var(--background)] pl-9 pr-3 text-xs sm:text-sm font-medium text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-secondary)]/60 ${
+                    className={`h-11 w-full rounded-md border bg-[var(--background)] pl-9 pr-3 text-xs sm:text-sm font-medium text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-secondary)]/60 ${
                         required && !selectedClient
                             ? "border-[var(--danger)]/60 focus:border-[var(--danger)]"
+                            : employeeOnly
+                            ? "border-purple-500/50 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
                             : "border-[var(--border)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                     }`}
                 />
             </div>
 
             {/* DROPDOWN RESULTS */}
-            {isDropdownOpen && clientSearch.trim() && (
+            {isDropdownOpen && (clientSearch.trim() || employeeOnly) && (
                 <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-56 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] animate-in fade-in duration-100">
                     {isSearchingClients ? (
                         <div className="p-3 text-center text-xs text-[var(--text-secondary)]">
-                            Buscando clientes...
+                            {employeeOnly ? "Cargando empleados..." : "Buscando clientes..."}
+                        </div>
+                    ) : clientResults.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-[var(--text-secondary)]">
+                            {employeeOnly
+                                ? "No se encontraron empleados registrados. Creá uno en Personal."
+                                : "No se encontraron clientes."}
                         </div>
                     ) : (
                         <>
@@ -203,9 +265,16 @@ function TransactionClient({
                                     className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs transition hover:bg-[var(--surface-accent)]"
                                 >
                                     <div className="min-w-0 pr-2">
-                                        <p className="font-bold text-sm text-[var(--text-primary)] truncate">
-                                            {client.name}
-                                        </p>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <p className="font-bold text-sm text-[var(--text-primary)] truncate">
+                                                {client.name}
+                                            </p>
+                                            {client.is_employee && (
+                                                <span className="rounded bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.5 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                                    Empleado{Number(client.employee_discount) > 0 ? ` (${Number(client.employee_discount)}%)` : ""}
+                                                </span>
+                                            )}
+                                        </div>
                                         {client.phone && (
                                             <p className="text-[11px] text-[var(--text-secondary)]">
                                                 {client.phone}
@@ -231,29 +300,31 @@ function TransactionClient({
                                 </button>
                             ))}
 
-                            {/* Create New Client Option */}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    onSelectClient({
-                                        id: null,
-                                        name: clientSearch.trim(),
-                                    });
-                                    setClientSearch("");
-                                    setIsDropdownOpen(false);
-                                }}
-                                className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition text-[var(--primary)]"
-                            >
-                                <div>
-                                    <span className="font-bold text-sm block">
-                                        + Crear &quot;{clientSearch.trim()}&quot;
-                                    </span>
-                                    <span className="text-[11px] text-[var(--text-secondary)]">
-                                        Nuevo cliente (se guardará con la venta)
-                                    </span>
-                                </div>
-                                <span className="font-bold text-xs uppercase">Nuevo</span>
-                            </button>
+                            {/* Create New Client Option (only for regular customer searches) */}
+                            {!employeeOnly && clientSearch.trim() && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onSelectClient({
+                                            id: null,
+                                            name: clientSearch.trim(),
+                                        });
+                                        setClientSearch("");
+                                        setIsDropdownOpen(false);
+                                    }}
+                                    className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition text-[var(--primary)]"
+                                >
+                                    <div>
+                                        <span className="font-bold text-sm block">
+                                            Crear &quot;{clientSearch.trim()}&quot;
+                                        </span>
+                                        <span className="text-[11px] text-[var(--text-secondary)]">
+                                            Nuevo cliente (se guardará con la venta)
+                                        </span>
+                                    </div>
+                                    <span className="font-bold text-xs uppercase">Nuevo</span>
+                                </button>
+                            )}
                         </>
                     )}
                 </div>

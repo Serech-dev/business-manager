@@ -5,14 +5,19 @@ from .views import (AnalyticsView, BankAccountDetailView, BankAccountListCreateV
                      BulkDeleteProductsView, BulkUpdateProductPricesView,
                      CategoryDetailView, CategoryListCreateView,
                      ClientDetailView, ClientListCreateView, CloseRegisterView,
-                     CurrentRegisterView, CurrentTransactionListView,
+                     CurrentRegisterShiftView, CurrentRegisterView,
+                     CurrentTransactionListView, EmployeeAttendanceListCreateView,
+                     EmployeeDetailView, EmployeeListCreateView,
+                     EmployeeMovementListCreateView, EmployeeSalarySettlementView, EmployeeSummaryView,
                      ImportStarterCatalogView, MasterCatalogLookupView,
                      MasterCatalogSearchView, OpenRegisterView,
                      OverdueDebtsAlertView,
                      ProductDetailView, ProductListCreateView,
                      ProviderDetailView, ProviderListCreateView,
                      RegisterDetailView, RegisterListView,
+                     RegisterShiftsListView,
                      ReopenLastRegisterView, ResolveTransferView,
+                     ShiftHandoverView,
                      StockAdjustmentView, StockAlertsSummaryView,
                      StockInsightsView, StockMovementListCreateView,
                      StockNoteDetailView, StockNoteListCreateView,
@@ -95,6 +100,78 @@ urlpatterns = [
         "registers/<int:pk>/",
         RegisterDetailView.as_view(),
         name="register-detail",
+    ),
+
+    path(
+        "registers/<int:register_id>/shifts/",
+        RegisterShiftsListView.as_view(),
+        name="register-shifts-list",
+    ),
+
+    path(
+        "shifts/",
+        RegisterShiftsListView.as_view(),
+        name="shifts-list",
+    ),
+
+    path(
+        "shifts/current/",
+        CurrentRegisterShiftView.as_view(),
+        name="current-shift",
+    ),
+
+    path(
+        "shifts/handover/",
+        ShiftHandoverView.as_view(),
+        name="shift-handover",
+    ),
+
+    path(
+        "employees/",
+        EmployeeListCreateView.as_view(),
+        name="employee-list-create",
+    ),
+
+    path(
+        "employees/<int:pk>/",
+        EmployeeDetailView.as_view(),
+        name="employee-detail",
+    ),
+
+    path(
+        "employees/<int:employee_id>/summary/",
+        EmployeeSummaryView.as_view(),
+        name="employee-summary",
+    ),
+
+    path(
+        "employees/<int:employee_id>/settle/",
+        EmployeeSalarySettlementView.as_view(),
+        name="employee-settle-salary",
+    ),
+
+    path(
+        "employees/movements/",
+        EmployeeMovementListCreateView.as_view(),
+        name="employee-movements-general",
+    ),
+
+    path(
+        "employees/<int:employee_id>/movements/",
+        EmployeeMovementListCreateView.as_view(),
+        name="employee-movements",
+    ),
+
+    path(
+        "employees/attendance/",
+        EmployeeAttendanceListCreateView.as_view(),
+        name="employee-attendance-general",
+    ),
+
+    path(
+        "employees/<int:employee_id>/attendance/",
+        EmployeeAttendanceListCreateView.as_view(),
+        name="employee-attendance",
     ),
 
     path(

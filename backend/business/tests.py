@@ -9,8 +9,12 @@ from rest_framework.test import APIClient
 from accounts.models import Subscription
 from .models import (
     Client,
-    StoreSettings,
+    Employee,
+    EmployeeAttendance,
+    EmployeeMovement,
     Register,
+    RegisterShift,
+    StoreSettings,
     BankAccount,
     Product,
     Provider,
@@ -1319,6 +1323,459 @@ class OverdueDebtsAlertTests(TestCase):
         self.assertEqual(res_14.status_code, status.HTTP_200_OK)
         # Neither 10 days nor 12 days exceeds 14 days
         self.assertEqual(res_14.data["count"], 0)
+
+
+class EmployeeAndShiftModuleTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="kioscouser_shifts",
+            email="shifts@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("50000.00"),
+        )
+
+        self.product = Product.objects.create(
+            user=self.user,
+            name="Alfajor Havanna",
+            sale_price=Decimal("1500.00"),
+            cost_price=Decimal("900.00"),
+            stock=Decimal("100.00"),
+        )
+
+    def test_employee_crud_and_shifts(self):
+        # 1. Create employees
+        emp1_res = self.client.post(
+            "/api/business/employees/",
+            {
+                "name": "Lucas Cajero",
+                "phone": "1199887766",
+                "salary_type": "monthly",
+                "base_salary": "450000.00",
+                "discount_percentage": "15.00",
+            },
+            format="json",
+        )
+        self.assertEqual(emp1_res.status_code, status.HTTP_201_CREATED, emp1_res.data)
+        emp1_id = emp1_res.data["id"]
+        self.assertEqual(emp1_res.data["name"], "Lucas Cajero")
+        self.assertEqual(Decimal(str(emp1_res.data["discount_percentage"])), Decimal("15.00"))
+
+        emp2_res = self.client.post(
+            "/api/business/employees/",
+            {
+                "name": "Valeria Tarde",
+                "phone": "1144332211",
+                "salary_type": "daily",
+                "base_salary": "18000.00",
+                "discount_percentage": "10.00",
+            },
+            format="json",
+        )
+        self.assertEqual(emp2_res.status_code, status.HTTP_201_CREATED)
+        emp2_id = emp2_res.data["id"]
+
+        # 2. Start initial shift with Lucas
+        start_shift_res = self.client.post(
+            "/api/business/shifts/handover/",
+            {
+                "next_employee_id": emp1_id,
+                "next_initial_cash": "20000.00",
+            },
+            format="json",
+        )
+        self.assertEqual(start_shift_res.status_code, status.HTTP_200_OK, start_shift_res.data)
+        self.assertIsNotNone(start_shift_res.data["active_shift"])
+        shift1_id = start_shift_res.data["active_shift"]["id"]
+
+        # 3. Check current shift endpoint
+        current_shift_res = self.client.get("/api/business/shifts/current/")
+        self.assertEqual(current_shift_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(current_shift_res.data["active_shift"]["employee"], emp1_id)
+        self.assertEqual(current_shift_res.data["active_shift"]["employee_name"], "Lucas Cajero")
+
+        # 4. Make a sale - verify it auto-assigns active shift and employee
+        tx_res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "operations": [
+                    {
+                        "type": "sale",
+                        "items": [
+                            {
+                                "product": self.product.id,
+                                "quantity": "2.00",
+                                "unit_price": "1500.00",
+                                "subtotal": "3000.00",
+                            }
+                        ],
+                        "amounts": [
+                            {
+                                "method": "cash",
+                                "amount": 3000,
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(tx_res.status_code, status.HTTP_201_CREATED, tx_res.data)
+        tx_id = tx_res.data["id"]
+        tx = Transaction.objects.get(pk=tx_id)
+        self.assertEqual(tx.shift_id, shift1_id)
+        self.assertEqual(tx.employee_id, emp1_id)
+
+        # 5. Make employee consumption sale
+        cons_res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "employee": emp1_id,
+                "operations": [
+                    {
+                        "type": "sale",
+                        "items": [
+                            {
+                                "product": self.product.id,
+                                "quantity": "1.00",
+                                "unit_price": "1275.00", # 1500 - 15%
+                                "subtotal": "1275.00",
+                            }
+                        ],
+                        "amounts": [
+                            {
+                                "method": "employee",
+                                "amount": 1275,
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(cons_res.status_code, status.HTTP_201_CREATED, cons_res.data)
+        # Check automatic EmployeeMovement created
+        movements = EmployeeMovement.objects.filter(employee_id=emp1_id, type="consumption")
+        self.assertEqual(movements.count(), 1)
+        self.assertEqual(movements.first().amount, Decimal("1275.00"))
+
+        # 6. Handover shift to Valeria:
+        # Starting cash was 20,000 + 3,000 cash sale = 23,000 expected cash.
+        # Lucas declares 23,500 ($500 sobrante)
+        handover_res = self.client.post(
+            "/api/business/shifts/handover/",
+            {
+                "declared_cash": "23500.00",
+                "next_employee_id": emp2_id,
+                "next_initial_cash": "15000.00",
+                "notes": "Todo en orden, dejo $500 de propina/sobrante en caja.",
+            },
+            format="json",
+        )
+        self.assertEqual(handover_res.status_code, status.HTTP_200_OK, handover_res.data)
+        closed_shift = handover_res.data["closed_shift"]
+        self.assertEqual(Decimal(str(closed_shift["expected_cash"])), Decimal("23000.00"))
+        self.assertEqual(Decimal(str(closed_shift["declared_cash"])), Decimal("23500.00"))
+        self.assertEqual(Decimal(str(closed_shift["difference"])), Decimal("500.00")) # Sobrante
+
+        active_shift = handover_res.data["active_shift"]
+        self.assertEqual(active_shift["employee"], emp2_id)
+        self.assertEqual(active_shift["employee_name"], "Valeria Tarde")
+
+        # 7. Check Employee Summary for Lucas
+        summary_res = self.client.get(f"/api/business/employees/{emp1_id}/summary/")
+        self.assertEqual(summary_res.status_code, status.HTTP_200_OK, summary_res.data)
+        summary = summary_res.data
+        self.assertEqual(summary["shifts_count"], 1)
+        self.assertEqual(Decimal(str(summary["consumptions_total"])), Decimal("1275.00"))
+        self.assertEqual(Decimal(str(summary["base_earnings"])), Decimal("450000.00"))
+        self.assertEqual(Decimal(str(summary["net_payable"])), Decimal("448725.00")) # 450,000 - 1,275
+
+        # 8. Test shifts list filtered by employee
+        lucas_shifts_res = self.client.get(f"/api/business/shifts/?employee_id={emp1_id}")
+        self.assertEqual(lucas_shifts_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(lucas_shifts_res.data), 1)
+        self.assertEqual(lucas_shifts_res.data[0]["employee"], emp1_id)
+        self.assertEqual(lucas_shifts_res.data[0]["employee_name"], "Lucas Cajero")
+
+        valeria_shifts_res = self.client.get(f"/api/business/shifts/?employee_id={emp2_id}")
+        self.assertEqual(valeria_shifts_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(valeria_shifts_res.data), 1)
+        self.assertEqual(valeria_shifts_res.data[0]["employee"], emp2_id)
+        self.assertEqual(valeria_shifts_res.data[0]["employee_name"], "Valeria Tarde")
+
+        # 9. Test recording an absence (falta injustificada) and late arrival
+        falta_res = self.client.post(
+            f"/api/business/employees/{emp2_id}/attendance/",
+            {
+                "date": "2026-09-28",
+                "status": "absent",
+                "hours_worked": 0,
+                "notes": "No vino sin previo aviso",
+            },
+            format="json",
+        )
+        self.assertEqual(falta_res.status_code, status.HTTP_201_CREATED, falta_res.data)
+
+        late_res = self.client.post(
+            f"/api/business/employees/{emp1_id}/attendance/",
+            {
+                "date": "2026-09-28",
+                "status": "late",
+                "hours_worked": 6.5,
+                "notes": "Demora de transporte 1h 30m",
+            },
+            format="json",
+        )
+        self.assertEqual(late_res.status_code, status.HTTP_201_CREATED, late_res.data)
+
+        # 10. Verify summaries reflect absences and late counts
+        valeria_summary = self.client.get(f"/api/business/employees/{emp2_id}/summary/").data
+        self.assertEqual(valeria_summary["attendances_summary"]["absent_count"], 1)
+        self.assertEqual(valeria_summary["attendances_summary"]["late_count"], 0)
+
+        lucas_summary = self.client.get(f"/api/business/employees/{emp1_id}/summary/").data
+        self.assertEqual(lucas_summary["attendances_summary"]["absent_count"], 0)
+        self.assertEqual(lucas_summary["attendances_summary"]["late_count"], 1)
+
+        # 10. Test Salary Settlement for Lucas:
+        # Lucas has gross 450,000, consumption of 1,275, net payable 448,725.
+        settle_res = self.client.post(
+            f"/api/business/employees/{emp1_id}/settle/",
+            {
+                "payment_method": "cash",
+                "pay_from_register": True,
+                "period_label": "Septiembre 2026",
+                "notes": "Pago mensual en efectivo",
+            },
+            format="json",
+        )
+        self.assertEqual(settle_res.status_code, status.HTTP_201_CREATED, settle_res.data)
+        self.assertTrue(settle_res.data["success"])
+        self.assertEqual(Decimal(str(settle_res.data["settled_details"]["net_paid"])), Decimal("448725.00"))
+
+        # Verify unsettled movements and attendances are now settled
+        self.assertEqual(EmployeeMovement.objects.filter(employee_id=emp1_id, is_settled=False).count(), 0)
+        self.assertEqual(EmployeeAttendance.objects.filter(employee_id=emp1_id, is_settled=False).count(), 0)
+
+        # Check salary_payment movement exists
+        salary_mov = EmployeeMovement.objects.filter(employee_id=emp1_id, type="salary_payment").first()
+        self.assertIsNotNone(salary_mov)
+        self.assertEqual(salary_mov.amount, Decimal("448725.00"))
+
+        # Check that subsequent employee summary reflects $0 pending debts
+        after_summary = self.client.get(f"/api/business/employees/{emp1_id}/summary/").data
+        self.assertEqual(Decimal(str(after_summary["consumptions_total"])), Decimal("0.00"))
+        self.assertEqual(Decimal(str(after_summary["advances_total"])), Decimal("0.00"))
+
+
+class EmployeeClientIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="kiosco_owner",
+            email="owner@test.com",
+            password="testpassword123",
+        )
+        Subscription.get_or_create_for_user(self.user)
+        self.client.force_authenticate(user=self.user)
+        self.register = Register.objects.create(
+            user=self.user,
+            initial_cash=Decimal("10000.00"),
+        )
+
+    def test_employee_auto_client_profile_and_discount(self):
+        # 1. Create employee via API
+        response = self.client.post(
+            "/api/business/employees/",
+            {
+                "name": "Matías Gómez",
+                "phone": "1122334455",
+                "role": "Cajero",
+                "salary_type": "monthly",
+                "base_salary": "400000.00",
+                "discount_percentage": "10.00",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        emp_id = response.data["id"]
+        self.assertIsNotNone(response.data["client_id"])
+        self.assertEqual(response.data["client_name"], "Matías Gómez")
+
+        # 2. Verify client exists and has is_employee True
+        client_obj = Client.objects.get(id=response.data["client_id"])
+        self.assertTrue(client_obj.is_employee)
+        self.assertEqual(client_obj.employee_discount, Decimal("10.00"))
+
+        # 3. Retrieve clients list via API and verify serialization
+        clients_res = self.client.get("/api/business/clients/")
+        self.assertEqual(clients_res.status_code, status.HTTP_200_OK)
+        found = next((c for c in clients_res.data if c["id"] == client_obj.id), None)
+        self.assertIsNotNone(found)
+        self.assertTrue(found["is_employee"])
+        self.assertEqual(Decimal(str(found["employee_discount"])), Decimal("10.00"))
+        self.assertEqual(found["employee_id"], emp_id)
+
+        # 4. Perform a transaction where the employee buys goods
+        # Sale of $2000 with 10% discount -> $1800 paid via cash
+        product = Product.objects.create(
+            user=self.user,
+            name="Alfajor Havanna",
+            sale_price=Decimal("1000.00"),
+            cost_price=Decimal("600.00"),
+            unit_type="unit",
+        )
+        tx_res = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "description": "Compra de empleado con 10% descuento",
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {
+                                "method": "cash",
+                                "amount": "1800",
+                            }
+                        ],
+                        "items": [
+                            {
+                                "product": product.id,
+                                "quantity": "2.00",
+                                "unit_price": "1000.00",
+                                "subtotal": "2000.00",
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(tx_res.status_code, status.HTTP_201_CREATED, tx_res.data)
+        tx_data = tx_res.data
+        self.assertTrue(tx_data["client"]["is_employee"])
+        self.assertEqual(Decimal(str(tx_data["client"]["employee_discount"])), Decimal("10.00"))
+
+        # 5. Perform another transaction using method="employee" (internal consumption)
+        # Should record an EmployeeMovement for Matías Gómez
+        tx_res2 = self.client.post(
+            "/api/business/transactions/",
+            {
+                "client": client_obj.id,
+                "description": "Consumo empleado fiado / libreta",
+                "operations": [
+                    {
+                        "type": "sale",
+                        "amounts": [
+                            {
+                                "method": "employee",
+                                "amount": "900",
+                            }
+                        ],
+                        "items": [
+                            {
+                                "product": product.id,
+                                "quantity": "1.00",
+                                "unit_price": "1000.00",
+                                "subtotal": "1000.00",
+                            }
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(tx_res2.status_code, status.HTTP_201_CREATED, tx_res2.data)
+
+        # Check movement was created specifically for Matías
+        movement = EmployeeMovement.objects.filter(employee_id=emp_id, type="consumption").first()
+        self.assertIsNotNone(movement)
+        self.assertEqual(movement.amount, Decimal("900.00"))
+
+        # 6. Verify register cash balance is NOT affected by the employee consumption ($900)
+        reg_res = self.client.get("/api/business/register/")
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        # Initial cash was 10,000 + 1,800 from step 4 cash sale = 11,800. The $900 employee consumption is NOT in cash drawer!
+        self.assertEqual(Decimal(str(reg_res.data["cash_in"])), Decimal("1800.00"))
+        self.assertEqual(Decimal(str(reg_res.data["expected_cash"])), Decimal("11800.00"))
+
+        # Close register and verify RegisterListSerializer also excludes employee consumption from money_in and expected_cash
+        close_res = self.client.post("/api/business/register/close/")
+        self.assertEqual(close_res.status_code, status.HTTP_200_OK)
+
+        regs_list_res = self.client.get("/api/business/registers/")
+        self.assertEqual(regs_list_res.status_code, status.HTTP_200_OK)
+        closed_reg = next(r for r in regs_list_res.data if r["id"] == self.register.id)
+        self.assertEqual(Decimal(str(closed_reg["cash_in"])), Decimal("1800.00"))
+        self.assertEqual(Decimal(str(closed_reg["expected_cash"])), Decimal("11800.00"))
+        self.assertEqual(Decimal(str(closed_reg["money_in"])), Decimal("1800.00"))
+
+    def test_employee_custom_discount_on_creation_and_edition(self):
+        # 1. Create employee with 0% discount
+        res_zero = self.client.post(
+            "/api/business/employees/",
+            {
+                "name": "Lucía Paz",
+                "phone": "1199887766",
+                "role": "Repositora",
+                "salary_type": "hourly",
+                "hourly_rate": "2500.00",
+                "discount_percentage": "0.00",
+            },
+            format="json",
+        )
+        self.assertEqual(res_zero.status_code, status.HTTP_201_CREATED)
+        lucia_client = Client.objects.get(id=res_zero.data["client_id"])
+        self.assertEqual(lucia_client.employee_discount, Decimal("0.00"))
+
+        # Verify clients list API returns 0.00 and NOT 10.00
+        clients_res = self.client.get("/api/business/clients/")
+        found_lucia = next(c for c in clients_res.data if c["id"] == lucia_client.id)
+        self.assertEqual(Decimal(str(found_lucia["employee_discount"])), Decimal("0.00"))
+
+        # 2. Create employee with custom 15% discount
+        res_15 = self.client.post(
+            "/api/business/employees/",
+            {
+                "name": "Carlos Ruiz",
+                "phone": "1133445566",
+                "role": "Encargado",
+                "salary_type": "monthly",
+                "base_salary": "500000.00",
+                "discount_percentage": "15.00",
+            },
+            format="json",
+        )
+        self.assertEqual(res_15.status_code, status.HTTP_201_CREATED)
+        carlos_id = res_15.data["id"]
+        carlos_client = Client.objects.get(id=res_15.data["client_id"])
+        self.assertEqual(carlos_client.employee_discount, Decimal("15.00"))
+
+        # 3. Edit Carlos discount from 15% to 25% via PATCH
+        patch_res = self.client.patch(
+            f"/api/business/employees/{carlos_id}/",
+            {"discount_percentage": "25.00"},
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, status.HTTP_200_OK)
+        carlos_client.refresh_from_db()
+        self.assertEqual(carlos_client.employee_discount, Decimal("25.00"))
+
+        # Verify clients list API returns updated 25.00%
+        clients_res = self.client.get("/api/business/clients/")
+        found_carlos = next(c for c in clients_res.data if c["id"] == carlos_client.id)
+        self.assertEqual(Decimal(str(found_carlos["employee_discount"])), Decimal("25.00"))
+
+
+
 
 
 

@@ -1,3 +1,28 @@
+v1.8.0 (Employee Management & Cashier Shifts v1, Payroll Settlement, POS Internal Consumption & Onboarding)
+
+- Employee & Team Management Hub (Gestión de Personal):
+  - Comprehensive Employee entity (`EmployeeList.jsx`, `EmployeeDetail.jsx`, `EmployeeModal.jsx`) supporting structured roles (Cajero, Encargado, Repositor, Administrador, etc.), hiring dates, contact info, and flexible compensation models (monthly salary, hourly rate, or daily rate).
+  - Individual Employee Discount (`discount_percentage`): configure custom staff purchase discounts directly per employee profile, replacing hardcoded global discounts.
+  - Automatic Employee-Client Synchronization: automatically links and keeps in sync a corresponding client debtor record (`is_employee=true`), enabling unified credit/debt tracking with zero duplicate data entry.
+- Payroll Settlement & Balance Tracking (Liquidación de Sueldos):
+  - Automated payroll calculation modal (`EmployeeSettlementModal.jsx`): aggregates base pay (monthly, hourly times attendance hours, or daily times shifts worked), automatically deducts salary advances (`advance`), internal consumptions (`consumption`), and custom penalties/deductions (`deduction`), plus bonuses (`bonus`).
+  - Single-click payroll settlement execution (`EmployeeSalarySettlementView`), generating a definitive settlement record (`EmployeeMovement` type `settlement`), clearing settled consumption debts, and marking clocked attendance records as settled.
+- Attendance & Time Tracking (Control de Asistencia):
+  - In-app punch clock system (`EmployeeAttendanceModal.jsx`): clock-in and clock-out with automatic elapsed duration calculation and settlement status tracking (`is_settled`).
+- Cashier Shifts System (Turnos de Caja):
+  - Cashier shift tracking (`RegisterShift`) per active register, linking transactions and shift totals to the active employee.
+  - Active cashier context (`ShiftContext.jsx`): select active cashier on register opening and seamlessly switch active operators.
+  - Cashier Shift Handover (`ShiftHandoverModal.jsx`): allows ending a shift with cash drawer count, calculating differences (sobrante/faltante), and handing over register operation without closing the store's daily main register.
+  - Shift breakdown reporting on Register Close (`RegisterReport.jsx`), highlighting individual cashier sales performance and cash movements.
+- POS Employee Consumption Workflow ("Consumo Empleado" & "Descontar del sueldo"):
+  - Dedicated "Consumo Empleado" toggle in both desktop POS (`NewTransaction.jsx`) and mobile POS (`SimplePos.jsx`), filtering client selectors to active employees.
+  - Automatically loads and applies each employee's custom staff discount percentage from their profile.
+  - Payment method "Descontar del sueldo" (`employee`): excluded from physical register cash balances (`cash_in`, `expected_cash`, `money_in`, `total_sales`) so cash drawers balance accurately, while automatically creating an internal consumption movement to deduct from their next salary settlement.
+- Fast Cash Change Calculator & Cash Handling (`TransactionChangeCalculator.jsx`):
+  - Interactive cash calculator with Argentine denomination shortcuts (+$1.000, +$2.000, +$5.000, +$10.000, +$20.000, Exacto) and live change feedback.
+- Interactive Merchant Onboarding Checklist (`OnboardingChecklist.jsx`):
+  - Step-by-step onboarding guide for new business owners to quickly configure store settings, inventory, initial cash registers, and team members.
+
 v1.7.3 (Client Debt Filter & x/x Limit Display, Itemized Ticket Details, Register Close Overhaul & High-Contrast Modals)
 
 - Client List Debt Filter & Unified Limit View (x/x):
