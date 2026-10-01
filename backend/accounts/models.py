@@ -174,10 +174,13 @@ class Subscription(models.Model):
     @property
     def is_valid(self):
         """Returns True if the subscription allows using the application."""
-        if self.status == self.Status.SUSPENDED:
+        if self.status in [self.Status.SUSPENDED, self.Status.EXPIRED]:
             return False
 
-        if self.user.is_superuser or self.user.is_staff or self.plan == self.Plan.LIFETIME:
+        if self.plan == self.Plan.LIFETIME:
+            return True
+
+        if self.user.is_superuser or self.user.is_staff:
             return True
 
         return self.active_tier in [self.Tier.TRIAL, self.Tier.BASIC, self.Tier.PREMIUM]
@@ -185,6 +188,9 @@ class Subscription(models.Model):
     @property
     def is_premium(self):
         """Returns True if the account currently has access to Premium features."""
+        if self.status in [self.Status.SUSPENDED, self.Status.EXPIRED]:
+            return False
+
         if self.user.is_superuser or self.user.is_staff or self.plan == self.Plan.LIFETIME:
             return True
         return self.active_tier in [self.Tier.TRIAL, self.Tier.PREMIUM]
@@ -195,11 +201,17 @@ class Subscription(models.Model):
         if self.status == self.Status.SUSPENDED:
             return self.Status.SUSPENDED
 
-        if self.user.is_superuser or self.plan == self.Plan.LIFETIME:
+        if self.status == self.Status.EXPIRED:
+            return self.Status.EXPIRED
+
+        if self.plan == self.Plan.LIFETIME:
             return self.Status.ACTIVE
 
         if not self.is_valid:
             return self.Status.EXPIRED
+
+        if self.user.is_superuser or self.user.is_staff:
+            return self.Status.ACTIVE
 
         return self.status
 
@@ -251,7 +263,13 @@ class Subscription(models.Model):
 
     def has_feature(self, feature_key: str) -> bool:
         """Determines if the current subscription tier permits using a specific feature."""
-        if self.user.is_superuser or self.user.is_staff or self.plan == self.Plan.LIFETIME:
+        if self.status in [self.Status.SUSPENDED, self.Status.EXPIRED]:
+            return False
+
+        if self.plan == self.Plan.LIFETIME:
+            return True
+
+        if self.user.is_superuser or self.user.is_staff:
             return True
 
         active = self.active_tier
@@ -366,7 +384,7 @@ class Subscription(models.Model):
             "premium_expires_at": self.premium_expires_at.isoformat() if self.premium_expires_at else None,
             "basic_expires_at": self.basic_expires_at.isoformat() if self.basic_expires_at else None,
             "is_trial": self.is_trial,
-            "is_superuser": bool(is_admin_user and not is_suspended),
+            "is_superuser": bool(is_admin_user and not is_suspended and self.status != self.Status.EXPIRED),
             "features": {
                 "pos_checkout": True,
                 "catalog_management": True,

@@ -8,12 +8,15 @@ import MobileSimpleLayout from "./mobile/MobileSimpleLayout";
 import SystemAnnouncementBanner from "./announcements/SystemAnnouncementBanner";
 import { getCurrentRegister } from "../services/business";
 import { useDeviceMode } from "../hooks/useDeviceMode";
+import { useSubscription } from "../context/SubscriptionContext";
 
 function AppLayout() {
     const { isSimpleMode } = useDeviceMode();
+    const { isExpired } = useSubscription();
     const [register, setRegister] = useState(null);
 
     async function loadRegister() {
+        if (isExpired) return;
         try {
             const currentRegister = await getCurrentRegister();
             setRegister(currentRegister);
@@ -23,8 +26,10 @@ function AppLayout() {
     }
 
     useEffect(() => {
-        loadRegister();
-    }, []);
+        if (!isExpired) {
+            loadRegister();
+        }
+    }, [isExpired]);
 
     if (isSimpleMode) {
         return <MobileSimpleLayout />;

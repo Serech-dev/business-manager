@@ -76,6 +76,13 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("code", response.data)
         self.assertEqual(response.data["code"], "subscription_expired")
+        self.assertIn("subscription", response.data)
+        sub_data = response.data["subscription"]
+        self.assertIs(sub_data["is_valid"], False)
+        self.assertIs(sub_data["is_superuser"], False)
+        self.assertIs(sub_data["is_premium"], False)
+        self.assertEqual(sub_data["days_remaining"], 0)
+        self.assertIsInstance(sub_data["days_remaining"], int)
 
     def test_business_api_accessible_with_valid_trial_or_license(self):
         sub = Subscription.get_or_create_for_user(self.user)

@@ -10,6 +10,27 @@ import {
 
 const SubscriptionContext = createContext(null);
 
+function toBoolean(val) {
+    if (typeof val === "boolean") return val;
+    if (typeof val === "string") {
+        const normalized = val.trim().toLowerCase();
+        if (
+            normalized === "false" ||
+            normalized === "0" ||
+            normalized === "no" ||
+            normalized === "" ||
+            normalized === "null" ||
+            normalized === "undefined"
+        ) {
+            return false;
+        }
+        if (normalized === "true" || normalized === "1" || normalized === "yes") {
+            return true;
+        }
+    }
+    return Boolean(val);
+}
+
 export function SubscriptionProvider({ children }) {
     const [subscription, setSubscription] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +59,9 @@ export function SubscriptionProvider({ children }) {
             setSubscription(sub);
             setMyPayments(paymentsData || []);
             const isSusp = sub?.status === "suspended";
-            const valid = !isSusp && Boolean(sub?.is_superuser || sub?.is_valid);
+            const isExp = sub?.status === "expired";
+            const isSuper = !isSusp && !isExp && toBoolean(sub?.is_superuser);
+            const valid = !isSusp && !isExp && (isSuper || toBoolean(sub?.is_valid));
             window.__BM_SUBSCRIPTION_EXPIRED__ = !valid;
             return subData;
         } catch (error) {
@@ -185,29 +208,30 @@ export function SubscriptionProvider({ children }) {
     );
 
     const isSuspended = subscription?.status === "suspended";
-    const isSuperuser = !isSuspended && Boolean(subscription?.is_superuser);
-    const isValid = !isSuspended && (isSuperuser || Boolean(subscription?.is_valid));
-    const isExpired = Boolean(subscription && (!isValid || isSuspended));
+    const isExplicitlyExpired = subscription?.status === "expired";
+    const isSuperuser = !isSuspended && !isExplicitlyExpired && toBoolean(subscription?.is_superuser);
+    const isValid = !isSuspended && !isExplicitlyExpired && (isSuperuser || toBoolean(subscription?.is_valid));
+    const isExpired = Boolean(subscription && (!isValid || isSuspended || isExplicitlyExpired));
     const tier = subscription?.tier || (isSuperuser ? "premium" : "none");
-    const isPremium = !isSuspended && (isSuperuser || Boolean(subscription?.is_premium) || tier === "premium" || tier === "trial");
+    const isPremium = !isSuspended && !isExplicitlyExpired && (isSuperuser || toBoolean(subscription?.is_premium) || tier === "premium" || tier === "trial");
     const daysRemaining = subscription?.days_remaining ?? 0;
     const premiumDaysRemaining = subscription?.premium_days_remaining ?? (isPremium ? daysRemaining : 0);
     const basicDaysRemaining = subscription?.basic_days_remaining ?? 0;
     const isExpiringSoon = Boolean(
-        subscription && !isSuperuser && !isSuspended && isValid && daysRemaining <= 3 && subscription.plan !== "lifetime"
+        subscription && !isSuperuser && !isSuspended && !isExplicitlyExpired && isValid && daysRemaining <= 3 && subscription.plan !== "lifetime"
     );
-    const isTrial = !isSuspended && Boolean(subscription?.is_trial || tier === "trial");
+    const isTrial = !isSuspended && !isExplicitlyExpired && toBoolean(subscription?.is_trial || tier === "trial");
     const hasPendingPayment = myPayments.some((p) => p.status === "pending");
     const features = subscription?.features || {};
 
     const hasFeature = useCallback(
         (featureKey) => {
+            if (isSuspended || isExplicitlyExpired || !isValid) return false;
             if (isSuperuser) return true;
-            if (isSuspended || !isValid) return false;
             if (isPremium) return true;
             return Boolean(features[featureKey]);
         },
-        [isSuperuser, isSuspended, isValid, isPremium, features]
+        [isSuspended, isExplicitlyExpired, isValid, isSuperuser, isPremium, features]
     );
 
     return (

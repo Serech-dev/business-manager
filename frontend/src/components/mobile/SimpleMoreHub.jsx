@@ -195,7 +195,7 @@ export function SimpleMoreHub() {
                     {/* PRODUCTOS */}
                     <button
                         type="button"
-                        onClick={() => requireOwnerAccess(() => navigate("/products"))}
+                        onClick={() => navigate("/products")}
                         className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative"
                     >
                         <div className="flex items-center justify-between w-full">
@@ -204,11 +204,6 @@ export function SimpleMoreHub() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                 </svg>
                             </div>
-                            {isKioskDevice && !isUnlocked && (
-                                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
-                                    PIN
-                                </span>
-                            )}
                         </div>
                         <div>
                             <span className="font-bold text-xs text-[var(--text-primary)] block">Productos</span>

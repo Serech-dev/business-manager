@@ -126,6 +126,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "accounts.permissions.HasActiveSubscription",
     ],
+    "EXCEPTION_HANDLER": "accounts.exceptions.custom_exception_handler",
 }
 
 # Internationalization

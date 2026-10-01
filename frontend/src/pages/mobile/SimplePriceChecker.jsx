@@ -9,8 +9,10 @@ import { findInNationalCatalog } from "../../utils/nationalCatalog";
 import { lookupBarcodeDetails } from "../../utils/barcodeLookup";
 import ProductModal from "../../components/products/ProductModal";
 import { playBeepSuccess, playBeepWarning } from "../../utils/audio";
+import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
 
 export function SimplePriceChecker({ onNavigateToPos }) {
+    const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -211,12 +213,19 @@ export function SimplePriceChecker({ onNavigateToPos }) {
                         <button
                             type="button"
                             onClick={() => {
-                                setProductToEdit(activeProduct);
-                                setIsProductModalOpen(true);
+                                requireOwnerAccess(() => {
+                                    setProductToEdit(activeProduct);
+                                    setIsProductModalOpen(true);
+                                });
                             }}
-                            className="px-2.5 py-1 text-xs font-medium bg-[var(--surface-accent)] hover:border-[var(--primary)] border border-[var(--border)] rounded-md"
+                            className="px-2.5 py-1 text-xs font-medium bg-[var(--surface-accent)] hover:border-[var(--primary)] border border-[var(--border)] rounded-md flex items-center gap-1"
                         >
-                            Editar
+                            <span>Editar</span>
+                            {isKioskDevice && !isUnlocked && (
+                                <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[8px] font-semibold text-[var(--text-secondary)]">
+                                    PIN
+                                </span>
+                            )}
                         </button>
                     </div>
 
@@ -234,7 +243,7 @@ export function SimplePriceChecker({ onNavigateToPos }) {
                     </div>
 
                     {/* Stock & Cost Metrics Grid */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className={`grid ${(!isKioskDevice || isUnlocked) ? "grid-cols-2" : "grid-cols-1"} gap-2 text-xs`}>
                         <div className="p-2.5 bg-[var(--surface-accent)]/50 border border-[var(--border)] rounded-md">
                             <span className="text-[var(--text-secondary)] block text-[10px]">Stock Disponible:</span>
                             <span className={`font-bold text-sm ${
@@ -244,12 +253,14 @@ export function SimplePriceChecker({ onNavigateToPos }) {
                             </span>
                         </div>
 
-                        <div className="p-2.5 bg-[var(--surface-accent)]/50 border border-[var(--border)] rounded-md">
-                            <span className="text-[var(--text-secondary)] block text-[10px]">Costo Unitario:</span>
-                            <span className="font-bold text-sm text-[var(--text-primary)] font-mono">
-                                {activeProduct.cost_price ? formatCurrency(activeProduct.cost_price) : "-"}
-                            </span>
-                        </div>
+                        {(!isKioskDevice || isUnlocked) && (
+                            <div className="p-2.5 bg-[var(--surface-accent)]/50 border border-[var(--border)] rounded-md">
+                                <span className="text-[var(--text-secondary)] block text-[10px]">Costo Unitario:</span>
+                                <span className="font-bold text-sm text-[var(--text-primary)] font-mono">
+                                    {activeProduct.cost_price ? formatCurrency(activeProduct.cost_price) : "-"}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -282,14 +293,21 @@ export function SimplePriceChecker({ onNavigateToPos }) {
                     <button
                         type="button"
                         onClick={() => {
-                            setNewBarcode(unregisteredInfo.barcode);
-                            setNewName(unregisteredInfo.national?.name || "");
-                            setProductToEdit(null);
-                            setIsProductModalOpen(true);
+                            requireOwnerAccess(() => {
+                                setNewBarcode(unregisteredInfo.barcode);
+                                setNewName(unregisteredInfo.national?.name || "");
+                                setProductToEdit(null);
+                                setIsProductModalOpen(true);
+                            });
                         }}
-                        className="w-full py-2 bg-[var(--primary)] text-white text-xs font-bold rounded-md shadow-xs"
+                        className="w-full py-2 bg-[var(--primary)] text-white text-xs font-bold rounded-md shadow-xs flex items-center justify-center gap-2"
                     >
-                        + Crear Producto en Catálogo
+                        <span>+ Crear Producto en Catálogo</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-sm bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold text-white/90">
+                                PIN
+                            </span>
+                        )}
                     </button>
                 </div>
             )}

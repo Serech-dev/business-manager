@@ -23,9 +23,6 @@ class HasActiveSubscription(permissions.BasePermission):
                 }
             )
 
-        if request.user.is_superuser or request.user.is_staff:
-            return True
-
         if not subscription.is_valid:
             raise exceptions.PermissionDenied(
                 detail={
@@ -34,6 +31,9 @@ class HasActiveSubscription(permissions.BasePermission):
                     "subscription": subscription.get_summary(),
                 }
             )
+
+        if request.user.is_superuser or request.user.is_staff:
+            return True
 
         return True
 
@@ -75,9 +75,6 @@ def RequiresFeature(feature_key: str):
                     }
                 )
 
-            if request.user.is_superuser or request.user.is_staff:
-                return True
-
             if not subscription.is_valid:
                 raise exceptions.PermissionDenied(
                     detail={
@@ -86,6 +83,9 @@ def RequiresFeature(feature_key: str):
                         "subscription": subscription.get_summary(),
                     }
                 )
+
+            if request.user.is_superuser or request.user.is_staff:
+                return True
 
             if not subscription.has_feature(feature_key):
                 raise exceptions.PermissionDenied(

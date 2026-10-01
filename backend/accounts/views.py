@@ -45,7 +45,7 @@ class LoginView(APIView):
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "is_superuser": bool((user.is_superuser or user.is_staff) and subscription.status != Subscription.Status.SUSPENDED),
+                "is_superuser": bool((user.is_superuser or user.is_staff) and subscription.status not in [Subscription.Status.SUSPENDED, Subscription.Status.EXPIRED]),
             },
             "subscription": subscription.get_summary(),
         })
@@ -83,7 +83,7 @@ class RegisterView(APIView):
                 "user": {
                     "id": user.id,
                     "email": user.email,
-                    "is_superuser": bool((user.is_superuser or user.is_staff) and subscription.status != Subscription.Status.SUSPENDED),
+                    "is_superuser": bool((user.is_superuser or user.is_staff) and subscription.status not in [Subscription.Status.SUSPENDED, Subscription.Status.EXPIRED]),
                 },
                 "subscription": subscription.get_summary(),
             },
@@ -777,4 +777,4 @@ class AdminUserFeedbackDetailView(generics.RetrieveUpdateDestroyAPIView):
         elif next_status != UserFeedback.Status.RESOLVED:
             resolved_at = None
         serializer.save(resolved_at=resolved_at)
-
+

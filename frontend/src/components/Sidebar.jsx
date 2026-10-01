@@ -154,7 +154,7 @@ function Sidebar({
                         tracking-wider
                         text-[var(--primary)]
                     ">
-                        Administrador
+                        {isKioskDevice ? "Terminal de Caja" : "Panel de Control"}
                     </p>
                     <div className="flex items-center gap-1.5">
                         <NotificationMenu align="left" />
@@ -445,14 +445,11 @@ function Sidebar({
 
                 <button
                     type="button"
-                    onClick={() => {
-                        requireOwnerAccess(() => navigate("/products"));
-                    }}
+                    onClick={() => navigate("/products")}
                     className={`
                         flex
                         w-full
                         items-center
-                        justify-between
                         rounded-lg
                         border-l-2
                         px-4
@@ -478,12 +475,7 @@ function Sidebar({
                         }
                     `}
                 >
-                    <span>Productos</span>
-                    {isKioskDevice && !isUnlocked && (
-                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
-                            PIN
-                        </span>
-                    )}
+                    Productos
                 </button>
 
                 <button

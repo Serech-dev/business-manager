@@ -17,12 +17,14 @@ import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useNotifications } from "../context/NotificationContext";
+import { useSubscription } from "../context/SubscriptionContext";
 
 function Dashboard() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { requireOwnerAccess, isKioskDevice, isUnlocked } = useDeviceSecurity();
     const { refreshNotifications } = useNotifications();
+    const { isExpired } = useSubscription();
     const isOwner = !isKioskDevice || isUnlocked;
 
     const highlightId = searchParams.get("highlight");
@@ -60,6 +62,11 @@ function Dashboard() {
     }
 
     async function loadDashboard() {
+        if (isExpired) {
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const [currentRegister, transactionData] = await Promise.all([
                 getCurrentRegister(),
@@ -80,8 +87,12 @@ function Dashboard() {
     }
 
     useEffect(() => {
-        loadDashboard();
-    }, []);
+        if (!isExpired) {
+            loadDashboard();
+        } else {
+            setIsLoading(false);
+        }
+    }, [isExpired]);
 
     // Scroll to and highlight a specific transaction if requested (e.g. from notification)
     useEffect(() => {

@@ -214,16 +214,28 @@ function ProductList() {
 
             if (matched) {
                 playBeepSuccess();
-                setEditingProduct(matched);
-                setScannedBarcodeForNew("");
-                setIsProductModalOpen(true);
-                toast.success(`Producto encontrado: ${matched.name}`, { id: "prod-scan" });
+                if (isKioskDevice && !isUnlocked) {
+                    setSearch(matched.barcode || matched.name);
+                    toast.success(
+                        `Producto encontrado: ${matched.name} (${formatCurrency(matched.sale_price)})`,
+                        { id: "prod-scan" }
+                    );
+                } else {
+                    setEditingProduct(matched);
+                    setScannedBarcodeForNew("");
+                    setIsProductModalOpen(true);
+                    toast.success(`Producto encontrado: ${matched.name}`, { id: "prod-scan" });
+                }
             } else {
                 playBeepWarning();
-                setEditingProduct(null);
-                setScannedBarcodeForNew(code.trim());
-                setIsProductModalOpen(true);
-                toast(`Nuevo producto con código: ${code.trim()}`, { id: "prod-scan" });
+                if (isKioskDevice && !isUnlocked) {
+                    toast.error(`Producto no encontrado (${code.trim()})`, { id: "prod-scan" });
+                } else {
+                    setEditingProduct(null);
+                    setScannedBarcodeForNew(code.trim());
+                    setIsProductModalOpen(true);
+                    toast(`Nuevo producto con código: ${code.trim()}`, { id: "prod-scan" });
+                }
             }
         },
         { enabled: !isAnyModalOpen }
@@ -492,30 +504,6 @@ function ProductList() {
         );
     }
 
-    if (isKioskDevice && !isUnlocked) {
-        return (
-            <div className="mx-auto flex min-h-[65vh] max-w-md flex-col items-center justify-center px-6 py-12 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-accent)] text-[var(--primary)] shadow-md">
-                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                    </svg>
-                </div>
-                <h2 className="mt-5 text-xl font-bold tracking-tight text-[var(--text-primary)]">
-                    Catálogo protegido por PIN
-                </h2>
-                <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    La administración de productos, precios y proveedores está reservada para el dueño del negocio.
-                </p>
-                <button
-                    type="button"
-                    onClick={() => requireOwnerAccess(() => {})}
-                    className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-6 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)]"
-                >
-                    Ingresar PIN de Dueño
-                </button>
-            </div>
-        );
-    }
 
     const startItem =
         sortedProducts.length === 0
@@ -540,6 +528,11 @@ function ProductList() {
                         <span className="rounded-md bg-[var(--surface-accent)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-secondary)]">
                             {products.length} productos
                         </span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
+                                Modo Consulta (Solo Lectura)
+                            </span>
+                        )}
                     </div>
                     <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
                         Productos
@@ -549,13 +542,18 @@ function ProductList() {
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => navigate("/stock")}
+                        onClick={() => requireOwnerAccess(() => navigate("/stock"))}
                         className="inline-flex items-center gap-2 rounded-md border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3.5 py-2.5 text-xs font-bold text-[var(--primary)] transition hover:bg-[var(--primary)]/20 shadow-xs"
                     >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                         </svg>
                         <span>Control de Stock</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-sm bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)]">
+                                PIN
+                            </span>
+                        )}
                     </button>
 
                     <button
@@ -578,6 +576,11 @@ function ProductList() {
                             />
                         </svg>
                         <span>Aumento Masivo</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-sm bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)]">
+                                PIN
+                            </span>
+                        )}
                     </button>
 
                     {/* MORE ACTIONS DROPDOWN */}
@@ -617,7 +620,14 @@ function ProductList() {
                                             </svg>
                                             <span>Categorías</span>
                                         </div>
-                                        <span className="text-[10px] text-[var(--text-secondary)] font-semibold">({categories.length})</span>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[10px] text-[var(--text-secondary)] font-semibold">({categories.length})</span>
+                                            {isKioskDevice && !isUnlocked && (
+                                                <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[9px] font-medium text-[var(--text-secondary)]">
+                                                    PIN
+                                                </span>
+                                            )}
+                                        </div>
                                     </button>
 
                                     <button
@@ -637,6 +647,11 @@ function ProductList() {
                                         <div className="flex items-center gap-1">
                                             {providers.length > 0 && <span className="text-[10px] text-[var(--text-secondary)] font-semibold">({providers.length})</span>}
                                             {!isPremium && <span className="badge-gold px-1 py-0.2 rounded-sm text-[8px]">PRO</span>}
+                                            {isKioskDevice && !isUnlocked && (
+                                                <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[9px] font-medium text-[var(--text-secondary)]">
+                                                    PIN
+                                                </span>
+                                            )}
                                         </div>
                                     </button>
                                 </div>
@@ -649,19 +664,26 @@ function ProductList() {
                                             setIsActionsMenuOpen(false);
                                             requireOwnerAccess(() => setIsImportModalOpen(true));
                                         }}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
+                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
                                     >
-                                        <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                                        </svg>
-                                        <span>Catálogo Base Sugerido</span>
+                                        <div className="flex items-center gap-2">
+                                            <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                            </svg>
+                                            <span>Catálogo Base Sugerido</span>
+                                        </div>
+                                        {isKioskDevice && !isUnlocked && (
+                                            <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[9px] font-medium text-[var(--text-secondary)]">
+                                                PIN
+                                            </span>
+                                        )}
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setIsActionsMenuOpen(false);
-                                            handleExportCatalog();
+                                            requireOwnerAccess(handleExportCatalog);
                                         }}
                                         className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-accent)] rounded-sm transition"
                                     >
@@ -671,7 +693,14 @@ function ProductList() {
                                             </svg>
                                             <span>Exportar a Excel (CSV)</span>
                                         </div>
-                                        {!isPremium && <span className="badge-gold px-1 py-0.2 rounded-sm text-[8px]">PRO</span>}
+                                        <div className="flex items-center gap-1">
+                                            {!isPremium && <span className="badge-gold px-1 py-0.2 rounded-sm text-[8px]">PRO</span>}
+                                            {isKioskDevice && !isUnlocked && (
+                                                <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[9px] font-medium text-[var(--text-secondary)]">
+                                                    PIN
+                                                </span>
+                                            )}
+                                        </div>
                                     </button>
                                 </div>
                             </div>
@@ -693,6 +722,11 @@ function ProductList() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" />
                         </svg>
                         <span>Nueva Oferta / Combo</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-sm bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)]">
+                                PIN
+                            </span>
+                        )}
                     </button>
 
                     <button
@@ -711,6 +745,11 @@ function ProductList() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
                         <span>Nuevo Producto</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-sm bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold text-white/90">
+                                PIN
+                            </span>
+                        )}
                     </button>
                 </div>
             </header>
@@ -1076,28 +1115,38 @@ function ProductList() {
                                                 )}
                                             </div>
                                         </th>
-                                        <th colSpan={3} className="h-12 pr-4 pl-3 text-right align-middle">
+                                        <th colSpan={(!isKioskDevice || isUnlocked) ? 3 : 2} className="h-12 pr-4 pl-3 text-right align-middle">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setIsBulkPriceModalOpen(true)}
+                                                    onClick={() => requireOwnerAccess(() => setIsBulkPriceModalOpen(true))}
                                                     className="inline-flex h-7.5 items-center gap-1.5 rounded-md bg-[var(--primary)] px-3 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                                                 >
                                                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
                                                     </svg>
                                                     <span>Aumentar Precios ({selectedIds.length})</span>
+                                                    {isKioskDevice && !isUnlocked && (
+                                                        <span className="rounded-sm bg-black/20 px-1 py-0.2 text-[8px] font-semibold text-white/90">
+                                                            PIN
+                                                        </span>
+                                                    )}
                                                 </button>
 
                                                 <button
                                                     type="button"
-                                                    onClick={() => setIsBulkDeleteOpen(true)}
+                                                    onClick={() => requireOwnerAccess(() => setIsBulkDeleteOpen(true))}
                                                     className="inline-flex h-7.5 items-center gap-1.5 rounded-md bg-[var(--danger)]/15 px-3 text-xs font-bold text-[var(--danger)] transition hover:bg-[var(--danger)]/25"
                                                 >
                                                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                                     </svg>
                                                     <span>Eliminar</span>
+                                                    {isKioskDevice && !isUnlocked && (
+                                                        <span className="rounded-sm bg-[var(--danger)]/20 px-1 py-0.2 text-[8px] font-semibold text-[var(--danger)]">
+                                                            PIN
+                                                        </span>
+                                                    )}
                                                 </button>
 
                                                 <button
@@ -1123,7 +1172,9 @@ function ProductList() {
                                         <th className="h-12 px-4 min-w-[200px] align-middle">Producto</th>
                                         <th className="h-12 px-4 hidden md:table-cell min-w-[120px] align-middle">Código</th>
                                         <th className="h-12 px-4 hidden sm:table-cell min-w-[130px] align-middle">Proveedor</th>
-                                        <th className="h-12 px-4 text-right hidden sm:table-cell min-w-[120px] align-middle">Costo</th>
+                                        {(!isKioskDevice || isUnlocked) && (
+                                            <th className="h-12 px-4 text-right hidden sm:table-cell min-w-[120px] align-middle">Costo</th>
+                                        )}
                                         <th className="h-12 px-4 text-right min-w-[120px] align-middle">Precio Venta</th>
                                         <th className="h-12 pr-4 pl-4 text-right w-24 align-middle">Acciones</th>
                                     </tr>
@@ -1147,14 +1198,16 @@ function ProductList() {
                                                     e.target.tagName !== "SPAN" &&
                                                     e.target.tagName !== "svg"
                                                 ) {
-                                                    handleOpenEdit(p);
+                                                    if (!isKioskDevice || isUnlocked) {
+                                                        handleOpenEdit(p);
+                                                    }
                                                 }
                                             }}
-                                            className={`transition-colors cursor-pointer ${
+                                            className={`transition-colors ${
                                                 isSelected
                                                     ? "bg-[var(--primary)]/10 ring-1 ring-inset ring-[var(--primary)]/20"
                                                     : "hover:bg-[var(--surface-accent)]"
-                                            }`}
+                                            } ${(!isKioskDevice || isUnlocked) ? "cursor-pointer" : "cursor-default"}`}
                                         >
                                             {/* CHECKBOX */}
                                             <td className="py-3.5 pl-4 pr-3 align-middle">
@@ -1271,25 +1324,27 @@ function ProductList() {
                                                 )}
                                             </td>
 
-                                            {/* COST PRICE & MARKUP */}
-                                            <td className="py-3.5 px-4 text-right hidden sm:table-cell tabular-nums align-middle">
-                                                {hasCost ? (
-                                                    <div>
-                                                        <span className="text-xs text-[var(--text-secondary)]">
-                                                            {formatCurrency(p.cost_price)}
-                                                            {p.unit_type === "kg" && " / kg"}
-                                                            {p.unit_type === "100g" && " / 100g"}
-                                                        </span>
-                                                        {p.markup_percentage !== null && (
-                                                            <span className="ml-1.5 text-[11px] font-bold text-[var(--success-text)]">
-                                                                (+{p.markup_percentage}%)
+                                            {/* COST PRICE & MARKUP (OWNER ONLY) */}
+                                            {(!isKioskDevice || isUnlocked) && (
+                                                <td className="py-3.5 px-4 text-right hidden sm:table-cell tabular-nums align-middle">
+                                                    {hasCost ? (
+                                                        <div>
+                                                            <span className="text-xs text-[var(--text-secondary)]">
+                                                                {formatCurrency(p.cost_price)}
+                                                                {p.unit_type === "kg" && " / kg"}
+                                                                {p.unit_type === "100g" && " / 100g"}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[var(--text-secondary)]/40">—</span>
-                                                )}
-                                            </td>
+                                                            {p.markup_percentage !== null && (
+                                                                <span className="ml-1.5 text-[11px] font-bold text-[var(--success-text)]">
+                                                                    (+{p.markup_percentage}%)
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[var(--text-secondary)]/40">—</span>
+                                                    )}
+                                                </td>
+                                            )}
 
                                             {/* SALE PRICE */}
                                             <td className="py-3.5 px-4 text-right tabular-nums align-middle">
@@ -1324,13 +1379,18 @@ function ProductList() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleOpenEdit(p)}
-                                                        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] transition hover:border-[var(--primary)] hover:bg-[var(--surface-accent)]"
+                                                        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] transition hover:border-[var(--primary)] hover:bg-[var(--surface-accent)] flex items-center gap-1"
                                                     >
-                                                        Editar
+                                                        <span>Editar</span>
+                                                        {isKioskDevice && !isUnlocked && (
+                                                            <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[8px] font-semibold text-[var(--text-secondary)]">
+                                                                PIN
+                                                            </span>
+                                                        )}
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => setProductToDelete(p)}
+                                                        onClick={() => requireOwnerAccess(() => setProductToDelete(p))}
                                                         className="rounded-md p-1.5 text-[var(--danger)] transition hover:bg-[var(--danger)]/10"
                                                         title="Eliminar producto"
                                                     >
@@ -1439,26 +1499,41 @@ function ProductList() {
 
                     <button
                         type="button"
-                        onClick={() => setIsBulkPriceModalOpen(true)}
+                        onClick={() => requireOwnerAccess(() => setIsBulkPriceModalOpen(true))}
                         className="inline-flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[var(--primary-hover)]"
                     >
                         <span>Aumentar Precios</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded-sm bg-black/20 px-1 py-0.2 text-[8px] font-semibold text-white/90">
+                                PIN
+                            </span>
+                        )}
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => setIsAssignProviderModalOpen(true)}
+                        onClick={() => requireOwnerAccess(() => setIsAssignProviderModalOpen(true))}
                         className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2 text-xs font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-accent)]/80"
                     >
                         <span>Asignar Proveedor</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded bg-[var(--surface-muted)] px-1 py-0.2 text-[8px] font-semibold text-[var(--text-secondary)]">
+                                PIN
+                            </span>
+                        )}
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => setIsBulkDeleteOpen(true)}
+                        onClick={() => requireOwnerAccess(() => setIsBulkDeleteOpen(true))}
                         className="inline-flex items-center gap-1.5 rounded-md bg-[var(--danger)]/15 px-3 py-2 text-xs font-bold text-[var(--danger)] transition hover:bg-[var(--danger)]/25"
                     >
                         <span>Eliminar</span>
+                        {isKioskDevice && !isUnlocked && (
+                            <span className="rounded bg-[var(--danger)]/20 px-1 py-0.2 text-[8px] font-semibold text-[var(--danger)]">
+                                PIN
+                            </span>
+                        )}
                     </button>
 
                     <button
