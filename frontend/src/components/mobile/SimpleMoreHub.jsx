@@ -9,12 +9,14 @@ import UserFeedbackModal from "../feedback/UserFeedbackModal";
 import { APP_VERSION } from "../../utils/version";
 import { useSubscription } from "../../context/SubscriptionContext";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
+import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
 import { useDeviceMode } from "../../hooks/useDeviceMode";
 
 export function SimpleMoreHub() {
     const navigate = useNavigate();
     const { toggleMode } = useDeviceMode();
     const { settings, openSettingsModal } = useStoreSettings();
+    const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
     const {
         subscription,
         tier,
@@ -193,13 +195,20 @@ export function SimpleMoreHub() {
                     {/* PRODUCTOS */}
                     <button
                         type="button"
-                        onClick={() => navigate("/products")}
-                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group"
+                        onClick={() => requireOwnerAccess(() => navigate("/products"))}
+                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative"
                     >
-                        <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            {isKioskDevice && !isUnlocked && (
+                                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                    PIN
+                                </span>
+                            )}
                         </div>
                         <div>
                             <span className="font-bold text-xs text-[var(--text-primary)] block">Productos</span>
@@ -210,13 +219,20 @@ export function SimpleMoreHub() {
                     {/* STOCK */}
                     <button
                         type="button"
-                        onClick={() => navigate("/stock")}
-                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group"
+                        onClick={() => requireOwnerAccess(() => navigate("/stock"))}
+                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative"
                     >
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                            </svg>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                            </div>
+                            {isKioskDevice && !isUnlocked && (
+                                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                    PIN
+                                </span>
+                            )}
                         </div>
                         <div>
                             <span className="font-bold text-xs text-[var(--text-primary)] block">Control Stock</span>
@@ -244,13 +260,27 @@ export function SimpleMoreHub() {
                     {/* PROVEEDORES */}
                     <button
                         type="button"
-                        onClick={() => navigate("/providers")}
-                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group"
+                        onClick={() => requireOwnerAccess(() => navigate("/providers"))}
+                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative"
                     >
-                        <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                {!isPremium && !isSuperuser && (
+                                    <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[8px]">
+                                        PRO
+                                    </span>
+                                )}
+                                {isKioskDevice && !isUnlocked && (
+                                    <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                        PIN
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <span className="font-bold text-xs text-[var(--text-primary)] block">Proveedores</span>
@@ -258,16 +288,61 @@ export function SimpleMoreHub() {
                         </div>
                     </button>
 
+                    {/* PERSONAL & TURNOS */}
+                    <button
+                        type="button"
+                        onClick={() => requireOwnerAccess(() => navigate("/employees"))}
+                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative"
+                    >
+                        <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                {!isPremium && !isSuperuser && (
+                                    <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[8px]">
+                                        PRO
+                                    </span>
+                                )}
+                                {isKioskDevice && !isUnlocked && (
+                                    <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                        PIN
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <span className="font-bold text-xs text-[var(--text-primary)] block">Personal & Turnos</span>
+                            <span className="text-[10px] text-[var(--text-secondary)] line-clamp-1">Equipo y sueldos</span>
+                        </div>
+                    </button>
+
                     {/* MÉTRICAS & REPORTES */}
                     <button
                         type="button"
-                        onClick={() => navigate("/analytics")}
-                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group"
+                        onClick={() => requireOwnerAccess(() => navigate("/analytics"))}
+                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative"
                     >
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                {!isPremium && !isSuperuser && (
+                                    <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[8px]">
+                                        PRO
+                                    </span>
+                                )}
+                                {isKioskDevice && !isUnlocked && (
+                                    <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                        PIN
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <span className="font-bold text-xs text-[var(--text-primary)] block">Métricas & Caja</span>
@@ -278,13 +353,20 @@ export function SimpleMoreHub() {
                     {/* HISTORIAL DE CAJAS */}
                     <button
                         type="button"
-                        onClick={() => navigate("/registers")}
-                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group"
+                        onClick={() => requireOwnerAccess(() => navigate("/registers"))}
+                        className="p-3 bg-[var(--surface-accent)]/60 hover:bg-[var(--surface-accent)] border border-[var(--border)] hover:border-[var(--primary)] rounded-xl text-left transition-all active:scale-[0.98] flex flex-col gap-2 group relative col-span-2 sm:col-span-1"
                     >
-                        <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            {isKioskDevice && !isUnlocked && (
+                                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                    PIN
+                                </span>
+                            )}
                         </div>
                         <div>
                             <span className="font-bold text-xs text-[var(--text-primary)] block">Historial Cajas</span>
@@ -306,7 +388,7 @@ export function SimpleMoreHub() {
                     {/* STORE SETTINGS */}
                     <button
                         type="button"
-                        onClick={openSettingsModal}
+                        onClick={() => requireOwnerAccess(openSettingsModal)}
                         className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-[var(--surface-accent)]/50 transition active:bg-[var(--surface-accent)] group"
                     >
                         <div className="flex items-center gap-3">
@@ -325,15 +407,22 @@ export function SimpleMoreHub() {
                                 </span>
                             </div>
                         </div>
-                        <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition">
-                            →
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            {isKioskDevice && !isUnlocked && (
+                                <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)]">
+                                    PIN
+                                </span>
+                            )}
+                            <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition">
+                                →
+                            </span>
+                        </div>
                     </button>
 
                     {/* PIN MODAL */}
                     <button
                         type="button"
-                        onClick={() => setIsPinModalOpen(true)}
+                        onClick={() => requireOwnerAccess(() => setIsPinModalOpen(true))}
                         className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-[var(--surface-accent)]/50 transition active:bg-[var(--surface-accent)] group"
                     >
                         <div className="flex items-center gap-3">

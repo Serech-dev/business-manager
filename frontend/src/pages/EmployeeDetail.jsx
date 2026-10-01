@@ -14,6 +14,8 @@ import EmployeeModal from "../components/employees/EmployeeModal";
 import EmployeeMovementModal from "../components/employees/EmployeeMovementModal";
 import EmployeeAttendanceModal from "../components/employees/EmployeeAttendanceModal";
 import EmployeeSettlementModal from "../components/employees/EmployeeSettlementModal";
+import PremiumGate from "../components/subscription/PremiumGate";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
 
 const SALARY_TYPE_LABELS = {
     monthly: "Mensual",
@@ -76,6 +78,7 @@ const ATTENDANCE_STATUS_CONFIG = {
 function EmployeeDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { isPremium, hasFeature } = useSubscriptionTier();
 
     const [employee, setEmployee] = useState(null);
     const [summary, setSummary] = useState(null);
@@ -91,6 +94,11 @@ function EmployeeDetail() {
     const [attendanceModalConfig, setAttendanceModalConfig] = useState({ isOpen: false, status: "absent" });
 
     const loadData = useCallback(async () => {
+        if (!isPremium && !hasFeature("employees")) {
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         try {
             const [summaryData, movsData, attData, shiftsData] = await Promise.all([
@@ -107,12 +115,15 @@ function EmployeeDetail() {
             const shiftsList = Array.isArray(shiftsData) ? shiftsData : (shiftsData?.results || []);
             setShifts(shiftsList);
         } catch (error) {
+            if (error?.response?.status === 403 || error?.isFeatureRequiresPremium) {
+                return;
+            }
             console.error("Error al cargar ficha de empleado:", error);
             toast.error("No se pudo cargar la información del empleado.");
         } finally {
             setIsLoading(false);
         }
-    }, [id]);
+    }, [id, isPremium, hasFeature]);
 
     useEffect(() => {
         loadData();
@@ -143,7 +154,18 @@ function EmployeeDetail() {
 
     return (
         <div className="mx-auto max-w-7xl px-6 py-8 space-y-6">
-            {/* Top Navigation & Header */}
+            <PremiumGate
+                feature="employees"
+                title="Ficha del Empleado & Historial de Pagos"
+                description="Visualizá el detalle de asistencia, liquidaciones de sueldo, adelantos y consumos internos del personal."
+                benefits={[
+                    "Fichas de empleados con roles y sueldos configurables",
+                    "Control de asistencia con reloj de fichadas, llegadas tarde y faltas",
+                    "Liquidación automática de sueldos con descuento de consumos internos y adelantos",
+                    "Control de turnos de caja independientes con arqueos y cambio de cajero",
+                ]}
+            >
+                {/* Top Navigation & Header */}
             <div>
                 <button
                     type="button"
@@ -711,6 +733,7 @@ function EmployeeDetail() {
                 summary={summary}
                 onSuccess={() => loadData()}
             />
+            </PremiumGate>
         </div>
     );
 }

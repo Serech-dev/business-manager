@@ -1402,7 +1402,7 @@ class MasterCatalogSearchView(APIView):
 
 class EmployeeListCreateView(generics.ListCreateAPIView):
     serializer_class = EmployeeSerializer
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("employees")]
 
     def get_queryset(self):
         queryset = Employee.objects.filter(user=self.request.user)
@@ -1422,14 +1422,14 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
 
 class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EmployeeSerializer
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("employees")]
 
     def get_queryset(self):
         return Employee.objects.filter(user=self.request.user)
 
 
 class EmployeeSummaryView(APIView):
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("employees")]
 
     def get(self, request, employee_id=None, pk=None):
         target_id = employee_id or pk
@@ -1598,7 +1598,7 @@ class RegisterShiftsListView(generics.ListAPIView):
 
 class EmployeeMovementListCreateView(generics.ListCreateAPIView):
     serializer_class = EmployeeMovementSerializer
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("employees")]
 
     def get_queryset(self):
         queryset = EmployeeMovement.objects.filter(employee__user=self.request.user)
@@ -1639,7 +1639,7 @@ class EmployeeMovementListCreateView(generics.ListCreateAPIView):
 
 class EmployeeAttendanceListCreateView(generics.ListCreateAPIView):
     serializer_class = EmployeeAttendanceSerializer
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("employees")]
 
     def get_queryset(self):
         queryset = EmployeeAttendance.objects.filter(employee__user=self.request.user)
@@ -1679,7 +1679,7 @@ class EmployeeAttendanceListCreateView(generics.ListCreateAPIView):
 
 
 class EmployeeSalarySettlementView(APIView):
-    permission_classes = [HasActiveSubscription]
+    permission_classes = [RequiresFeature("employees")]
 
     @db_transaction.atomic
     def post(self, request, employee_id=None, pk=None):

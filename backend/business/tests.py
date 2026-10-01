@@ -1349,6 +1349,30 @@ class EmployeeAndShiftModuleTests(TestCase):
             stock=Decimal("100.00"),
         )
 
+    def test_employee_module_requires_premium_feature(self):
+        # Downgrade user's subscription to Basic
+        sub = Subscription.objects.get(user=self.user)
+        sub.tier = Subscription.Tier.BASIC
+        sub.status = Subscription.Status.ACTIVE
+        sub.basic_expires_at = timezone.now() + timedelta(days=30)
+        sub.premium_expires_at = timezone.now() - timedelta(days=1)
+        sub.trial_ends_at = timezone.now() - timedelta(days=1)
+        sub.save()
+
+        # Attempt to access employees endpoint with Basic plan
+        response = self.client.get("/api/business/employees/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("code"), "feature_requires_premium")
+        self.assertEqual(response.data.get("feature"), "employees")
+
+        # Upgrade to Premium
+        sub.tier = Subscription.Tier.PREMIUM
+        sub.premium_expires_at = timezone.now() + timedelta(days=30)
+        sub.save()
+
+        response = self.client.get("/api/business/employees/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_employee_crud_and_shifts(self):
         # 1. Create employees
         emp1_res = self.client.post(

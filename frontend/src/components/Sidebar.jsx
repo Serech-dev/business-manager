@@ -395,7 +395,9 @@ function Sidebar({
 
                 <button
                     type="button"
-                    onClick={() => navigate("/providers")}
+                    onClick={() => {
+                        requireOwnerAccess(() => navigate("/providers"));
+                    }}
                     className={`
                         flex
                         w-full
@@ -426,10 +428,17 @@ function Sidebar({
                         }
                     `}
                 >
-                    <span>Proveedores</span>
-                    {!isPremium && !isSuperuser && (
-                        <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
-                            PRO
+                    <div className="flex items-center gap-1.5">
+                        <span>Proveedores</span>
+                        {!isPremium && !isSuperuser && (
+                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                                PRO
+                            </span>
+                        )}
+                    </div>
+                    {isKioskDevice && !isUnlocked && (
+                        <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
+                            PIN
                         </span>
                     )}
                 </button>
@@ -562,7 +571,14 @@ function Sidebar({
                         }
                     `}
                 >
-                    <span>Personal & Turnos</span>
+                    <div className="flex items-center gap-1.5">
+                        <span>Personal & Turnos</span>
+                        {!isPremium && !isSuperuser && (
+                            <span className="badge-gold px-1.5 py-0.5 rounded-sm text-[9px]">
+                                PRO
+                            </span>
+                        )}
+                    </div>
                     {isKioskDevice && !isUnlocked && (
                         <span className="rounded bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)]">
                             PIN

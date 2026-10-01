@@ -12,6 +12,8 @@ import { useShift } from "../context/ShiftContext";
 import EmployeeModal from "../components/employees/EmployeeModal";
 import EmployeeMovementModal from "../components/employees/EmployeeMovementModal";
 import EmployeeAttendanceModal from "../components/employees/EmployeeAttendanceModal";
+import PremiumGate from "../components/subscription/PremiumGate";
+import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
 
 const SALARY_TYPE_LABELS = {
     monthly: "Mensual",
@@ -46,6 +48,7 @@ const ATTENDANCE_STATUS_CONFIG = {
 function EmployeeList() {
     const navigate = useNavigate();
     const { activeShift, openHandoverModal } = useShift();
+    const { isPremium, hasFeature } = useSubscriptionTier();
 
     const [employees, setEmployees] = useState([]);
     const [shifts, setShifts] = useState([]);
@@ -76,6 +79,11 @@ function EmployeeList() {
     });
 
     const loadData = useCallback(async () => {
+        if (!isPremium && !hasFeature("employees")) {
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const [empData, shiftsData, attData] = await Promise.all([
                 getEmployees(false),
@@ -88,12 +96,15 @@ function EmployeeList() {
             const attList = Array.isArray(attData) ? attData : (attData?.results || []);
             setAttendances(attList);
         } catch (error) {
+            if (error?.response?.status === 403 || error?.isFeatureRequiresPremium) {
+                return;
+            }
             console.error("Error al cargar datos del módulo de empleados:", error);
             toast.error("No se pudieron cargar los datos de personal.");
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [isPremium, hasFeature]);
 
     useEffect(() => {
         loadData();
@@ -207,7 +218,18 @@ function EmployeeList() {
 
     return (
         <div className="mx-auto max-w-7xl px-6 py-8 space-y-6">
-            {/* Header */}
+            <PremiumGate
+                feature="employees"
+                title="Gestión de Personal & Turnos de Caja"
+                description="Administrá tus colaboradores, roles, asistencia, pagos de sueldos y turnos de caja en tiempo real."
+                benefits={[
+                    "Fichas de empleados con roles y sueldos configurables (mensual, por hora o jornal)",
+                    "Control de asistencia con reloj de fichadas, llegadas tarde y faltas",
+                    "Liquidación automática de sueldos con descuento de consumos internos y adelantos",
+                    "Control de turnos de caja independientes con arqueos y cambio de cajero",
+                ]}
+            >
+                {/* Header */}
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border)] pb-6">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
@@ -994,6 +1016,7 @@ function EmployeeList() {
                 defaultStatus={attendanceModalConfig.status}
                 onSuccess={() => loadData()}
             />
+            </PremiumGate>
         </div>
     );
 }

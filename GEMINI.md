@@ -52,4 +52,28 @@
     10. **Cigarrillos & Tabaquería** (cigarrillos, tabaco para armar, encendedores, papelillos, filtros)
     11. **Mascotas** (alimento para perros y gatos, piedritas, accesorios)
 
+## 7. Dual-Gate System (Subscription Tier & Device Security / Owner PIN)
+- **Gate 1: Subscription Tier (Plan Básico vs. Plan Premium / PRO)**
+  - **Plan Básico**: Core operations for single-operator stores (POS sales, \$50 rounding, weighables, utilities SUBE/Celular, currency exchange, catalog & combos, client fiado ledger with limits, basic inventory counting/alerts, daily register opening/closing, daily revenue summary in Dashboard).
+  - **Plan Premium / PRO** (Gated by `RequiresFeature` in backend & `PremiumGate` in frontend):
+    1. `employees`: Employee directory, roles, wage configuration (monthly, hourly, daily), attendance punch-clock, salary movements (advances, internal consumption, bonuses, penalties), payroll settlement modal, and cashier shift handovers with attribution.
+    2. `provider_debts`: Provider directory, purchase ledger, debt tracking, and wholesale accounts payable.
+    3. `advanced_reports`: Deep business analytics (`/analytics` - net real profit [sales - costs], category margins, peak sales hours, time series charts).
+    4. `export_excel`: CSV/Excel downloads for catalogs, sales history, and register reports.
+    5. `ticket_branding`: Custom thermal receipt header, store logo, CUIT, and footer messages.
+- **Gate 2: Device Security & Access Control (Kiosk/Cashier Mode vs. Owner PIN)**
+  - When a device is configured as `isKioskDevice` ("Terminal de Caja / Modo Empleado"):
+    - **Cashier Free Access (No PIN required)**: Fast checkout, multi-method payment, weighable items, debt collections ('Cobro de Libreta'), cash change calculator, price lookup (selling price only), shift handover ('Entrega de Turno').
+    - **Owner-Only (Strictly requires Owner PIN via `requireOwnerAccess`)**:
+      - Register final closure (`closeRegister`) and reopening of closed registers.
+      - Register history and closed register financial breakdowns (`/registers`, `/registers/:id`).
+      - Advanced reports and net profit analytics (`/analytics`).
+      - Catalog mutations: creating, editing, bulk price updates, or deleting products.
+      - Inventory adjustments and manual stock overrides.
+      - Provider ledger and supplier invoices (`/providers`).
+      - Employee administration, salaries, and payroll settlements (`/employees`).
+      - Authorizing credit beyond client fiado limit (`allow_over_limit`).
+      - Editing or deleting past transactions from history.
+      - Store settings, bank accounts, and disabling kiosk mode.
+
 
