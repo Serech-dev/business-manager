@@ -1799,6 +1799,85 @@ class EmployeeClientIntegrationTests(TestCase):
         self.assertEqual(Decimal(str(found_carlos["employee_discount"])), Decimal("25.00"))
 
 
+class ClientDuplicateValidationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="dup_test_user",
+            email="dup@test.com",
+            password="testpassword123",
+        )
+        self.other_user = User.objects.create_user(
+            username="other_dup_user",
+            email="other@test.com",
+            password="testpassword123",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_duplicate_client_creation_rejected_cleanly(self):
+        # 1. Create first client
+        res1 = self.client.post(
+            "/api/business/clients/",
+            {"name": "Marcos Gomez"},
+            format="json",
+        )
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+
+        # 2. Try creating duplicate with same case
+        res2 = self.client.post(
+            "/api/business/clients/",
+            {"name": "Marcos Gomez"},
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", res2.data)
+        self.assertEqual(res2.data["name"][0], "Ya existe un cliente con este nombre.")
+
+        # 3. Try creating duplicate with different case
+        res3 = self.client.post(
+            "/api/business/clients/",
+            {"name": "marcos gomez"},
+            format="json",
+        )
+        self.assertEqual(res3.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", res3.data)
+        self.assertEqual(res3.data["name"][0], "Ya existe un cliente con este nombre.")
+
+        # 4. Other user CAN create a client with the same name
+        other_api = APIClient()
+        other_api.force_authenticate(user=self.other_user)
+        res_other = other_api.post(
+            "/api/business/clients/",
+            {"name": "Marcos Gomez"},
+            format="json",
+        )
+        self.assertEqual(res_other.status_code, status.HTTP_201_CREATED)
+
+    def test_duplicate_client_update_rejected_cleanly(self):
+        client1 = Client.objects.create(user=self.user, name="Cliente Uno")
+        client2 = Client.objects.create(user=self.user, name="Cliente Dos")
+
+        # 1. Rename client2 to client1's name (case-insensitive)
+        res = self.client.patch(
+            f"/api/business/clients/{client2.id}/",
+            {"name": "cliente uno"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", res.data)
+        self.assertEqual(res.data["name"][0], "Ya existe un cliente con este nombre.")
+
+        # 2. Updating client1 with its own name works
+        res_self = self.client.patch(
+            f"/api/business/clients/{client1.id}/",
+            {"name": "Cliente Uno", "phone": "1122334455"},
+            format="json",
+        )
+        self.assertEqual(res_self.status_code, status.HTTP_200_OK)
+        client1.refresh_from_db()
+        self.assertEqual(client1.phone, "1122334455")
+
+
 
 
 

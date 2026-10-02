@@ -1,6 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db import transaction as db_transaction
+from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import Q, Sum, Count, F, Prefetch
 from django.utils import timezone
 from rest_framework import exceptions, generics, status
@@ -74,9 +74,18 @@ class ClientListCreateView(
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(
-            user=self.request.user
-        )
+        name = serializer.validated_data.get("name", "").strip()
+        existing = Client.objects.filter(
+            user=self.request.user, name__iexact=name
+        ).first()
+        if existing:
+            raise exceptions.ValidationError({"name": ["Ya existe un cliente con este nombre."]})
+        try:
+            serializer.save(
+                user=self.request.user
+            )
+        except IntegrityError:
+            raise exceptions.ValidationError({"name": ["Ya existe un cliente con este nombre."]})
 
 
 class ClientDetailView(
@@ -89,6 +98,20 @@ class ClientDetailView(
         return Client.objects.filter(
             user=self.request.user
         )
+
+    def perform_update(self, serializer):
+        name = serializer.validated_data.get("name")
+        if name:
+            name = name.strip()
+            existing = Client.objects.filter(
+                user=self.request.user, name__iexact=name
+            ).exclude(pk=serializer.instance.pk).first()
+            if existing:
+                raise exceptions.ValidationError({"name": ["Ya existe un cliente con este nombre."]})
+        try:
+            serializer.save()
+        except IntegrityError:
+            raise exceptions.ValidationError({"name": ["Ya existe un cliente con este nombre."]})
 
 
 class TransactionListCreateView(

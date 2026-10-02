@@ -214,6 +214,24 @@ function TransactionClient({
                         setClientSearch(e.target.value);
                         if (!isDropdownOpen) setIsDropdownOpen(true);
                     }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !employeeOnly && clientSearch.trim()) {
+                            e.preventDefault();
+                            const exactMatch = clientResults.find(
+                                (c) => c.name.toLowerCase() === clientSearch.trim().toLowerCase()
+                            );
+                            if (exactMatch) {
+                                onSelectClient(exactMatch);
+                            } else {
+                                onSelectClient({
+                                    id: null,
+                                    name: clientSearch.trim(),
+                                });
+                            }
+                            setClientSearch("");
+                            setIsDropdownOpen(false);
+                        }
+                    }}
                     onFocus={() => {
                         if (employeeOnly) {
                             loadEmployeeClients(clientSearch);
@@ -240,19 +258,21 @@ function TransactionClient({
 
             {/* DROPDOWN RESULTS */}
             {isDropdownOpen && (clientSearch.trim() || employeeOnly) && (
-                <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-56 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] animate-in fade-in duration-100">
+                <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-56 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-2xl divide-y divide-[var(--border)] animate-in fade-in duration-100">
                     {isSearchingClients ? (
                         <div className="p-3 text-center text-xs text-[var(--text-secondary)]">
                             {employeeOnly ? "Cargando empleados..." : "Buscando clientes..."}
                         </div>
-                    ) : clientResults.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-[var(--text-secondary)]">
-                            {employeeOnly
-                                ? "No se encontraron empleados registrados. Creá uno en Personal."
-                                : "No se encontraron clientes."}
-                        </div>
                     ) : (
                         <>
+                            {clientResults.length === 0 && (
+                                <div className="p-3 text-center text-xs text-[var(--text-secondary)]">
+                                    {employeeOnly
+                                        ? "No se encontraron empleados registrados. Creá uno en Personal."
+                                        : "No se encontraron clientes existentes."}
+                                </div>
+                            )}
+
                             {clientResults.map((client) => (
                                 <button
                                     key={client.id}
@@ -262,7 +282,7 @@ function TransactionClient({
                                         setClientSearch("");
                                         setIsDropdownOpen(false);
                                     }}
-                                    className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs transition hover:bg-[var(--surface-accent)]"
+                                    className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs transition hover:bg-[var(--surface-accent)] cursor-pointer"
                                 >
                                     <div className="min-w-0 pr-2">
                                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -300,23 +320,32 @@ function TransactionClient({
                                 </button>
                             ))}
 
-                            {/* Create New Client Option (only for regular customer searches) */}
-                            {!employeeOnly && clientSearch.trim() && (
+                            {/* Create New Client Option (only for regular customer searches when not already an exact match) */}
+                            {!employeeOnly && clientSearch.trim() && !clientResults.some(
+                                (c) => c.name.toLowerCase() === clientSearch.trim().toLowerCase()
+                            ) && (
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        onSelectClient({
-                                            id: null,
-                                            name: clientSearch.trim(),
-                                        });
+                                        const exactMatch = clientResults.find(
+                                            (c) => c.name.toLowerCase() === clientSearch.trim().toLowerCase()
+                                        );
+                                        if (exactMatch) {
+                                            onSelectClient(exactMatch);
+                                        } else {
+                                            onSelectClient({
+                                                id: null,
+                                                name: clientSearch.trim(),
+                                            });
+                                        }
                                         setClientSearch("");
                                         setIsDropdownOpen(false);
                                     }}
-                                    className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition text-[var(--primary)]"
+                                    className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition text-[var(--primary)] cursor-pointer"
                                 >
                                     <div>
                                         <span className="font-bold text-sm block">
-                                            Crear &quot;{clientSearch.trim()}&quot;
+                                            + Crear &quot;{clientSearch.trim()}&quot;
                                         </span>
                                         <span className="text-[11px] text-[var(--text-secondary)]">
                                             Nuevo cliente (se guardará con la venta)

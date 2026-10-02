@@ -20,6 +20,20 @@ class ClientSerializer(serializers.ModelSerializer):
     employee_id = serializers.IntegerField(source="employee.id", read_only=True, allow_null=True)
     employee_discount = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
 
+    def validate_name(self, value):
+        name = value.strip()
+        if not name:
+            raise serializers.ValidationError("El nombre del cliente no puede estar vacío.")
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated:
+            qs = Client.objects.filter(user=user, name__iexact=name)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError("Ya existe un cliente con este nombre.")
+        return name
+
     class Meta:
         model = Client
 

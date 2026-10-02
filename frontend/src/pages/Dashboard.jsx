@@ -19,6 +19,16 @@ import { useDeviceSecurity } from "../context/DeviceSecurityContext";
 import { useNotifications } from "../context/NotificationContext";
 import { useSubscription } from "../context/SubscriptionContext";
 
+function hasPendingTransfer(transaction) {
+    return Boolean(
+        transaction?.operations?.some((op) =>
+            op.amounts?.some(
+                (amount) => amount.method === "transfer" && !amount.received
+            )
+        )
+    );
+}
+
 function Dashboard() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -34,12 +44,24 @@ function Dashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [isReopening, setIsReopening] = useState(false);
     const [isOpenRegisterModalOpen, setIsOpenRegisterModalOpen] = useState(false);
+    const [filterMode, setFilterMode] = useState("all"); // 'all' | 'pending_transfer'
 
     const [transactionToDelete, setTransactionToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
     const { register, setRegister } = useOutletContext();
+
+    const pendingTransfersCount = useMemo(() => {
+        return transactions.filter(hasPendingTransfer).length;
+    }, [transactions]);
+
+    const displayedTransactions = useMemo(() => {
+        if (filterMode === "pending_transfer") {
+            return transactions.filter(hasPendingTransfer);
+        }
+        return transactions;
+    }, [transactions, filterMode]);
 
     async function handleTransactionUpdate(updatedTransaction) {
         setTransactions((current) =>
@@ -100,6 +122,10 @@ function Dashboard() {
             const targetId = parseInt(highlightId, 10);
             const exists = transactions.some((t) => t.id === targetId);
             if (exists) {
+                const targetTx = transactions.find((t) => t.id === targetId);
+                if (targetTx && !hasPendingTransfer(targetTx) && filterMode === "pending_transfer") {
+                    setFilterMode("all");
+                }
                 setHighlightedTxId(targetId);
                 const scrollTimer = setTimeout(() => {
                     const el = document.getElementById(`transaction-${targetId}`);
@@ -464,7 +490,7 @@ function Dashboard() {
 
                         {/* OPERATIONS FEED */}
                         <section className="space-y-4">
-                            <div className="flex items-end justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                                         Actividad del turno
@@ -474,10 +500,43 @@ function Dashboard() {
                                     </h2>
                                 </div>
 
-                                <span className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-                                    {transactions.length}{" "}
-                                    {transactions.length === 1 ? "registro" : "registros"}
-                                </span>
+                                {/* FILTER PILLS */}
+                                <div className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface)] p-1 shadow-xs self-start sm:self-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterMode("all")}
+                                        className={`rounded-md px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                            filterMode === "all"
+                                                ? "bg-[var(--primary)] text-white shadow-xs"
+                                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)]"
+                                        }`}
+                                    >
+                                        Todas ({transactions.length})
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterMode("pending_transfer")}
+                                        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                            filterMode === "pending_transfer"
+                                                ? "bg-amber-600 text-white shadow-xs"
+                                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)]"
+                                        }`}
+                                    >
+                                        <span>Transferencias pendientes</span>
+                                        {pendingTransfersCount > 0 && (
+                                            <span
+                                                className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                                                    filterMode === "pending_transfer"
+                                                        ? "bg-white text-amber-700"
+                                                        : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                                                }`}
+                                            >
+                                                {pendingTransfersCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {transactions.length === 0 ? (
@@ -510,15 +569,38 @@ function Dashboard() {
                                     <button
                                         type="button"
                                         onClick={() => navigate("/transactions/new")}
-                                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] transition hover:text-[var(--primary-hover)]"
+                                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--primary)] transition hover:text-[var(--primary-hover)] cursor-pointer"
                                     >
                                         <span>Registrar primera venta</span>
                                         <span>→</span>
                                     </button>
                                 </div>
+                            ) : displayedTransactions.length === 0 ? (
+                                <div className="rounded-md border border-dashed border-[var(--border)] bg-[var(--surface)] p-8 text-center space-y-3">
+                                    <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-sm text-[var(--text-primary)]">
+                                            Sin transferencias pendientes
+                                        </p>
+                                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                                            Todas las transferencias del turno fueron acreditadas o no hubo ventas con transferencia.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterMode("all")}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-[var(--primary)] hover:underline cursor-pointer"
+                                    >
+                                        Ver todas las operaciones ({transactions.length})
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {transactions.map((transaction) => (
+                                    {displayedTransactions.map((transaction) => (
                                         <TransactionCard
                                             key={transaction.id}
                                             transaction={transaction}

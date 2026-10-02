@@ -1094,7 +1094,7 @@ function RegisterReport() {
                                 </button>
                             ))}
 
-                            {clientSearch.trim() && (
+                            {clientSearch.trim() && !clientsList.some((c) => c.name.toLowerCase() === clientSearch.trim().toLowerCase()) && (
                                 <button
                                     type="button"
                                     onClick={async () => {
@@ -1104,8 +1104,20 @@ function RegisterReport() {
                                             await handleResolveTransfer(transferToDebt, "convert_to_debt", newClient.id);
                                         } catch (err) {
                                             console.error(err);
-                                            toast.error("No se pudo crear el cliente.");
-                                            setIsResolving(false);
+                                            const existing = clientsList.find(
+                                                (c) => c.name.toLowerCase() === clientSearch.trim().toLowerCase()
+                                            );
+                                            if (existing) {
+                                                await handleResolveTransfer(transferToDebt, "convert_to_debt", existing.id);
+                                            } else {
+                                                const msg =
+                                                    err.response?.data?.name?.[0] ||
+                                                    err.response?.data?.name ||
+                                                    err.response?.data?.detail ||
+                                                    "No se pudo crear el cliente.";
+                                                toast.error(msg);
+                                                setIsResolving(false);
+                                            }
                                         }
                                     }}
                                     disabled={isResolving}

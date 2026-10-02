@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
     createTransaction,
     createClient,
+    getClients,
     getProducts,
     getCategories,
     getProviders,
@@ -570,10 +571,28 @@ function NewTransaction() {
             // Auto-create client if needed
             let clientId = client?.id || null;
             if (client && !client.id && client.name) {
-                const newClient = await createClient({
-                    name: client.name,
-                });
-                clientId = newClient.id;
+                try {
+                    const newClient = await createClient({
+                        name: client.name.trim(),
+                    });
+                    clientId = newClient.id;
+                } catch (clientErr) {
+                    // If client already exists, retrieve existing client by name
+                    try {
+                        const existingRes = await getClients(client.name.trim());
+                        const list = Array.isArray(existingRes) ? existingRes : existingRes?.data || [];
+                        const matched = list.find(
+                            (c) => c.name.toLowerCase() === client.name.trim().toLowerCase()
+                        );
+                        if (matched) {
+                            clientId = matched.id;
+                        } else {
+                            throw clientErr;
+                        }
+                    } catch {
+                        throw clientErr;
+                    }
+                }
             }
 
             const validAmounts = transactionAmounts
@@ -783,9 +802,12 @@ function NewTransaction() {
         } catch (error) {
             console.error(error);
             const message =
+                error.response?.data?.name?.[0] ||
+                error.response?.data?.name ||
                 error.response?.data?.debt_limit ||
                 error.response?.data?.register ||
                 error.response?.data?.client ||
+                error.response?.data?.detail ||
                 error.response?.data?.non_field_errors?.[0] ||
                 "No se pudo registrar la venta.";
             toast.error(message);

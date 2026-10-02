@@ -676,7 +676,22 @@ export function SimplePos({ register, onOpenRegister }) {
             toast.success(`Cliente "${created.name}" creado y asignado.`);
         } catch (err) {
             console.error("Error creating client:", err);
-            toast.error("Error al crear cliente.");
+            const existing = clients.find(
+                (c) => c.name.toLowerCase() === name.toLowerCase()
+            );
+            if (existing) {
+                setSelectedClient(existing);
+                setNewClientName("");
+                setIsClientModalOpen(false);
+                toast.success(`Cliente existente "${existing.name}" asignado.`);
+            } else {
+                const message =
+                    err.response?.data?.name?.[0] ||
+                    err.response?.data?.name ||
+                    err.response?.data?.detail ||
+                    "Error al crear cliente.";
+                toast.error(message);
+            }
         } finally {
             setIsCreatingClient(false);
         }

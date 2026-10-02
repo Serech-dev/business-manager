@@ -158,11 +158,16 @@ function ClientDetail({ isNewClient = false }) {
         } catch (error) {
             console.error(error);
 
-            toast.error(
-                isNewClient
+            const message =
+                error.response?.data?.name?.[0] ||
+                error.response?.data?.name ||
+                error.response?.data?.phone?.[0] ||
+                error.response?.data?.debt_limit?.[0] ||
+                error.response?.data?.detail ||
+                (isNewClient
                     ? "No se pudo crear el cliente."
-                    : "No se pudo actualizar el cliente."
-            );
+                    : "No se pudo actualizar el cliente.");
+            toast.error(message);
         } finally {
             setIsSaving(false);
         }

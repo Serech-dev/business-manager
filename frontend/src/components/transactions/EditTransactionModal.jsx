@@ -181,8 +181,25 @@ function EditTransactionModal({
         try {
             let resolvedClientId = client?.id || null;
             if (client && !client.id && client.name) {
-                const created = await createClient({ name: client.name });
-                resolvedClientId = created.id;
+                try {
+                    const created = await createClient({ name: client.name.trim() });
+                    resolvedClientId = created.id;
+                } catch (clientErr) {
+                    try {
+                        const existingRes = await getClients(client.name.trim());
+                        const list = Array.isArray(existingRes) ? existingRes : existingRes?.data || [];
+                        const matched = list.find(
+                            (c) => c.name.toLowerCase() === client.name.trim().toLowerCase()
+                        );
+                        if (matched) {
+                            resolvedClientId = matched.id;
+                        } else {
+                            throw clientErr;
+                        }
+                    } catch {
+                        throw clientErr;
+                    }
+                }
             }
 
             const formattedOperations = operations.map((op) => {
@@ -219,6 +236,8 @@ function EditTransactionModal({
         } catch (error) {
             console.error(error);
             const msg =
+                error.response?.data?.name?.[0] ||
+                error.response?.data?.name ||
                 error.response?.data?.detail ||
                 error.response?.data?.client?.[0] ||
                 "No se pudo actualizar la transacción.";
@@ -338,16 +357,18 @@ function EditTransactionModal({
                                                 {c.name} {c.phone ? `(${c.phone})` : ""}
                                             </button>
                                         ))}
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setClient({ name: clientQuery.trim() });
-                                                setShowClientDropdown(false);
-                                            }}
-                                            className="w-full border-t border-[var(--border)] px-3 py-2 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--surface-accent)]"
-                                        >
-                                            + Crear cliente "{clientQuery.trim()}"
-                                        </button>
+                                        {!clientsList.some((c) => c.name.toLowerCase() === clientQuery.trim().toLowerCase()) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setClient({ name: clientQuery.trim() });
+                                                    setShowClientDropdown(false);
+                                                }}
+                                                className="w-full border-t border-[var(--border)] px-3 py-2 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--surface-accent)]"
+                                            >
+                                                + Crear cliente &quot;{clientQuery.trim()}&quot;
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
