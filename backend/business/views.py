@@ -525,7 +525,7 @@ class RegisterListView(
 
 
 class RegisterDetailView(
-    generics.RetrieveAPIView
+    generics.RetrieveDestroyAPIView
 ):
     serializer_class = RegisterSerializer
     permission_classes = [HasActiveSubscription]
@@ -541,6 +541,11 @@ class RegisterDetailView(
                 "transactions__operations__amounts"
             )
         )
+
+    def perform_destroy(self, instance):
+        with db_transaction.atomic():
+            instance.transactions.all().delete()
+            instance.delete()
 
 
 class ProviderListCreateView(
@@ -1503,9 +1508,17 @@ class CurrentRegisterShiftView(APIView):
     permission_classes = [HasActiveSubscription]
 
     def get(self, request):
+        has_employees = Employee.objects.filter(user=request.user).exists()
+        active_employees_count = Employee.objects.filter(user=request.user, is_active=True).count()
+
         open_register = Register.objects.filter(user=request.user, closed_at__isnull=True).first()
         if not open_register:
-            return Response({"active_shift": None, "register_open": False})
+            return Response({
+                "active_shift": None,
+                "register_open": False,
+                "has_employees": has_employees,
+                "active_employees_count": active_employees_count,
+            })
 
         active_shift = RegisterShift.objects.filter(register=open_register, closed_at__isnull=True).first()
         if not active_shift:
@@ -1522,6 +1535,8 @@ class CurrentRegisterShiftView(APIView):
             "active_shift": RegisterShiftSerializer(active_shift).data,
             "register_open": True,
             "register_id": open_register.id,
+            "has_employees": has_employees,
+            "active_employees_count": active_employees_count,
         })
 
 

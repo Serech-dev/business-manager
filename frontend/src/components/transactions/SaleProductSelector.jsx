@@ -152,6 +152,14 @@ function SaleProductSelector({
         setSelectedResultIndex(0);
     }, [searchResults, nationalSearchResults]);
 
+    // Auto-focus product search input on mount to speed up selling
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            searchInputRef.current?.focus();
+        }, 120);
+        return () => clearTimeout(timer);
+    }, []);
+
     // Close search dropdown on click outside
     useEffect(() => {
         function handleClickOutside(e) {
@@ -544,6 +552,7 @@ function SaleProductSelector({
 
                     <input
                         ref={searchInputRef}
+                        autoFocus
                         type="text"
                         value={searchQuery}
                         onChange={(e) => {

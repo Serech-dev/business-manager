@@ -237,7 +237,14 @@ function NewTransaction() {
     const [targetOperationIndex, setTargetOperationIndex] = useState(0);
 
     const { isPremium, hasFeature } = useSubscriptionTier();
-    const { activeShift, openHandoverModal } = useShift();
+    const { activeShift, openHandoverModal, hasEmployees } = useShift();
+    const isEmployeesConfigured = Boolean(hasEmployees || activeShift?.employee || client?.is_employee);
+
+    useEffect(() => {
+        if (!isEmployeesConfigured && isEmployeeSale) {
+            setIsEmployeeSale(false);
+        }
+    }, [isEmployeesConfigured, isEmployeeSale]);
 
     useEffect(() => {
         async function loadCatalog() {
@@ -943,6 +950,10 @@ function NewTransaction() {
         setCompletedSale(null);
         setShowSuccessModal(false);
         setShowReceiptModal(false);
+        setTimeout(() => {
+            const productInput = document.querySelector('input[placeholder*="Buscá por nombre"]');
+            productInput?.focus();
+        }, 150);
     }
 
     return (
@@ -961,19 +972,21 @@ function NewTransaction() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs">
-                        <span className="text-[var(--text-secondary)]">Cajero:</span>
-                        <span className="font-bold text-[var(--text-primary)]">
-                            {activeShift?.employee_name || "Sin turno"}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={openHandoverModal}
-                            className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition cursor-pointer"
-                        >
-                            Cambiar
-                        </button>
-                    </div>
+                    {isEmployeesConfigured && (
+                        <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs">
+                            <span className="text-[var(--text-secondary)]">Cajero:</span>
+                            <span className="font-bold text-[var(--text-primary)]">
+                                {activeShift?.employee_name || "Sin turno"}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={openHandoverModal}
+                                className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition cursor-pointer"
+                            >
+                                Cambiar
+                            </button>
+                        </div>
+                    )}
 
                     <button
                         type="button"
@@ -1415,41 +1428,43 @@ function NewTransaction() {
                         </div>
 
                         {/* Prominent Employee Sale Toggle Button */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const next = !isEmployeeSale;
-                                setIsEmployeeSale(next);
-                                if (next) {
-                                    if (client && !client.is_employee) {
-                                        setClient(null);
+                        {isEmployeesConfigured && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const next = !isEmployeeSale;
+                                    setIsEmployeeSale(next);
+                                    if (next) {
+                                        if (client && !client.is_employee) {
+                                            setClient(null);
+                                        }
+                                        setTransactionAmounts((prev) => {
+                                            if (prev.length === 1 && (prev[0].method === "cash" || prev[0].method === "debt")) {
+                                                return [{ ...prev[0], method: "employee" }];
+                                            }
+                                            return prev;
+                                        });
+                                    } else {
+                                        setTransactionAmounts((prev) => {
+                                            if (prev.length === 1 && prev[0].method === "employee") {
+                                                return [{ ...prev[0], method: "cash" }];
+                                            }
+                                            return prev;
+                                        });
                                     }
-                                    setTransactionAmounts((prev) => {
-                                        if (prev.length === 1 && (prev[0].method === "cash" || prev[0].method === "debt")) {
-                                            return [{ ...prev[0], method: "employee" }];
-                                        }
-                                        return prev;
-                                    });
-                                } else {
-                                    setTransactionAmounts((prev) => {
-                                        if (prev.length === 1 && prev[0].method === "employee") {
-                                            return [{ ...prev[0], method: "cash" }];
-                                        }
-                                        return prev;
-                                    });
-                                }
-                            }}
-                            className={`flex items-center gap-2.5 px-3.5 py-2 rounded-md border text-xs font-bold transition cursor-pointer shadow-xs shrink-0 ${
-                                isEmployeeSale
-                                    ? "bg-purple-600 text-white border-purple-600 ring-2 ring-purple-500/25"
-                                    : "bg-[var(--surface-accent)] hover:bg-[var(--surface-accent)]/80 text-[var(--text-primary)] border-[var(--border)] hover:border-purple-500/50"
-                            }`}
-                        >
-                            <span className={`inline-block h-2 w-2 rounded-full transition-colors ${
-                                isEmployeeSale ? "bg-white animate-pulse" : "bg-[var(--text-secondary)]/40"
-                            }`} />
-                            <span>{isEmployeeSale ? "Consumo Empleado: Activado" : "Activar Consumo Empleado"}</span>
-                        </button>
+                                }}
+                                className={`flex items-center gap-2.5 px-3.5 py-2 rounded-md border text-xs font-bold transition cursor-pointer shadow-xs shrink-0 ${
+                                    isEmployeeSale
+                                        ? "bg-purple-600 text-white border-purple-600 ring-2 ring-purple-500/25"
+                                        : "bg-[var(--surface-accent)] hover:bg-[var(--surface-accent)]/80 text-[var(--text-primary)] border-[var(--border)] hover:border-purple-500/50"
+                                }`}
+                            >
+                                <span className={`inline-block h-2 w-2 rounded-full transition-colors ${
+                                    isEmployeeSale ? "bg-white animate-pulse" : "bg-[var(--text-secondary)]/40"
+                                }`} />
+                                <span>{isEmployeeSale ? "Consumo Empleado: Activado" : "Activar Consumo Empleado"}</span>
+                            </button>
+                        )}
                     </div>
 
                     {/* TWO COLUMNS: Perfectly aligned headers and inputs */}

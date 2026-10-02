@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import MoneyInput from "../MoneyInput";
-import { createEmployee, updateEmployee } from "../../services/business";
+import { createEmployee, updateEmployee, deleteEmployee } from "../../services/business";
 
 function EmployeeModal({ isOpen, onClose, employee, onSuccess }) {
     const isEditing = Boolean(employee?.id);
@@ -92,6 +92,24 @@ function EmployeeModal({ isOpen, onClose, employee, onSuccess }) {
             console.error("Error guardando empleado:", error);
             const msg = error.response?.data?.detail || "No se pudo guardar la información del empleado.";
             toast.error(msg);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    async function handleDelete() {
+        if (!window.confirm(`¿Eliminar al empleado ${name || employee?.name}? Esta acción eliminará su ficha y registros asociados.`)) {
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await deleteEmployee(employee.id);
+            toast.success("Empleado eliminado con éxito.");
+            onSuccess?.();
+            onClose();
+        } catch (error) {
+            console.error("Error al eliminar empleado:", error);
+            toast.error("No se pudo eliminar el empleado.");
         } finally {
             setIsSubmitting(false);
         }
@@ -302,26 +320,40 @@ function EmployeeModal({ isOpen, onClose, employee, onSuccess }) {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border)]">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSubmitting}
-                            className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
-                        >
-                            {isSubmitting ? (
-                                <span>Guardando...</span>
-                            ) : (
-                                <span>{isEditing ? "Guardar Cambios" : "Crear Empleado"}</span>
+                    <div className="flex items-center justify-between gap-3 pt-3 border-t border-[var(--border)]">
+                        <div>
+                            {isEditing && (
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isSubmitting}
+                                    className="text-xs font-semibold text-[var(--danger)]/80 hover:text-[var(--danger)] transition cursor-pointer"
+                                >
+                                    Eliminar empleado
+                                </button>
                             )}
-                        </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={isSubmitting}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                            >
+                                {isSubmitting ? (
+                                    <span>Guardando...</span>
+                                ) : (
+                                    <span>{isEditing ? "Guardar Cambios" : "Crear Empleado"}</span>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

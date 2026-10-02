@@ -23,6 +23,7 @@ import MoneyInput from "../../components/MoneyInput";
 import { useStoreSettings } from "../../context/StoreSettingsContext";
 import { useSubscriptionTier } from "../../hooks/useSubscriptionTier";
 import { useDeviceSecurity } from "../../context/DeviceSecurityContext";
+import { useShift } from "../../context/ShiftContext";
 import { NATIONAL_PRODUCTS } from "../../utils/nationalCatalog";
 
 export function SimplePos({ register, onOpenRegister }) {
@@ -37,6 +38,7 @@ export function SimplePos({ register, onOpenRegister }) {
     } = useStoreSettings();
     const { isKioskDevice, isUnlocked, requireOwnerAccess } = useDeviceSecurity();
     const { isPro } = useSubscriptionTier();
+    const { hasEmployees, activeShift } = useShift();
 
     // Surcharge override state for debt
     const [ignoreDebtSurcharge, setIgnoreDebtSurcharge] = useState(false);
@@ -63,6 +65,15 @@ export function SimplePos({ register, onOpenRegister }) {
     const [newClientName, setNewClientName] = useState("");
     const [isCreatingClient, setIsCreatingClient] = useState(false);
     const [isEmployeeSale, setIsEmployeeSale] = useState(false);
+
+    const hasEmployeeClients = useMemo(() => (clients || []).some((c) => c.is_employee), [clients]);
+    const isEmployeesConfigured = Boolean(hasEmployees || activeShift?.employee || hasEmployeeClients || selectedClient?.is_employee);
+
+    useEffect(() => {
+        if (!isEmployeesConfigured && isEmployeeSale) {
+            setIsEmployeeSale(false);
+        }
+    }, [isEmployeesConfigured, isEmployeeSale]);
 
     // Quick Service Dialogs State
     const [activeServiceSheet, setActiveServiceSheet] = useState(null); // 'varios' | 'sube' | 'phone' | 'exchange' | 'payment' | 'weight' | 'editPrice'
@@ -992,34 +1003,36 @@ export function SimplePos({ register, onOpenRegister }) {
                 {/* Quick Services Ribbon (Pills with soft styling) */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 pb-0.5">
                     {/* Consumo Empleado */}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const next = !isEmployeeSale;
-                            setIsEmployeeSale(next);
-                            if (next) {
-                                if (selectedClient && !selectedClient.is_employee) {
-                                    setSelectedClient(null);
+                    {isEmployeesConfigured && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const next = !isEmployeeSale;
+                                setIsEmployeeSale(next);
+                                if (next) {
+                                    if (selectedClient && !selectedClient.is_employee) {
+                                        setSelectedClient(null);
+                                    }
+                                    setPaymentMethod("employee");
+                                    setIsClientModalOpen(true);
+                                } else {
+                                    if (paymentMethod === "employee") {
+                                        setPaymentMethod("cash");
+                                    }
                                 }
-                                setPaymentMethod("employee");
-                                setIsClientModalOpen(true);
-                            } else {
-                                if (paymentMethod === "employee") {
-                                    setPaymentMethod("cash");
-                                }
-                            }
-                        }}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors shrink-0 ${
-                            isEmployeeSale
-                                ? "bg-purple-600 text-white border border-purple-600 shadow-xs"
-                                : "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20"
-                        }`}
-                    >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <span>Consumo Empleado</span>
-                    </button>
+                            }}
+                            className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors shrink-0 ${
+                                isEmployeeSale
+                                    ? "bg-purple-600 text-white border border-purple-600 shadow-xs"
+                                    : "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20"
+                            }`}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span>Consumo Empleado</span>
+                        </button>
+                    )}
 
                     {/* + Varios */}
                     <button
@@ -2411,44 +2424,46 @@ export function SimplePos({ register, onOpenRegister }) {
                         </div>
 
                         {/* Segmented Filter: All Clients vs Employees Only */}
-                        <div className="flex border-b border-[var(--border)] bg-[var(--surface-accent)]/30 p-1.5 gap-1.5">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsEmployeeSale(false);
-                                    if (paymentMethod === "employee") {
-                                        setPaymentMethod("cash");
-                                    }
-                                }}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-colors cursor-pointer ${
-                                    !isEmployeeSale
-                                        ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-xs"
-                                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                                }`}
-                            >
-                                Todos los clientes
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsEmployeeSale(true);
-                                    if (selectedClient && !selectedClient.is_employee) {
-                                        setSelectedClient(null);
-                                    }
-                                    setPaymentMethod("employee");
-                                }}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    isEmployeeSale
-                                        ? "bg-purple-600 text-white shadow-xs"
-                                        : "text-[var(--text-secondary)] hover:text-purple-400"
-                                }`}
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                <span>Solo Empleados</span>
-                            </button>
-                        </div>
+                        {isEmployeesConfigured && (
+                            <div className="flex border-b border-[var(--border)] bg-[var(--surface-accent)]/30 p-1.5 gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsEmployeeSale(false);
+                                        if (paymentMethod === "employee") {
+                                            setPaymentMethod("cash");
+                                        }
+                                    }}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-colors cursor-pointer ${
+                                        !isEmployeeSale
+                                            ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-xs"
+                                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                    }`}
+                                >
+                                    Todos los clientes
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsEmployeeSale(true);
+                                        if (selectedClient && !selectedClient.is_employee) {
+                                            setSelectedClient(null);
+                                        }
+                                        setPaymentMethod("employee");
+                                    }}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                                        isEmployeeSale
+                                            ? "bg-purple-600 text-white shadow-xs"
+                                            : "text-[var(--text-secondary)] hover:text-purple-400"
+                                    }`}
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span>Solo Empleados</span>
+                                </button>
+                            </div>
+                        )}
 
                         {/* Search Input */}
                         <div className="p-3 border-b border-[var(--border)]">

@@ -8,8 +8,10 @@ import {
     getEmployeeAttendance,
     getRegisterShifts,
     getEmployees,
+    deleteEmployee,
 } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
+import { useShift } from "../context/ShiftContext";
 import EmployeeModal from "../components/employees/EmployeeModal";
 import EmployeeMovementModal from "../components/employees/EmployeeMovementModal";
 import EmployeeAttendanceModal from "../components/employees/EmployeeAttendanceModal";
@@ -79,6 +81,7 @@ function EmployeeDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { isPremium, hasFeature } = useSubscriptionTier();
+    const { refreshActiveShift } = useShift();
 
     const [employee, setEmployee] = useState(null);
     const [summary, setSummary] = useState(null);
@@ -89,6 +92,8 @@ function EmployeeDetail() {
     const [isLoading, setIsLoading] = useState(true);
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
     const [movementModalConfig, setMovementModalConfig] = useState({ isOpen: false, type: "advance" });
     const [attendanceModalConfig, setAttendanceModalConfig] = useState({ isOpen: false, status: "absent" });
@@ -215,12 +220,24 @@ function EmployeeDetail() {
                         <button
                             type="button"
                             onClick={() => setIsEditModalOpen(true)}
-                            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition"
+                            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition shadow-xs cursor-pointer"
                         >
                             <svg className="h-4 w-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
                             </svg>
                             <span>Editar Perfil</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsDeleteModalOpen(true)}
+                            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--danger)] hover:border-[var(--danger-border)] hover:bg-[var(--danger-bg)]/10 transition shadow-xs cursor-pointer"
+                            title="Eliminar empleado"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.75" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            </svg>
+                            <span className="hidden sm:inline">Eliminar</span>
                         </button>
                     </div>
                 </div>
@@ -733,6 +750,68 @@ function EmployeeDetail() {
                 summary={summary}
                 onSuccess={() => loadData()}
             />
+
+            {/* Confirm Delete Employee Modal */}
+            {isDeleteModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                    onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
+                        className="w-full max-w-md rounded-md border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    ¿Eliminar ficha de {employee.name}?
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                                    Esta acción eliminará al colaborador y sus registros asociados (inasistencias, anticipos). Las ventas en las que participó se conservarán.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] transition cursor-pointer"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={async () => {
+                                    setIsDeleting(true);
+                                    try {
+                                        await deleteEmployee(id);
+                                        toast.success("Empleado eliminado correctamente.");
+                                        refreshActiveShift?.();
+                                        navigate("/employees");
+                                    } catch (err) {
+                                        console.error(err);
+                                        toast.error("No se pudo eliminar el empleado.");
+                                        setIsDeleting(false);
+                                    }
+                                }}
+                                className="rounded-md bg-[var(--danger)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-50 shadow-xs cursor-pointer"
+                            >
+                                {isDeleting ? "Eliminando..." : "Confirmar eliminación"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             </PremiumGate>
         </div>
     );

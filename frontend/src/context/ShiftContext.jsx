@@ -6,6 +6,8 @@ const ShiftContext = createContext(null);
 export function ShiftProvider({ children }) {
     const [activeShift, setActiveShift] = useState(null);
     const [registerId, setRegisterId] = useState(null);
+    const [hasEmployees, setHasEmployees] = useState(false);
+    const [activeEmployeesCount, setActiveEmployeesCount] = useState(0);
     const [isLoadingShift, setIsLoadingShift] = useState(true);
     const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
 
@@ -13,6 +15,8 @@ export function ShiftProvider({ children }) {
         const token = localStorage.getItem("businessManagerAuthToken");
         if (!token) {
             setActiveShift(null);
+            setHasEmployees(false);
+            setActiveEmployeesCount(0);
             setIsLoadingShift(false);
             return;
         }
@@ -21,6 +25,8 @@ export function ShiftProvider({ children }) {
             const data = await getCurrentShift();
             setActiveShift(data?.active_shift || null);
             setRegisterId(data?.register_id || null);
+            setHasEmployees(Boolean(data?.has_employees));
+            setActiveEmployeesCount(Number(data?.active_employees_count) || 0);
         } catch (error) {
             console.error("Error loading active register shift:", error);
             setActiveShift(null);
@@ -33,12 +39,20 @@ export function ShiftProvider({ children }) {
         refreshActiveShift();
     }, [refreshActiveShift]);
 
-    const openHandoverModal = () => setIsHandoverModalOpen(true);
+    const openHandoverModal = () => {
+        if (!hasEmployees && !activeShift?.employee) {
+            return;
+        }
+        setIsHandoverModalOpen(true);
+    };
     const closeHandoverModal = () => setIsHandoverModalOpen(false);
 
     const value = {
         activeShift,
         registerId,
+        hasEmployees,
+        setHasEmployees,
+        activeEmployeesCount,
         isLoadingShift,
         refreshActiveShift,
         isHandoverModalOpen,

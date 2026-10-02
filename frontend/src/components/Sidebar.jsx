@@ -27,7 +27,7 @@ function Sidebar({
     const location = useLocation();
 
     const { settings, openSettingsModal } = useStoreSettings();
-    const { activeShift, openHandoverModal } = useShift();
+    const { activeShift, openHandoverModal, hasEmployees } = useShift();
 
     const {
         isSuperuser,
@@ -727,7 +727,7 @@ function Sidebar({
                         </span>
                     </div>
 
-                    {register && register.is_open && (
+                    {register && register.is_open && (hasEmployees || Boolean(activeShift?.employee)) && (
                         <div className="mt-2.5 pt-2 border-t border-[var(--border)] space-y-1.5">
                             <div className="flex items-center justify-between text-[11px]">
                                 <span className="text-[var(--text-secondary)]">Cajero:</span>

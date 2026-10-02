@@ -6,6 +6,7 @@ import {
     getEmployees,
     getRegisterShifts,
     getEmployeeAttendance,
+    deleteEmployee,
 } from "../services/business";
 import { formatCurrency } from "../utils/formatCurrency";
 import { useShift } from "../context/ShiftContext";
@@ -13,7 +14,35 @@ import EmployeeModal from "../components/employees/EmployeeModal";
 import EmployeeMovementModal from "../components/employees/EmployeeMovementModal";
 import EmployeeAttendanceModal from "../components/employees/EmployeeAttendanceModal";
 import PremiumGate from "../components/subscription/PremiumGate";
+import OnboardingTour from "../components/onboarding/OnboardingTour";
 import { useSubscriptionTier } from "../hooks/useSubscriptionTier";
+
+const EMPLOYEES_TOUR_STEPS = [
+    {
+        target: '[data-tour="employees-create-btn"]',
+        title: "Nuevo Empleado",
+        content: "Registrá a tus colaboradores con su cargo, modalidad de sueldo (mensual, jornal o por hora) y porcentaje de descuento en compras.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="employees-metrics"]',
+        title: "Panel de Métricas",
+        content: "Visualizá quién está a cargo de la caja actualmente, inasistencias acumuladas del mes, deducciones pendientes y nómina total.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="employees-tabs"]',
+        title: "Vistas y Control",
+        content: "Alterná entre el Directorio de personal, el historial de Turnos de caja y el Registro de inasistencias y novedades.",
+        position: "bottom",
+    },
+    {
+        target: '[data-tour="employees-table"]',
+        title: "Ficha y Liquidación",
+        content: "Accedé a 'Ver Ficha' para liquidar sueldos, ver adelantos y consumos registrados, o anotar faltas y llegadas tarde.",
+        position: "top",
+    },
+];
 
 const SALARY_TYPE_LABELS = {
     monthly: "Mensual",
@@ -47,7 +76,7 @@ const ATTENDANCE_STATUS_CONFIG = {
 
 function EmployeeList() {
     const navigate = useNavigate();
-    const { activeShift, openHandoverModal } = useShift();
+    const { activeShift, openHandoverModal, refreshActiveShift } = useShift();
     const { isPremium, hasFeature } = useSubscriptionTier();
 
     const [employees, setEmployees] = useState([]);
@@ -78,6 +107,9 @@ function EmployeeList() {
         status: "absent",
     });
 
+    const [employeeToDelete, setEmployeeToDelete] = useState(null);
+    const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
+
     const loadData = useCallback(async () => {
         if (!isPremium && !hasFeature("employees")) {
             setIsLoading(false);
@@ -95,6 +127,7 @@ function EmployeeList() {
             setShifts(shiftsList);
             const attList = Array.isArray(attData) ? attData : (attData?.results || []);
             setAttendances(attList);
+            refreshActiveShift?.();
         } catch (error) {
             if (error?.response?.status === 403 || error?.isFeatureRequiresPremium) {
                 return;
@@ -104,7 +137,7 @@ function EmployeeList() {
         } finally {
             setIsLoading(false);
         }
-    }, [isPremium, hasFeature]);
+    }, [isPremium, hasFeature, refreshActiveShift]);
 
     useEffect(() => {
         loadData();
@@ -245,44 +278,51 @@ function EmployeeList() {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {/* Quick absence button */}
-                    <button
-                        type="button"
-                        onClick={() => handleOpenFalta()}
-                        className="flex items-center gap-1.5 rounded-md border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3.5 py-2 text-xs font-bold text-[var(--danger)] hover:opacity-90 transition shadow-xs"
-                    >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                        <span>Anotar Falta</span>
-                    </button>
+                    {employees.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => handleOpenFalta()}
+                            className="flex items-center gap-1.5 rounded-md border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3.5 py-2 text-xs font-bold text-[var(--danger)] hover:opacity-90 transition shadow-xs"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                            <span>Anotar Falta</span>
+                        </button>
+                    )}
 
                     {/* Quick advance button */}
-                    <button
-                        type="button"
-                        onClick={() => handleOpenAdelanto()}
-                        className="flex items-center gap-1.5 rounded-md border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:opacity-90 transition shadow-xs"
-                    >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                        </svg>
-                        <span>Dar Adelanto</span>
-                    </button>
+                    {employees.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => handleOpenAdelanto()}
+                            className="flex items-center gap-1.5 rounded-md border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:opacity-90 transition shadow-xs"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <span>Dar Adelanto</span>
+                        </button>
+                    )}
 
                     {/* Shift Handover */}
-                    <button
-                        type="button"
-                        onClick={openHandoverModal}
-                        className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition shadow-xs"
-                    >
-                        <svg className="h-4 w-4 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                        </svg>
-                        <span>Cambio de Turno</span>
-                    </button>
+                    {employees.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={openHandoverModal}
+                            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface-accent)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition shadow-xs"
+                        >
+                            <svg className="h-4 w-4 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                            </svg>
+                            <span>Cambio de Turno</span>
+                        </button>
+                    )}
 
                     {/* New Employee */}
                     <button
                         type="button"
+                        data-tour="employees-create-btn"
                         onClick={handleOpenCreate}
                         className="flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] transition"
                     >
@@ -295,7 +335,7 @@ function EmployeeList() {
             </header>
 
             {/* Quick Metrics Cards (4 Columns) */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div data-tour="employees-metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {/* 1. Active Shift */}
                 <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xs">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -376,7 +416,7 @@ function EmployeeList() {
             </div>
 
             {/* Top Level Module Tabs */}
-            <div className="flex border-b border-[var(--border)]">
+            <div data-tour="employees-tabs" className="flex border-b border-[var(--border)]">
                 <button
                     type="button"
                     onClick={() => setActiveTab("employees")}
@@ -472,7 +512,7 @@ function EmployeeList() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                    <div data-tour="employees-table" className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-xs">
                         {filteredEmployees.length === 0 ? (
                             <div className="py-12 px-4 text-center">
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-[var(--surface-accent)] border border-[var(--border)] text-[var(--text-secondary)] mb-3">
@@ -681,11 +721,23 @@ function EmployeeList() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleOpenEdit(emp)}
-                                                                className="rounded-md border border-[var(--border)] p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition shadow-xs"
+                                                                className="rounded-md border border-[var(--border)] p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-accent)] transition shadow-xs cursor-pointer"
                                                                 title="Editar datos de empleado"
                                                             >
                                                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                                                                </svg>
+                                                            </button>
+
+                                                            {/* Inconspicuous Delete Employee */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEmployeeToDelete(emp)}
+                                                                className="rounded-md border border-transparent p-1 text-[var(--text-secondary)]/50 hover:text-[var(--danger)] hover:border-[var(--danger-border)] hover:bg-[var(--danger-bg)]/20 transition cursor-pointer"
+                                                                title={`Eliminar ficha de ${emp.name}`}
+                                                            >
+                                                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="1.75" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                                                 </svg>
                                                             </button>
                                                         </div>
@@ -994,7 +1046,10 @@ function EmployeeList() {
                 isOpen={isCreateOrEditOpen}
                 onClose={() => setIsCreateOrEditOpen(false)}
                 employee={selectedEmployee}
-                onSuccess={() => loadData()}
+                onSuccess={() => {
+                    loadData();
+                    refreshActiveShift?.();
+                }}
             />
 
             <EmployeeMovementModal
@@ -1016,6 +1071,72 @@ function EmployeeList() {
                 defaultStatus={attendanceModalConfig.status}
                 onSuccess={() => loadData()}
             />
+
+            <OnboardingTour tourKey="employees" steps={EMPLOYEES_TOUR_STEPS} />
+
+            {/* Confirm Delete Employee Modal */}
+            {employeeToDelete && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                    onClick={() => !isDeletingEmployee && setEmployeeToDelete(null)}
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
+                        className="w-full max-w-md rounded-md border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger-border)]">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                                    ¿Eliminar a {employeeToDelete.name}?
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                                    Esta acción eliminará al colaborador de la nómina y limpiará sus registros de inasistencias y anticipos.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
+                            <button
+                                type="button"
+                                disabled={isDeletingEmployee}
+                                onClick={() => setEmployeeToDelete(null)}
+                                className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-accent)] transition cursor-pointer"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isDeletingEmployee}
+                                onClick={async () => {
+                                    setIsDeletingEmployee(true);
+                                    try {
+                                        await deleteEmployee(employeeToDelete.id);
+                                        toast.success("Empleado eliminado.");
+                                        setEmployeeToDelete(null);
+                                        loadData();
+                                        refreshActiveShift?.();
+                                    } catch (err) {
+                                        console.error(err);
+                                        toast.error("No se pudo eliminar el empleado.");
+                                    } finally {
+                                        setIsDeletingEmployee(false);
+                                    }
+                                }}
+                                className="rounded-md bg-[var(--danger)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition disabled:opacity-50 shadow-xs cursor-pointer"
+                            >
+                                {isDeletingEmployee ? "Eliminando..." : "Confirmar eliminación"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             </PremiumGate>
         </div>
     );

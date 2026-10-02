@@ -105,6 +105,10 @@ export async function getClosedRegister(id) {
     return response.data;
 }
 
+export async function deleteClosedRegister(id) {
+    await api.delete(`business/registers/${id}/`);
+}
+
 export async function updateTransactionAmountReceived(
     id,
     received

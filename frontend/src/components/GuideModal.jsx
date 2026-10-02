@@ -27,6 +27,8 @@ function GuideModal({ isOpen, onClose }) {
             ? location.pathname === "/providers" || location.pathname === "/providers/"
                 ? "providers"
                 : "provider-detail"
+            : location.pathname.startsWith("/employees")
+            ? "employees"
             : null;
 
     function handleStartCurrentTour() {
@@ -53,6 +55,7 @@ function GuideModal({ isOpen, onClose }) {
         { id: "ventas", label: "Ventas & Libreta" },
         { id: "stock", label: "Stock & Control" },
         { id: "proveedores", label: "Proveedores & Gastos" },
+        { id: "empleados", label: "Empleados & Sueldos" },
         { id: "configuracion", label: "Configuración & Tienda" },
         { id: "seguridad", label: "Seguridad & Reportes" },
     ];
@@ -269,6 +272,46 @@ function GuideModal({ isOpen, onClose }) {
                                 </h3>
                                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                                     Podés registrar compras de mercadería descontando el dinero de la caja activa o sumándolo a tu saldo deudor pendiente para pagar más adelante.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "empleados" && (
+                        <div className="space-y-3">
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Fichas de Personal & Modalidades de Sueldo
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Registrá colaboradores con sueldo fijo mensual, jornal diario o tarifa por hora. Podés asignarles un porcentaje de descuento automático para compras en el negocio.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Turnos de Caja & Cambio de Cajero
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Cada cajero puede iniciar su turno de forma independiente. Al terminar, la opción <strong>"Cambio de turno"</strong> genera un arqueo con el total de efectivo cobrado y ventas registradas bajo su guardia.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Reloj de Asistencias y Faltas
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Llevá el control diario de días trabajados, llegadas tarde y ausencias con o sin aviso. Al momento de liquidar, el sistema ajustará automáticamente los días u horas calculados.
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-[var(--border)] border-l-4 border-l-[var(--primary)] bg-[var(--surface-accent)]/30 p-3.5 space-y-1">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+                                    Adelantos, Consumo Interno y Liquidación
+                                </h3>
+                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                    Registrá anticipos en efectivo y ventas cobradas bajo <strong>"Descontar del sueldo"</strong>. El asistente de liquidación consolida los haberes y deducciones para emitir el recibo de sueldo con el neto exacto a pagar.
                                 </p>
                             </div>
                         </div>
